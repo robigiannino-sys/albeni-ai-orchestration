@@ -1,0 +1,90 @@
+version: '3.8'
+
+services:
+  # ML Worker: Python FastAPI - AI Logic, IDS, Content Generation
+  ml-worker:
+    build: ./ml-worker
+    container_name: albeni-ml-worker
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      - semrush_data:/app/data/semrush
+      - research_hub_data:/app/data/research_hub
+      - ./skills-data:/app/skills-data:ro
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - albeni-network
+
+  # AI Router: Node.js Express - Routing, Tracking, Integrations
+  ai-router:
+    build: ./ai-router
+    container_name: albeni-ai-router
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    volumes:
+      - ./dashboard:/app/dashboard:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+      ml-worker:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - albeni-network
+
+  # PostgreSQL: Persistent storage for users, signals, intent intelligence
+  db:
+    image: postgres:15
+    container_name: albeni-db
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: albeni_ai_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./ml-worker/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d albeni_ai_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - albeni-network
+
+  # Redis: Real-time caching for IDS scores and routing decisions (<120ms)
+  redis:
+    image: redis:7-alpine
+    container_name: albeni-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - albeni-network
+
+volumes:
+  postgres_data:
+  redis_data:
+  semrush_data:
+  research_hub_data:
+
+networks:
+  albeni-network:
+    driver: bridge

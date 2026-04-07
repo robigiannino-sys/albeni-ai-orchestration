@@ -1,0 +1,286 @@
+{
+  "metadata": {
+    "version": "1.0",
+    "brand": "Albeni 1905 — Invisible Luxury",
+    "product": "T-shirt ultra-fine merino wool 17 micron",
+    "price_point": "€125",
+    "positioning": "Outer garment (NOT underwear, NOT sportswear)",
+    "last_updated": "2026-03-03",
+    "supported_languages": ["it", "de", "en", "fr"]
+  },
+  "translation_rules": {
+    "never_translate": [
+      "Made in Italy",
+      "Super 120's",
+      "Reda 1865",
+      "CompACT®",
+      "ZQ",
+      "Albeni 1905",
+      "Invisible Luxury",
+      "World of Merino",
+      "Merino University"
+    ],
+    "keep_original_plus_translation": [
+      "Cut & Sewn",
+      "Fully Fashioned",
+      "GSM",
+      "Cost Per Wear"
+    ],
+    "brand_terms_preserve_case": [
+      "CompACT®",
+      "Super 120's",
+      "ZQ"
+    ]
+  },
+  "glossary": {
+    "fiber_and_material": [
+      {
+        "term_it": "17 micron",
+        "term_de": "17 Mikron",
+        "term_en": "17 micron",
+        "term_fr": "17 microns",
+        "category": "C6_technical",
+        "note": "Brand-defining specification. Always '17 Mikron' in DE, never 'Mikrometer'. This is the gold standard that differentiates Albeni from competitors.",
+        "context": "The fiber diameter that makes merino ultra-fine — finer than human hair. Key differentiator and price justifier."
+      },
+      {
+        "term_it": "Merino Superfine / Ultra-fine",
+        "term_de": "Merino Superfein / Ultrafein",
+        "term_en": "Superfine Merino / Ultra-fine Merino",
+        "term_fr": "Mérinos Superfin / Ultra-fin",
+        "category": "C6_technical",
+        "note": "Prefer 'Superfein' in DE for keyword alignment. 'Ultrafein' as secondary.",
+        "context": "Classification for merino wool under 18.5 microns. Albeni uses 17 micron which is well within superfine range."
+      },
+      {
+        "term_it": "Super 120's",
+        "term_de": "Super 120's",
+        "term_en": "Super 120's",
+        "term_fr": "Super 120's",
+        "category": "C5_italian_authentic",
+        "note": "NEVER translate. International textile standard. Always with apostrophe-s.",
+        "context": "Yarn count classification from Reda mill. Indicates premium quality wool grade."
+      },
+      {
+        "term_it": "GSM (grammi al metro quadro)",
+        "term_de": "GSM (Gramm pro Quadratmeter)",
+        "term_en": "GSM (grams per square meter)",
+        "term_fr": "GSM (grammes par mètre carré)",
+        "category": "C6_technical",
+        "note": "Keep acronym GSM universal. Expand in parentheses on first use.",
+        "context": "Fabric weight measurement. Albeni t-shirt is ~170-180 GSM — medium weight for year-round wear."
+      },
+      {
+        "term_it": "Lana tracciabile",
+        "term_de": "Rückverfolgbare Wolle",
+        "term_en": "Traceable wool",
+        "term_fr": "Laine traçable",
+        "category": "C3_conscious",
+        "note": "Key sustainability term. In DE, 'rückverfolgbar' is the standard ethical fashion term.",
+        "context": "ZQ-certified wool with full supply chain transparency from farm to finished garment."
+      }
+    ],
+    "construction_and_process": [
+      {
+        "term_it": "Taglio e cucito / Cut & Sewn",
+        "term_de": "Cut & Sewn / Zugeschnitten und Genäht",
+        "term_en": "Cut & Sewn",
+        "term_fr": "Coupé-Cousu",
+        "category": "C6_technical",
+        "note": "Use English 'Cut & Sewn' as primary (SEO), add DE translation in parentheses for comprehension.",
+        "context": "Albeni's construction method — fabric is cut from flat panels and sewn. Superior to 'fully fashioned' knit for t-shirts because it allows precise architectural fit."
+      },
+      {
+        "term_it": "Intero / Fully Fashioned",
+        "term_de": "Fully Fashioned / Vollständig Geformt",
+        "term_en": "Fully Fashioned",
+        "term_fr": "Fully Fashioned / Tricoté Intégral",
+        "category": "C6_technical",
+        "note": "English primary + DE in parentheses. This is the COMPETITOR method that Albeni differentiates against.",
+        "context": "Knitted-to-shape construction. Common in knitwear but inferior for t-shirts — less precise fit, more pilling."
+      },
+      {
+        "term_it": "Tecnologia CompACT®",
+        "term_de": "CompACT®-Technologie",
+        "term_en": "CompACT® Technology",
+        "term_fr": "Technologie CompACT®",
+        "category": "C6_technical",
+        "note": "Registered trademark — NEVER modify 'CompACT®'. Only add language-appropriate word for 'Technology'.",
+        "context": "Spinning technology that produces smoother, more compact yarn. Reduces pilling and improves hand feel."
+      },
+      {
+        "term_it": "Trattamento al plasma",
+        "term_de": "Plasmabehandlung",
+        "term_en": "Plasma treatment",
+        "term_fr": "Traitement au plasma",
+        "category": "C6_technical",
+        "note": "Standard technical term across languages. Single compound word in DE.",
+        "context": "Surface treatment that enhances fabric properties without chemicals. Part of Albeni's finishing process."
+      },
+      {
+        "term_it": "Anti-pilling",
+        "term_de": "Anti-Pilling",
+        "term_en": "Anti-pilling",
+        "term_fr": "Anti-boulochage",
+        "category": "C6_technical",
+        "note": "Hyphenated in DE. English loan word widely understood in German textile industry.",
+        "context": "Resistance to surface bobbling. Key quality indicator for merino garments."
+      }
+    ],
+    "certifications_and_ethics": [
+      {
+        "term_it": "Protocollo ZQ",
+        "term_de": "ZQ-Protokoll",
+        "term_en": "ZQ Protocol",
+        "term_fr": "Protocole ZQ",
+        "category": "C3_conscious",
+        "note": "NEVER translate 'ZQ' — it's a certification brand name. Only translate 'Protocol'.",
+        "context": "The New Zealand Merino Company's ethical wool certification. Covers animal welfare, environmental sustainability, and social responsibility."
+      },
+      {
+        "term_it": "Made in Italy",
+        "term_de": "Made in Italy",
+        "term_en": "Made in Italy",
+        "term_fr": "Made in Italy",
+        "category": "C5_italian_authentic",
+        "note": "NEVER translate in ANY language. International brand equity term. Universally understood as quality marker.",
+        "context": "Albeni's entire production chain is in Italy — from Reda mill in Biella to final garment construction."
+      },
+      {
+        "term_it": "Reda 1865",
+        "term_de": "Reda 1865",
+        "term_en": "Reda 1865",
+        "term_fr": "Reda 1865",
+        "category": "C5_italian_authentic",
+        "note": "NEVER translate. Italian mill name + founding year. Key heritage element.",
+        "context": "Historic Italian wool mill in Biella, operating since 1865. Supplies Albeni's 17 micron merino wool."
+      },
+      {
+        "term_it": "Valutazione del Ciclo di Vita (LCA)",
+        "term_de": "Lebenszyklusanalyse (LCA / Ökobilanz)",
+        "term_en": "Life Cycle Assessment (LCA)",
+        "term_fr": "Analyse du Cycle de Vie (ACV)",
+        "category": "C3_conscious",
+        "note": "In DE, 'Ökobilanz' is the common term; 'LCA' as international abbreviation. Use both on first mention.",
+        "context": "Environmental impact assessment methodology. Proves merino's sustainability vs cotton and synthetics."
+      }
+    ],
+    "brand_and_positioning": [
+      {
+        "term_it": "Lusso Invisibile",
+        "term_de": "Unsichtbarer Luxus",
+        "term_en": "Invisible Luxury",
+        "term_fr": "Luxe Invisible",
+        "category": "brand",
+        "note": "Core brand concept. Translate for comprehension but also keep 'Invisible Luxury' in formal/international contexts.",
+        "context": "Albeni's positioning: luxury you feel but others don't see. The t-shirt performs at luxury level without logos or visible branding."
+      },
+      {
+        "term_it": "Guardaroba capsula",
+        "term_de": "Kapselgarderobe",
+        "term_en": "Capsule wardrobe",
+        "term_fr": "Garde-robe capsule",
+        "category": "C4_minimalist",
+        "note": "'Kapselgarderobe' is naturalized in DE. Also acceptable: 'Minimalistische Garderobe'. High search volume DE: 2.400/mo.",
+        "context": "The minimalist wardrobe philosophy that Albeni's t-shirt anchors. One t-shirt replaces multiple lower-quality garments."
+      },
+      {
+        "term_it": "Costo per utilizzo",
+        "term_de": "Kosten pro Tragen",
+        "term_en": "Cost Per Wear",
+        "term_fr": "Coût par utilisation",
+        "category": "C4_minimalist",
+        "note": "Key economic argument for €125 price point. In DE, 'Kosten pro Tragen' is most natural.",
+        "context": "Framework that justifies premium pricing: €125 / 200+ wears = €0.63 per wear vs fast fashion at €2-5 per wear."
+      },
+      {
+        "term_it": "Sotto giacca / Sotto blazer",
+        "term_de": "Unter dem Sakko / Unter dem Blazer",
+        "term_en": "Under a blazer / Under a jacket",
+        "term_fr": "Sous le blazer / Sous la veste",
+        "category": "C1_business",
+        "note": "Primary use case keyword. DE: 'was unter Sakko tragen' = 3.600/mo search volume. CRITICAL for C1 cluster.",
+        "context": "Albeni's t-shirt worn as an invisible layer under business attire. Clean neckline, no visible seams, thermoregulating."
+      }
+    ],
+    "care_and_maintenance": [
+      {
+        "term_it": "Lavaggio a freddo",
+        "term_de": "Kaltwäsche / Kalt waschen",
+        "term_en": "Cold wash",
+        "term_fr": "Lavage à froid",
+        "category": "C6_technical",
+        "note": "'Kaltwäsche' as noun, 'Kalt waschen' as instruction. Both common in DE.",
+        "context": "Merino care instruction. 30°C max. Extends garment life and maintains fiber properties."
+      },
+      {
+        "term_it": "Appendi e lascia respirare",
+        "term_de": "Aufhängen und Auslüften lassen",
+        "term_en": "Hang and air out",
+        "term_fr": "Suspendre et laisser aérer",
+        "category": "C6_technical",
+        "note": "Part of the 'Gesti' (Gestures) content from World of Merino Field Notes. Natural merino care ritual.",
+        "context": "Merino's natural antibacterial properties mean it needs washing less often. 30 minutes airing refreshes the garment."
+      }
+    ]
+  },
+  "tone_of_voice": {
+    "brand_personality": "Quiet confidence. The voice of someone who knows quality intimately and doesn't need to prove it. Think: the best-dressed person in the room who never discusses clothing.",
+    "it": {
+      "register": "Elevated but warm. Not academic, not casual. Like a knowledgeable friend who respects your intelligence.",
+      "avoid": ["Hype language", "Discount/sale urgency", "Comparison with fast fashion by name", "Technical jargon without context"],
+      "examples": {
+        "good": "La differenza non si vede. Si sente.",
+        "bad": "Il MIGLIOR tessuto sul mercato! Compra ORA con sconto!"
+      }
+    },
+    "de": {
+      "register": "Sachlich-elegant. German readers value substance and precision. More direct than Italian, but never cold. Think: premium German engineering brands — confident, factual, with understated warmth.",
+      "avoid": ["Übertreibungen (exaggerations)", "Empty superlatives", "Informal 'du' in main content (use 'Sie')", "Direct price comparisons"],
+      "adapt_from_it": "Italian content tends toward poetic metaphor. For DE, keep the essence but shift toward factual elegance. Where IT says 'Il lusso della semplicità', DE should communicate the same feeling through precision: 'Qualität, die man spürt — nicht sieht.'",
+      "formality": "Use 'Sie' (formal you) in all content. 'Du' only acceptable in very casual social media contexts.",
+      "examples": {
+        "good": "Qualität, die man spürt — nicht sieht.",
+        "bad": "Das BESTE Material! Jetzt kaufen und sparen!"
+      }
+    }
+  },
+  "behavioral_clusters": {
+    "C1_business_professional": {
+      "description": "Men 28-50 who wear the t-shirt under blazers/suits for invisible comfort in professional settings",
+      "primary_keywords_de": ["was unter Sakko tragen", "unsichtbares Unterhemd Herren", "Business Kleidung bequem"],
+      "messaging_angle": "Invisible performance layer that maintains composure from boardroom to dinner",
+      "avoid": "Never position as 'underwear' or 'undershirt' — it's a garment that happens to work perfectly under a blazer"
+    },
+    "C2_heritage_mature": {
+      "description": "Men 45-65+ who value tradition, longevity, and timeless quality over trends",
+      "primary_keywords_de": ["hochwertige Herrenkleidung", "italienische Qualität Kleidung", "langlebige Herrenmode"],
+      "messaging_angle": "Garments that improve with age, made by artisans who've perfected their craft over generations",
+      "avoid": "Never imply 'old-fashioned' — position as timeless and evolved, not nostalgic"
+    },
+    "C3_conscious_premium": {
+      "description": "Men 28-45 who choose quality because it's more sustainable and ethical",
+      "primary_keywords_de": ["nachhaltige Herrenmode", "ethische Wolle Marken", "nachhaltige Kleidung Herren"],
+      "messaging_angle": "The most sustainable garment is one you wear 200+ times. ZQ-certified, fully traceable, Made in Italy.",
+      "avoid": "Never greenwash or make vague claims. Always back with specific data: ZQ, LCA results, Reda traceability"
+    },
+    "C4_modern_minimalist": {
+      "description": "Men 23-40 who embrace capsule wardrobes and intentional consumption",
+      "primary_keywords_de": ["Kapselgarderobe Herren", "Minimalismus Kleiderschrank", "Merino T-Shirt Herren"],
+      "messaging_angle": "One €125 t-shirt replaces five €25 ones. Less decisions, more consistency, lower cost-per-wear.",
+      "avoid": "Never position as deprivation. Minimalism here is abundance through curation."
+    },
+    "C5_italian_authentic": {
+      "description": "People who value Made in Italy craftsmanship and Italian textile heritage",
+      "primary_keywords_de": ["Made in Italy Herrenmode", "italienische Merino Wolle", "italienische Handwerkskunst"],
+      "messaging_angle": "From Reda's Biella mill (est. 1865) to your wardrobe. Italian excellence in every fiber.",
+      "avoid": "Never reduce Italy to stereotypes (pizza, mandolino). Focus on textile excellence, engineering, craft."
+    },
+    "C6_semantic_defense": {
+      "description": "Technical content that builds authority and justifies the €125 price point",
+      "primary_keywords_de": ["17 Mikron Merino", "Baumwolle vs Merino", "Merino Wolle Pflege", "Cut and Sew"],
+      "messaging_angle": "Scientific precision that educates. The reader should finish understanding WHY this costs €125.",
+      "avoid": "Never be condescending. Technical content should enlighten, not lecture."
+    }
+  }
+}

@@ -1,0 +1,166 @@
+{
+  "date": "2026-03-31",
+  "new_categories": ["technical-content", "content-lake", "tracking"],
+  "new_entries": [
+    {
+      "id": "content_cl_multilang_v1",
+      "title": "Content Lake Multilingual — 432 Personalization Variants (IT/EN/DE/FR)",
+      "category": "content-lake",
+      "language": "IT,EN,DE,FR",
+      "date_created": "2026-03-31",
+      "tags": ["content-lake", "personalization", "multilingual", "behavioral-clusters", "IDS"],
+      "summary": "432 varianti di copy personalizzato (108 IT × 4 lingue) organizzate per dominio (tofu/mofu/bofu_tech) × 5 cluster comportamentali + default. Integrato con il behavioral engine per swap DOM automatico basato su cluster predetto.",
+      "file_path": "tracking/content-lake-multilingual.js"
+    },
+    {
+      "id": "content_unified_tracker_v1",
+      "title": "Albeni Unified Tracker — Consolidated Layer 1 Script",
+      "category": "tracking",
+      "language": "EN",
+      "date_created": "2026-03-31",
+      "tags": ["tracking", "UTM", "behavioral-signals", "bot-shield", "cross-domain", "ADV-routing"],
+      "summary": "Script Layer 1 consolidato che unisce albeni-ai-tracker.js e tracking.js. Include: UTM sensor, scroll milestones (25/50/75/90%), dwell time 60s, cross-domain UID con MutationObserver, video engagement, exit intent, bot shield fingerprint, ADV routing, multi-language detection, sendBeacon dispatch.",
+      "file_path": "tracking/albeni-unified-tracker.js"
+    },
+    {
+      "id": "content_dal_vello_it",
+      "title": "Dal Vello al Capo — Il Viaggio della Lana Merino (IT)",
+      "category": "technical-content",
+      "language": "IT",
+      "date_created": "2026-03-20",
+      "tags": ["merino", "filiera", "tosatura", "cardatura", "tessitura", "Material Science"],
+      "summary": "Pagina educativa TOFU che racconta il percorso completo della fibra merino dalla pecora al capo finito. 4 fasi: Tosatura, Cardatura e Filatura, Tessitura, Confezionamento. Pubblicata su MU staging con traduzioni EN/DE/FR via Polylang.",
+      "file_path": "wp-content/dal-vello-al-capo-it.html"
+    },
+    {
+      "id": "content_dal_vello_en",
+      "title": "From Fleece to Garment — The Merino Wool Journey (EN)",
+      "category": "technical-content",
+      "language": "EN",
+      "date_created": "2026-03-20",
+      "tags": ["merino", "supply-chain", "shearing", "carding", "weaving", "Material Science"],
+      "summary": "English version of the merino journey page. 4 phases: Shearing, Carding & Spinning, Weaving, Finishing. Published on MU staging, Polylang-linked to IT/DE/FR.",
+      "file_path": "wp-content/from-fleece-to-garment-en.html"
+    },
+    {
+      "id": "content_dal_vello_de",
+      "title": "Vom Vlies zum Kleidungsstück — Die Reise der Merinowolle (DE)",
+      "category": "technical-content",
+      "language": "DE",
+      "date_created": "2026-03-20",
+      "tags": ["merino", "Lieferkette", "Schur", "Kardieren", "Weben", "Material Science"],
+      "summary": "Deutsche Version der Merino-Reise-Seite. 4 Phasen: Schur, Kardieren & Spinnen, Weben, Konfektion. Veröffentlicht auf MU Staging, Polylang-verknüpft mit IT/EN/FR.",
+      "file_path": "wp-content/vom-vlies-zum-kleidungsstueck-de.html"
+    },
+    {
+      "id": "content_dal_vello_fr",
+      "title": "De la Toison au Vêtement — Le Voyage de la Laine Mérinos (FR)",
+      "category": "technical-content",
+      "language": "FR",
+      "date_created": "2026-03-20",
+      "tags": ["mérinos", "chaîne-approvisionnement", "tonte", "cardage", "tissage", "Material Science"],
+      "summary": "Version française de la page parcours mérinos. 4 phases: Tonte, Cardage & Filature, Tissage, Confection. Publiée sur MU staging, liée Polylang à IT/EN/DE.",
+      "file_path": "wp-content/de-la-toison-au-vetement-fr.html"
+    },
+    {
+      "id": "content_struttura_cheratina_it",
+      "title": "La Struttura della Cheratina — Architettura Molecolare della Fibra Merino (IT)",
+      "category": "technical-content",
+      "language": "IT",
+      "date_created": "2026-03-22",
+      "tags": ["cheratina", "struttura molecolare", "corteccia", "cuticola", "alfa-elica", "Material Science"],
+      "summary": "Pagina Material Science che esplora la struttura della cheratina nella fibra merino: cuticola, corteccia, medulla. Spiega le proprietà termoregolatrici e meccaniche derivate dalla struttura alfa-elica. Dept: Material Science. Pubblicata su MU staging 4L.",
+      "file_path": "wp-content/struttura-cheratina-it.html"
+    },
+    {
+      "id": "content_struttura_cheratina_en",
+      "title": "Keratin Structure — Molecular Architecture of Merino Fiber (EN)",
+      "category": "technical-content",
+      "language": "EN",
+      "date_created": "2026-03-22",
+      "tags": ["keratin", "molecular-structure", "cortex", "cuticle", "alpha-helix", "Material Science"],
+      "summary": "Material Science page exploring keratin structure in merino fiber: cuticle, cortex, medulla. Explains thermoregulatory and mechanical properties from alpha-helix structure.",
+      "file_path": "wp-content/keratin-structure-en.html"
+    },
+    {
+      "id": "content_struttura_cheratina_de",
+      "title": "Keratinstruktur — Molekulare Architektur der Merinofaser (DE)",
+      "category": "technical-content",
+      "language": "DE",
+      "date_created": "2026-03-22",
+      "tags": ["Keratin", "Molekularstruktur", "Kortex", "Kutikula", "Alpha-Helix", "Material Science"],
+      "summary": "Material Science Seite über die Keratinstruktur in der Merinofaser: Kutikula, Kortex, Medulla. Thermoregulatorische und mechanische Eigenschaften der Alpha-Helix-Struktur.",
+      "file_path": "wp-content/keratinstruktur-de.html"
+    },
+    {
+      "id": "content_struttura_cheratina_fr",
+      "title": "Structure de la Kératine — Architecture Moléculaire de la Fibre Mérinos (FR)",
+      "category": "technical-content",
+      "language": "FR",
+      "date_created": "2026-03-22",
+      "tags": ["kératine", "structure-moléculaire", "cortex", "cuticule", "hélice-alpha", "Material Science"],
+      "summary": "Page Material Science explorant la structure de la kératine dans la fibre mérinos: cuticule, cortex, medulla. Propriétés thermorégulatrices et mécaniques de la structure en hélice alpha.",
+      "file_path": "wp-content/structure-keratine-fr.html"
+    },
+    {
+      "id": "content_termoregolazione_it",
+      "title": "Termoregolazione — Come la Fibra Merino Regola la Temperatura Corporea (IT)",
+      "category": "technical-content",
+      "language": "IT",
+      "date_created": "2026-03-24",
+      "tags": ["termoregolazione", "comfort termico", "assorbimento umidità", "merino", "Material Science"],
+      "summary": "Pagina Material Science sulla termoregolazione attiva della fibra merino: buffer zone termica, trasporto dell'umidità, stabilità 12 ore. Dual images IT vs EN. Dept: Material Science. Pubblicata su MU staging 4L.",
+      "file_path": "wp-content/termoregolazione-it.html"
+    },
+    {
+      "id": "content_termoregolazione_en",
+      "title": "Thermoregulation — How Merino Fiber Controls Body Temperature (EN)",
+      "category": "technical-content",
+      "language": "EN",
+      "date_created": "2026-03-24",
+      "tags": ["thermoregulation", "thermal-comfort", "moisture-wicking", "merino", "Material Science"],
+      "summary": "Material Science page on active thermoregulation of merino fiber: thermal buffer zone, moisture transport, 12-hour stability.",
+      "file_path": "wp-content/thermoregulation-en.html"
+    },
+    {
+      "id": "content_termoregolazione_de",
+      "title": "Thermoregulierung — Wie Merinofaser die Körpertemperatur reguliert (DE)",
+      "category": "technical-content",
+      "language": "DE",
+      "date_created": "2026-03-24",
+      "tags": ["Thermoregulierung", "Wärmekomfort", "Feuchtigkeitstransport", "Merino", "Material Science"],
+      "summary": "Material Science Seite über aktive Thermoregulierung der Merinofaser: thermische Pufferzone, Feuchtigkeitstransport, 12-Stunden-Stabilität.",
+      "file_path": "wp-content/thermoregulierung-de.html"
+    },
+    {
+      "id": "content_termoregolazione_fr",
+      "title": "Thermorégulation — Comment la Fibre Mérinos Contrôle la Température Corporelle (FR)",
+      "category": "technical-content",
+      "language": "FR",
+      "date_created": "2026-03-24",
+      "tags": ["thermorégulation", "confort-thermique", "évacuation-humidité", "mérinos", "Material Science"],
+      "summary": "Page Material Science sur la thermorégulation active de la fibre mérinos: zone tampon thermique, transport d'humidité, stabilité 12 heures.",
+      "file_path": "wp-content/thermoregulation-fr.html"
+    },
+    {
+      "id": "content_audit_v2",
+      "title": "Audit AI Orchestration Layer v2 — Score 8.2/10 (Mar 2026)",
+      "category": "document",
+      "language": "IT",
+      "date_created": "2026-03-31",
+      "tags": ["audit", "AI stack", "Docker", "ML Worker", "database", "API"],
+      "summary": "Audit completo v2 dell'AI Orchestration Layer: 4 servizi Docker, 14 servizi ML Worker, 12 tabelle PostgreSQL, 48 indici. Score complessivo 8.2/10. Include gap analysis e raccomandazioni deploy.",
+      "file_path": "Audit_AI_Orchestration_Layer_v2_Mar2026.docx"
+    },
+    {
+      "id": "content_cluster_landing_pages",
+      "title": "20 Cluster Landing Pages + 3 A/B Variants — MU Staging",
+      "category": "technical-content",
+      "language": "IT,EN,DE,FR",
+      "date_created": "2026-03-18",
+      "tags": ["cluster", "landing-pages", "A/B-testing", "behavioral-personalization", "MU"],
+      "summary": "20 pagine cluster personalizzate (5 cluster × 4 funnel stages) più 3 varianti A/B per landing page principali. Visual/UX enhanced con Material Science imagery. Pubblicate su MU staging.",
+      "file_path": "wp-content/cluster-landing-pages/"
+    }
+  ]
+}

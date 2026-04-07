@@ -1,0 +1,76 @@
+# =============================================================
+# Albeni 1905 - Advanced Crawl Governance
+# AI Orchestration Layer - Digital Moat
+# =============================================================
+
+# Standard search engines: ALLOWED (for SEO indexing)
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: DuckDuckBot
+Allow: /
+
+User-agent: YandexBot
+Allow: /
+
+# Google AI Training: BLOCKED
+User-agent: Google-Extended
+Disallow: /
+
+# OpenAI / ChatGPT: BLOCKED
+User-agent: GPTBot
+Disallow: /
+
+User-agent: ChatGPT-User
+Disallow: /
+
+# Anthropic Claude: BLOCKED
+User-agent: ClaudeBot
+Disallow: /
+
+User-agent: anthropic-ai
+Disallow: /
+
+# Common Crawl: BLOCKED
+User-agent: CCBot
+Disallow: /
+
+# ByteDance: BLOCKED
+User-agent: Bytespider
+Disallow: /
+
+# Diffbot: BLOCKED
+User-agent: Diffbot
+Disallow: /
+
+# Meta AI: BLOCKED
+User-agent: FacebookBot
+Disallow: /
+
+# Apple AI: BLOCKED
+User-agent: Applebot-Extended
+Disallow: /
+
+# Perplexity: BLOCKED
+User-agent: PerplexityBot
+Disallow: /
+
+# You.com: BLOCKED
+User-agent: YouBot
+Disallow: /
+
+# All other bots: Limited access
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+Disallow: /internal/
+
+# Sitemap
+Sitemap: https://albeni1905.com/sitemap.xml
+Sitemap: https://worldofmerino.com/sitemap.xml
+Sitemap: https://merinouniversity.com/sitemap.xml
+Sitemap: https://perfectmerinoshirt.com/sitemap.xml

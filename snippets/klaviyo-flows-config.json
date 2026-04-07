@@ -1,0 +1,235 @@
+{
+  "_meta": {
+    "project": "Albeni 1905 — AI Orchestration Layer",
+    "version": "2.0",
+    "generated": "2026-03-20",
+    "note": "Configurazione flows Klaviyo per il sistema adattivo. Importa questa configurazione nel tab Flows di Klaviyo come riferimento per la costruzione manuale dei flow."
+  },
+
+  "flows": [
+
+    {
+      "id": "flow_bofu_conversion",
+      "name": "BOFU Conversion Flow — IDS ≥ 65",
+      "trigger": "Metric: BOFU_Intent_Threshold_Reached",
+      "trigger_description": "Fired automaticamente dal Behavioral Engine quando IDS ≥ 65. Attivato sia da visitatori anonimi (visitor_id) che con email.",
+      "priority": 1,
+      "active_domains": ["perfectmerinoshirt.com"],
+      "emails": [
+        {
+          "delay": "0 min",
+          "subject_by_cluster": {
+            "business_professional": "La T-shirt che cercavi. Dati tecnici, nessun compromesso.",
+            "heritage_mature":       "Albeni 1905 — Quando la storia si sente nel tessuto.",
+            "conscious_premium":     "Un acquisto. Per anni. Perché il Merino dura.",
+            "modern_minimalist":     "Zero logo. Massima sostanza. La tua preferita.",
+            "italian_authentic":     "Made in Italy, nel senso vero. La tua T-shirt Albeni.",
+            "default":               "Hai trovato la tua T-shirt Merino definitiva."
+          },
+          "content_block": "Scheda prodotto adattiva per cluster + recensione cluster-specific + CTA →albeni1905.com/shop",
+          "cta": "Acquista ora — Spedizione gratuita sopra €80",
+          "note": "albeni1905.com è il dominio BOFU heritage/checkout. Il CTA della email può puntare direttamente al checkout."
+        },
+        {
+          "delay": "48 ore (se non acquistato)",
+          "subject_by_cluster": {
+            "business_professional": "17 micron. Super 120's. La differenza che si indossa.",
+            "heritage_mature":       "270 anni di storia tessile. Un capo.",
+            "conscious_premium":     "La scelta sostenibile che dura 3 volte di più.",
+            "modern_minimalist":     "Qualità invisibile. Comfort quotidiano.",
+            "italian_authentic":     "Il Merino italiano che stavate cercando.",
+            "default":               "Ancora disponibile — La tua T-shirt Albeni."
+          },
+          "content_block": "Comparazione materiale + social proof cluster-specific + urgency soft",
+          "cta": "Completa il tuo ordine →"
+        },
+        {
+          "delay": "5 giorni (se non acquistato)",
+          "subject_by_cluster": {
+            "business_professional": "Domanda tecnica: che differenza fa 17 vs 20 micron?",
+            "heritage_mature":       "La filiera spiegata in 4 punti. Perché conta.",
+            "conscious_premium":     "Calcola l'impatto di un acquisto che dura.",
+            "modern_minimalist":     "Le 3 cose che nessuno ti dice sul cotone premium.",
+            "default":               "Risposta alla domanda che ci fanno di più."
+          },
+          "content_block": "Contenuto educativo cluster-specific (non promozionale) + soft CTA",
+          "cta": "Continua a leggere →"
+        }
+      ]
+    },
+
+    {
+      "id": "flow_mofu_consideration",
+      "name": "MOFU Consideration Flow — IDS 30-64",
+      "trigger": "Metric: MOFU_Consideration",
+      "trigger_description": "Attivato quando visitor arriva su merinouniversity.com con IDS 30-64 e ha un'email (form subscription, guide download).",
+      "priority": 2,
+      "active_domains": ["merinouniversity.com"],
+      "emails": [
+        {
+          "delay": "0 min",
+          "subject": "La guida completa al Merino Superfine — te la mandiamo via email.",
+          "content_block": "Download guide tecnica + intro Merino University + link agli articoli più letti per cluster",
+          "cta": "Leggi la guida →"
+        },
+        {
+          "delay": "3 giorni",
+          "subject_by_cluster": {
+            "business_professional": "Merino vs Pima Cotton: il confronto che non ti aspetti.",
+            "heritage_mature":       "Come riconoscere una lavorazione italiana autentica.",
+            "conscious_premium":     "Studi LCA: i dati reali sull'impatto del Merino.",
+            "modern_minimalist":     "Test di 6 settimane: 3 tessuti, un solo vincitore.",
+            "default":               "Comparazione materiali: cotone vs merino, dati reali."
+          },
+          "content_block": "Articolo tecnico personalizzato + link a perfectmerinoshirt.com",
+          "cta": "Scopri le differenze tecniche →"
+        },
+        {
+          "delay": "7 giorni",
+          "subject": "Sei pronto a scegliere? Guida al peso giusto.",
+          "content_block": "150g vs 190g decision guide + link diretto a perfectmerinoshirt.com comparison page",
+          "cta": "Confronta 150g e 190g →"
+        }
+      ]
+    },
+
+    {
+      "id": "flow_tofu_welcome",
+      "name": "TOFU Welcome Series — Discovery",
+      "trigger": "Metric: TOFU_Entry",
+      "trigger_description": "Attivato da iscrizione newsletter su worldofmerino.com o da prima visita con email catturata.",
+      "priority": 3,
+      "active_domains": ["worldofmerino.com"],
+      "emails": [
+        {
+          "delay": "0 min",
+          "subject": "Benvenuto nel mondo del Merino Superfine.",
+          "content_block": "Intro brand + storia Albeni 1905 + Reda partnership + 3 articoli TOFU consigliati"
+        },
+        {
+          "delay": "4 giorni",
+          "subject_by_cluster": {
+            "business_professional": "La T-shirt che lavora mentre lavori — specifiche tecniche.",
+            "heritage_mature":       "Da 270 anni di storia tessile combinata — la nostra filiera.",
+            "conscious_premium":     "Perché il Merino naturale batte i materiali sintetici.",
+            "modern_minimalist":     "Il minimal fatto bene: zero compromessi sulla qualità.",
+            "italian_authentic":     "Made in Italy — non come marketing. Come garanzia.",
+            "default":               "5 cose che non sapevi sul Merino Superfine."
+          },
+          "content_block": "Articolo educativo cluster-specific + link Merino University"
+        },
+        {
+          "delay": "9 giorni",
+          "subject": "Pronto ad approfondire? Merino University ti aspetta.",
+          "content_block": "CTA a merinouniversity.com + 3 guide più lette",
+          "cta": "Esplora Merino University →"
+        }
+      ]
+    },
+
+    {
+      "id": "flow_post_purchase",
+      "name": "Post-Purchase CX Enhancement",
+      "trigger": "Metric: Purchase_Completed (albeni1905.com)",
+      "trigger_description": "Attivato da WooCommerce su albeni1905.com dopo checkout completato. Avvia il percorso CX post-acquisto.",
+      "priority": 4,
+      "active_domains": ["albeni1905.com"],
+      "note": "Questo flow si attiva da albeni1905.com. La configurazione è già nel sistema ma non può essere modificata lato frontend senza accesso al dominio.",
+      "emails": [
+        {
+          "delay": "Immediatamente post-acquisto",
+          "subject": "Il tuo Merino Albeni è in preparazione.",
+          "content_block": "Conferma ordine + guida alla cura del Merino + preview del cross-sell"
+        },
+        {
+          "delay": "3 giorni (consegna stimata)",
+          "subject": "Il tuo pacco è arrivato? Ecco come prenderti cura del tuo Merino.",
+          "content_block": "Istruzioni lavaggio + QR code unboxing + invito a lasciare recensione"
+        },
+        {
+          "delay": "30 giorni",
+          "subject_by_product_weight": {
+            "150g": "Hai provato il 190g? La versione invernale del tuo merino preferito.",
+            "190g": "Hai provato il 150g? Perfetto per primavera e ambienti climatizzati."
+          },
+          "content_block": "Cross-sell 150g↔190g + personalized recommendation + discount se first cross-sell"
+        }
+      ]
+    },
+
+    {
+      "id": "flow_win_back",
+      "name": "Win-Back Narrative",
+      "trigger": "Metric: Churn_Risk_Detected (60+ giorni inattività post-acquisto)",
+      "trigger_description": "Attivato dal sistema quando un cliente non ha aperto email da 60 giorni o non ha riacquistato in 12 mesi.",
+      "priority": 5,
+      "active_domains": ["all"],
+      "emails": [
+        {
+          "delay": "0 min",
+          "subject": "Ti mancava qualcosa?",
+          "content_block": "Reminder soft + nuovi contenuti pubblicati + link Merino University"
+        },
+        {
+          "delay": "7 giorni",
+          "subject": "Novità Albeni — nuovi pesi, nuovi colori.",
+          "content_block": "Product update + cluster-specific messaging + CTA acquisto"
+        },
+        {
+          "delay": "14 giorni",
+          "subject": "Un'ultima cosa prima di salutarci.",
+          "content_block": "Sunset message con offerta finale di re-engagement",
+          "cta": "Rimani aggiornato →"
+        }
+      ]
+    }
+  ],
+
+  "klaviyo_properties": {
+    "note": "Custom Properties da configurare nel Klaviyo Profile Schema (Audience → Properties)",
+    "properties": [
+      { "name": "albeni_cluster",      "type": "string",  "description": "Behavioral cluster: business_professional | heritage_mature | conscious_premium | modern_minimalist | italian_authentic" },
+      { "name": "albeni_ids_score",    "type": "number",  "description": "Intent Depth Score 0-100. Formula: T×0.2 + S×0.2 + I×0.4 + R×0.2" },
+      { "name": "albeni_ids_stage",    "type": "string",  "description": "discovery | mofu | bofu_soft | hot" },
+      { "name": "albeni_domain_path",  "type": "string",  "description": "Sequenza domini visitati: es. tofu,mofu,bofu_tech" },
+      { "name": "albeni_visitor_id",   "type": "string",  "description": "ID anonimo del visitatore (cross-device persistence)" },
+      { "name": "albeni_last_domain",  "type": "string",  "description": "Ultimo dominio visitato" },
+      { "name": "albeni_return_visits","type": "number",  "description": "Numero di visite di ritorno" },
+      { "name": "albeni_weight_pref",  "type": "string",  "description": "Peso merino preferito se selezionato: 150g | 190g" },
+      { "name": "albeni_language",     "type": "string",  "description": "Lingua preferita: it | de | en | fr" }
+    ]
+  },
+
+  "segments": [
+    {
+      "name": "BOFU Hot — IDS ≥ 65",
+      "condition": "albeni_ids_score >= 65",
+      "use": "Retargeting paid ads, priority CRM flow"
+    },
+    {
+      "name": "MOFU Warm — IDS 30-64",
+      "condition": "albeni_ids_score >= 30 AND albeni_ids_score < 65",
+      "use": "Consideration content, comparison guides"
+    },
+    {
+      "name": "Cluster: Business Professional",
+      "condition": "albeni_cluster = business_professional",
+      "use": "Technical copy, performance messaging"
+    },
+    {
+      "name": "Cluster: Heritage Mature",
+      "condition": "albeni_cluster = heritage_mature",
+      "use": "Heritage storytelling, filiera content"
+    },
+    {
+      "name": "Cluster: Conscious Premium",
+      "condition": "albeni_cluster = conscious_premium",
+      "use": "Sustainability data, LCA content"
+    },
+    {
+      "name": "Multi-domain Visitors",
+      "condition": "albeni_domain_path contains 'mofu' AND albeni_domain_path contains 'bofu_tech'",
+      "use": "Highest purchase intent segment — priority retargeting"
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+<!--
+  ╔══════════════════════════════════════════════════════╗
+  ║  ALBENI 1905 — AI Tracking Snippet                   ║
+  ║  Dominio: merinouniversity.com  (MOFU)               ║
+  ║                                                      ║
+  ║  Installazione: stessa procedura TOFU                ║
+  ║  Unica differenza: domain_type = 'mofu'              ║
+  ╚══════════════════════════════════════════════════════╝
+-->
+
+<!-- ALBENI AI CONFIG -->
+<script>
+window.ALBENI_AI = {
+  endpoint:         'https://dependent-applicant-august-architect.trycloudflare.com',
+  klaviyoEndpoint:  'https://motivated-weight-harder-dropped.trycloudflare.com',
+  domain_type:      'mofu',
+  debug:            false
+};
+</script>
+
+<!-- ALBENI TRACKER (Layer 1) -->
+<script src="https://motivated-weight-harder-dropped.trycloudflare.com/albeni-ai-tracker.js" defer></script>
+
+<!-- ALBENI BEHAVIORAL ENGINE (Layer 2) -->
+<script src="https://motivated-weight-harder-dropped.trycloudflare.com/albeni-behavioral-engine.js" defer></script>
+
+<!--
+  MOFU — SEGNALI SPECIALI SUPPORTATI:
+
+  Aggiungi data-albeni-article-end all'ultimo elemento
+  di ogni articolo/guida per registrare la lettura completa.
+  Questo segnale incrementa l'IDS di +15 punti.
+
+  Esempio:
+  <div class="entry-footer" data-albeni-article-end></div>
+
+  Il Behavioral Engine gestisce automaticamente:
+  - Lettura completa degli articoli
+  - Engagement con guide tecniche
+  - Progressione verso perfectmerinoshirt.com
+    (banner automatico quando IDS ≥ 35)
+-->
