@@ -36,7 +36,7 @@ app.use(helmet({
             styleSrc: ["'self'", "'unsafe-inline'"],
             imgSrc: ["'self'", "data:"],
             connectSrc: ["'self'", "http://localhost:8000", "http://localhost:3000",
-                         process.env.ML_WORKER_URL || "http://albeni-ai-orchestration.railway.internal:8000",
+                         process.env.ML_WORKER_URL || "http://albeni-ai-orchestration.railway.internal:8080",
                          "*.railway.internal"]
         }
     }
@@ -153,7 +153,7 @@ app.get('/v1/content-library', (req, res) => {
 // Forward all /v1/* requests not handled above to the ML Worker (Python FastAPI)
 // The ML Worker is internal-only on Railway (not publicly accessible)
 const axios = require('axios');
-const ML_WORKER_URL = process.env.ML_WORKER_URL || 'http://albeni-ai-orchestration.railway.internal:8000';
+const ML_WORKER_URL = process.env.ML_WORKER_URL || 'http://albeni-ai-orchestration.railway.internal:8080';
 
 app.all('/v1/*', async (req, res) => {
     const targetUrl = `${ML_WORKER_URL}${req.originalUrl}`;
@@ -244,7 +244,7 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`🚀 AI Router active on port ${PORT}`);
     console.log(`   Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`   ML Worker: ${process.env.ML_WORKER_URL || 'http://albeni-ai-orchestration.railway.internal:8000'}`);
+    console.log(`   ML Worker: ${process.env.ML_WORKER_URL || 'http://albeni-ai-orchestration.railway.internal:8080'}`);
 });
 
 module.exports = app;
