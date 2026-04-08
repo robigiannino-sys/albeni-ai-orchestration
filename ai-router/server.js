@@ -49,7 +49,9 @@ app.use(cors({
         process.env.DOMAIN_BOFU_HERITAGE || 'https://albeni1905.com',
         'http://localhost:3000',
         'http://localhost:8000',
-        'http://localhost:8080'
+        'http://localhost:8080',
+        'https://creative-perfection-production-57b5.up.railway.app',
+        /\.hostingersite\.com$/
     ],
     credentials: true
 }));
@@ -147,7 +149,86 @@ app.get('/v1/content-library', (req, res) => {
     }
 });
 
-// 404 handler
+// --- ML Worker Proxy ---
+// Forward all /v1/* requests not handled above to the ML Worker (Python FastAPI)
+// The ML Worker is internal-only on Railway (not publicly accessible)
+const axios = require('axios');
+const ML_WORKER_URL = process.env.ML_WORKER_URL || 'http://ml-worker:8000';
+
+app.all('/v1/*', async (req, res) => {
+    const targetUrl = `${ML_WORKER_URL}${req.originalUrl}`;
+    try {
+        const axiosConfig = {
+            method: req.method.toLowerCase(),
+            url: targetUrl,
+            headers: {
+                ...req.headers,
+                host: undefined, // let axios set the correct host
+                'x-forwarded-for': req.ip,
+                'x-forwarded-proto': req.protocol
+            },
+            timeout: 30000, // 30s timeout for AI operations
+            validateStatus: () => true // forward all status codes as-is
+        };
+
+        // Forward body for POST/PUT/PATCH
+        if (['POST', 'PUT', 'PATCH'].includes(req.method) && req.body) {
+            axiosConfig.data = req.body;
+        }
+
+        // Forward query params
+        if (Object.keys(req.query).length > 0) {
+            axiosConfig.params = req.query;
+        }
+
+        const mlResponse = await axios(axiosConfig);
+
+        // Forward response headers (skip hop-by-hop)
+        const skipHeaders = ['transfer-encoding', 'connection', 'keep-alive'];
+        Object.entries(mlResponse.headers).forEach(([key, value]) => {
+            if (!skipHeaders.includes(key.toLowerCase())) {
+                res.setHeader(key, value);
+            }
+        });
+
+        res.status(mlResponse.status).send(mlResponse.data);
+    } catch (error) {
+        console.error(`[ML Proxy] ${req.method} ${req.originalUrl} -> ${targetUrl} FAILED:`, error.message);
+        if (error.code === 'ECONNREFUSED') {
+            res.status(503).json({
+                error: 'ML Worker unavailable',
+                detail: 'The Python FastAPI backend is not responding. Check Railway deployment.',
+                target: targetUrl
+            });
+        } else if (error.code === 'ETIMEDOUT') {
+            res.status(504).json({
+                error: 'ML Worker timeout',
+                detail: 'The request took longer than 30 seconds.',
+                target: targetUrl
+            });
+        } else {
+            res.status(502).json({
+                error: 'ML Worker proxy error',
+                detail: error.message,
+                target: targetUrl
+            });
+        }
+    }
+});
+
+// Also proxy the widget.js endpoint from ML Worker
+app.get('/widget.js', async (req, res) => {
+    try {
+        const mlResponse = await axios.get(`${ML_WORKER_URL}/widget.js`, { timeout: 5000 });
+        res.setHeader('Content-Type', 'application/javascript');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.send(mlResponse.data);
+    } catch (error) {
+        res.status(502).send('// Widget unavailable - ML Worker not responding');
+    }
+});
+
+// 404 handler (only for non /v1/ routes)
 app.use((req, res) => {
     res.status(404).json({ error: 'Endpoint not found' });
 });
