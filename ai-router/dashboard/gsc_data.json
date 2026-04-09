@@ -1,0 +1,18 @@
+{
+  "scans": [
+    {
+      "id": "mu-2026-04-09",
+      "site": "merinouniversity.com",
+      "property": "https://merinouniversity.com/",
+      "date": "2026-04-09",
+      "total_urls": 280,
+      "indexed": 8,
+      "crawled_not_indexed": 3,
+      "not_crawled": 269,
+      "errors": 0,
+      "neutral": 272,
+      "duration_minutes": 100,
+      "source": "manual"
+    }
+  ]
+}
