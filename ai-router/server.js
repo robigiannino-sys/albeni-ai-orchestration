@@ -26,6 +26,7 @@ const crmRoutes = require('./routes/crm');
 // Import middleware
 const { botProtection } = require('./middleware/botProtection');
 const { c2paMiddleware } = require('./middleware/c2pa');
+const { createRoutes: createIndexRoutes } = require('./middleware/indexAwareRouter');
 
 // Security middleware (relaxed CSP for dashboard CDN scripts)
 app.use(helmet({
@@ -100,6 +101,11 @@ app.get('/health', (req, res) => {
 app.use('/v1/track', trackingRoutes);
 app.use('/v1/router', routerRoutes);
 app.use('/v1/crm', crmRoutes);
+
+// Index-Aware Cross-Domain Router (GSC crawl map fallback)
+// Must be BEFORE the ML Worker catch-all proxy at app.all('/v1/*')
+const dashboardPath_early = process.env.DASHBOARD_PATH || path.join(__dirname, 'dashboard');
+app.use('/v1/router', createIndexRoutes(dashboardPath_early));
 
 // Serve static files from dashboard folder (JS snippets, JSON, etc.)
 // Railway: dashboard is at /app/dashboard (copied during build)
