@@ -27,6 +27,8 @@ const crmRoutes = require('./routes/crm');
 const { botProtection } = require('./middleware/botProtection');
 const { c2paMiddleware } = require('./middleware/c2pa');
 const { createRoutes: createIndexRoutes } = require('./middleware/indexAwareRouter');
+const { createRoutes: createContentPriorityRoutes } = require('./middleware/contentPrioritizer');
+const { createRoutes: createAdvBudgetRoutes } = require('./middleware/advBudgetAllocator');
 
 // Security middleware (relaxed CSP for dashboard CDN scripts)
 app.use(helmet({
@@ -111,6 +113,8 @@ app.use('/v1/router', createIndexRoutes(dashboardPath_early));
 // Railway: dashboard is at /app/dashboard (copied during build)
 // Docker-compose: dashboard is mounted at /app/dashboard
 const dashboardPath = process.env.DASHBOARD_PATH || path.join(__dirname, 'dashboard');
+app.use('/v1/content/priorities', createContentPriorityRoutes(dashboardPath));
+app.use('/v1/adv', createAdvBudgetRoutes(dashboardPath));
 app.use(express.static(dashboardPath, {
     setHeaders: (res, filePath) => {
         if (filePath.endsWith('.js')) {
