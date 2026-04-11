@@ -57,6 +57,7 @@ from services.customer_care import CustomerCareAI
 from services.ads_intelligence import ADVIntelligence, UTMSensor
 from services.ads_routing import ADVRouter
 from services.bot_shield import BotShield
+from services.visual_generator import VisualGenerator
 
 # Logging setup
 logging.basicConfig(level=logging.INFO)
@@ -2433,3 +2434,56 @@ async def terminal_get_history():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
+
+# ===================================================================
+# VISUAL BRIEF GENERATOR — Phase 6 News Scanner
+# ===================================================================
+
+@app.post("/v1/visual/generate")
+async def generate_visuals(
+    brief_text: str = Body(..., embed=True, description="Markdown text of the editorial brief"),
+    max_facts: int = Body(2, embed=True, description="Max facts to generate visuals for"),
+    dry_run: bool = Body(False, embed=True, description="If true, only compose prompts without generating"),
+):
+    """Generate editorial visuals for a Merino News Scanner brief."""
+    import base64
+
+    if not settings.GEMINI_API_KEY:
+        raise HTTPException(status_code=500, detail="GEMINI_API_KEY not configured")
+
+    generator = VisualGenerator(api_key=settings.GEMINI_API_KEY)
+
+    if dry_run:
+        results = generator.dry_run(brief_text, max_facts=max_facts)
+        return {"status": "dry_run", "visuals": results, "count": len(results)}
+
+    raw_results = generator.generate_for_brief(brief_text, max_facts=max_facts)
+    visuals = []
+    for r in raw_results:
+        visuals.append({
+            "fact_number": r["fact_number"],
+            "fact_title": r["fact_title"],
+            "destination": r["destination"],
+            "topic": r["topic"],
+            "description": r["description"],
+            "prompt": r["prompt"],
+            "success": r["success"],
+            "error": r.get("error"),
+            "image_base64": base64.b64encode(r["image_bytes"]).decode() if r["image_bytes"] else None,
+        })
+
+    generated = sum(1 for v in visuals if v["success"])
+    failed = sum(1 for v in visuals if not v["success"])
+    return {"status": "completed", "visuals": visuals, "summary": {"generated": generated, "failed": failed, "total": len(visuals)}}
+
+
+@app.post("/v1/visual/dry-run")
+async def visual_dry_run(
+    brief_text: str = Body(..., embed=True, description="Markdown text of the editorial brief"),
+    max_facts: int = Body(2, embed=True, description="Max facts to generate visuals for"),
+):
+    """Compose visual prompts without generating images (preview mode)."""
+    generator = VisualGenerator(api_key=settings.GEMINI_API_KEY or "dry-run")
+    results = generator.dry_run(brief_text, max_facts=max_facts)
+    return {"status": "dry_run", "visuals": results, "count": len(results)}
