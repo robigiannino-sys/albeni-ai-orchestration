@@ -64,6 +64,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 settings = get_settings()
+import os; logger.info(f"DEBUG GEMINI_KEY env={os.environ.get('GEMINI_API_KEY', 'NOT_SET')[:8]} settings={settings.GEMINI_API_KEY[:8] if settings.GEMINI_API_KEY else 'EMPTY'}")
+import os; logger.info(f"DEBUG GEMINI_API_KEY env={os.environ.get(chr(39)GEMINI_API_KEY{chr(39), chr(39)NOT_SET{chr(39))[:10]}... settings={settings.GEMINI_API_KEY[:10] if settings.GEMINI_API_KEY else chr(39)EMPTY{chr(39)}...")
 
 # Redis client (initialized on startup)
 redis_client: Optional[aioredis.Redis] = None
