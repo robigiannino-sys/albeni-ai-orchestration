@@ -2451,10 +2451,12 @@ async def generate_visuals(
     """Generate editorial visuals for a Merino News Scanner brief."""
     import base64
 
-    if not settings.GEMINI_API_KEY:
+    import os
+    gemini_key = os.environ.get("GEMINI_API_KEY") or settings.GEMINI_API_KEY
+    if not gemini_key:
         raise HTTPException(status_code=500, detail="GEMINI_API_KEY not configured")
 
-    generator = VisualGenerator(api_key=settings.GEMINI_API_KEY)
+    generator = VisualGenerator(api_key=gemini_key)
 
     if dry_run:
         results = generator.dry_run(brief_text, max_facts=max_facts)
@@ -2486,6 +2488,8 @@ async def visual_dry_run(
     max_facts: int = Body(2, embed=True, description="Max facts to generate visuals for"),
 ):
     """Compose visual prompts without generating images (preview mode)."""
-    generator = VisualGenerator(api_key=settings.GEMINI_API_KEY or "dry-run")
+    import os
+    gemini_key = os.environ.get("GEMINI_API_KEY") or settings.GEMINI_API_KEY or "dry-run"
+    generator = VisualGenerator(api_key=gemini_key)
     results = generator.dry_run(brief_text, max_facts=max_facts)
     return {"status": "dry_run", "visuals": results, "count": len(results)}
