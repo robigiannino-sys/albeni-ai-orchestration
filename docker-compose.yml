@@ -41,6 +41,21 @@ services:
     networks:
       - albeni-network
 
+  # Approval Webhook: Node.js Express - Notion approve/archive actions
+  # Called by the Merino News dashboard HTML (file://) running on the user's
+  # Mac. Writes Stato changes that the notion-approval-deployer scheduled
+  # task (Cowork, every 30min) picks up to trigger WP deploy skills.
+  approval-webhook:
+    build: ./approval-webhook
+    container_name: albeni-approval-webhook
+    ports:
+      - "3001:3001"
+    env_file:
+      - ./approval-webhook/.env
+    restart: unless-stopped
+    networks:
+      - albeni-network
+
   # PostgreSQL: Persistent storage for users, signals, intent intelligence
   db:
     image: postgres:15
