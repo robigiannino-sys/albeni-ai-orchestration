@@ -165,6 +165,7 @@ function App() {
                 {page === 'adv' && <ADVPage />}
                 {page === 'agents' && <AgentsPage health={health} />}
                 {page === 'terminal' && <TerminalPage />}
+                {page === 'gsc' && <GSCPage />}
                 {page === 'logs' && <LogsPage health={health} />}
             </div>
         </React.Fragment>
@@ -224,6 +225,12 @@ function Sidebar({ page, setPage, health, pendingCount }) {
                     </div>
                     <div className={`nav-item ${page==='terminal'?'active':''}`} onClick={()=>setPage('terminal')}>
                         <span className="icon">💬</span> Terminale AI
+                    </div>
+                </div>
+                <div className="nav-section">
+                    <div className="nav-section-label">Monitoraggio</div>
+                    <div className={`nav-item ${page==='gsc'?'active':''}`} onClick={()=>setPage('gsc')}>
+                        <span className="icon">📊</span> GSC Indexing
                     </div>
                 </div>
                 <div className="nav-section">
@@ -541,17 +548,79 @@ function KlaviyoPage() {
                 )}
             </div>
 
+            <div className="card" style={{marginBottom:'20px'}}>
+                <h3 style={{fontSize:'15px',marginBottom:'16px',color:'#fafafa'}}>📧 Flow Attivi — {15} Live / {2} Draft</h3>
+
+                <div style={{marginBottom:'16px'}}>
+                    <div style={{fontSize:'12px',color:'#60a5fa',fontWeight:600,marginBottom:'8px',textTransform:'uppercase',letterSpacing:'0.05em'}}>🎯 Welcome Series per Cluster</div>
+                    <table style={{width:'100%'}}>
+                        <thead><tr><th>Flow</th><th>Stato</th><th>Trigger</th><th>ID</th></tr></thead>
+                        <tbody>
+                            <tr><td>WoM - Welcome Business Professional</td><td><span style={{color:'#4ade80'}}>● Live</span></td><td>Added to List</td><td style={{fontSize:'11px',color:'#52525b'}}>WiTZg7</td></tr>
+                            <tr><td>WoM - Welcome Conscious Premium</td><td><span style={{color:'#4ade80'}}>● Live</span></td><td>Added to List</td><td style={{fontSize:'11px',color:'#52525b'}}>VraFxv</td></tr>
+                            <tr><td>WoM - Welcome Heritage Mature</td><td><span style={{color:'#4ade80'}}>● Live</span></td><td>Added to List</td><td style={{fontSize:'11px',color:'#52525b'}}>T8AL2M</td></tr>
+                            <tr><td>WoM - Welcome Italian Authentic</td><td><span style={{color:'#4ade80'}}>● Live</span></td><td>Added to List</td><td style={{fontSize:'11px',color:'#52525b'}}>Wx8LaF</td></tr>
+                            <tr><td>WoM Modern Minimalist Welcome</td><td><span style={{color:'#4ade80'}}>● Live</span></td><td>Added to List</td><td style={{fontSize:'11px',color:'#52525b'}}>XEDD2q</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div style={{marginBottom:'16px'}}>
+                    <div style={{fontSize:'12px',color:'#f59e0b',fontWeight:600,marginBottom:'8px',textTransform:'uppercase',letterSpacing:'0.05em'}}>🧲 Lead Magnet Delivery</div>
+                    <table style={{width:'100%'}}>
+                        <thead><tr><th>Flow</th><th>Stato</th><th>Trigger</th><th>ID</th></tr></thead>
+                        <tbody>
+                            <tr><td>WoM - LM Delivery Travel Capsule</td><td><span style={{color:'#4ade80'}}>● Live</span></td><td>Added to List</td><td style={{fontSize:'11px',color:'#52525b'}}>TBXtwG</td></tr>
+                            <tr><td>WoM - LM Delivery Sensory Test Kit</td><td><span style={{color:'#4ade80'}}>● Live</span></td><td>Added to List</td><td style={{fontSize:'11px',color:'#52525b'}}>SkD83c</td></tr>
+                            <tr><td>WoM - LM Delivery Sustainability Score</td><td><span style={{color:'#4ade80'}}>● Live</span></td><td>Added to List</td><td style={{fontSize:'11px',color:'#52525b'}}>WN4cB2</td></tr>
+                            <tr><td>WoM - LM Delivery Merino Care Guide</td><td><span style={{color:'#4ade80'}}>● Live</span></td><td>Added to List</td><td style={{fontSize:'11px',color:'#52525b'}}>T5uEWn</td></tr>
+                            <tr><td>WoM - Lead Magnet Delivery</td><td><span style={{color:'#f59e0b'}}>● Draft</span></td><td>Added to List</td><td style={{fontSize:'11px',color:'#52525b'}}>QUjnzH</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div style={{marginBottom:'16px'}}>
+                    <div style={{fontSize:'12px',color:'#a78bfa',fontWeight:600,marginBottom:'8px',textTransform:'uppercase',letterSpacing:'0.05em'}}>📚 Content Delivery (MU)</div>
+                    <table style={{width:'100%'}}>
+                        <thead><tr><th>Flow</th><th>Stato</th><th>Trigger</th><th>ID</th></tr></thead>
+                        <tbody>
+                            <tr><td>MU Manifesto Delivery v2</td><td><span style={{color:'#4ade80'}}>● Live</span></td><td>Added to List</td><td style={{fontSize:'11px',color:'#52525b'}}>UdM6D5</td></tr>
+                            <tr><td>CPW White Paper Delivery</td><td><span style={{color:'#4ade80'}}>● Live</span></td><td>Added to List</td><td style={{fontSize:'11px',color:'#52525b'}}>QZWzS6</td></tr>
+                            <tr><td>[ARCHIVED] MU Manifesto Delivery - OLD</td><td><span style={{color:'#f59e0b'}}>● Draft</span></td><td>Added to List</td><td style={{fontSize:'11px',color:'#52525b'}}>VMCde5</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div>
+                    <div style={{fontSize:'12px',color:'#f472b6',fontWeight:600,marginBottom:'8px',textTransform:'uppercase',letterSpacing:'0.05em'}}>🔄 Lifecycle & Recovery</div>
+                    <table style={{width:'100%'}}>
+                        <thead><tr><th>Flow</th><th>Stato</th><th>Trigger</th><th>ID</th></tr></thead>
+                        <tbody>
+                            <tr><td>Abandoned Cart Recovery (3 email)</td><td><span style={{color:'#4ade80'}}>● Live</span></td><td>Metric</td><td style={{fontSize:'11px',color:'#52525b'}}>YfnrPd</td></tr>
+                            <tr><td>Browse Abandonment Recovery (2 email)</td><td><span style={{color:'#4ade80'}}>● Live</span></td><td>Metric</td><td style={{fontSize:'11px',color:'#52525b'}}>X7TQJg</td></tr>
+                            <tr><td>Post-Purchase Upsell (2 email)</td><td><span style={{color:'#4ade80'}}>● Live</span></td><td>Metric</td><td style={{fontSize:'11px',color:'#52525b'}}>XfJBiT</td></tr>
+                            <tr><td>Win-Back Reactivation (3 email)</td><td><span style={{color:'#4ade80'}}>● Live</span></td><td>Metric</td><td style={{fontSize:'11px',color:'#52525b'}}>TqpPdp</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
             <div className="card">
-                <h3 style={{fontSize:'15px',marginBottom:'12px',color:'#fafafa'}}>Flow Automatici Configurati</h3>
+                <h3 style={{fontSize:'15px',marginBottom:'16px',color:'#fafafa'}}>📋 Liste Klaviyo — 11 liste</h3>
                 <table style={{width:'100%'}}>
-                    <thead><tr><th>Flow</th><th>Trigger</th><th>Cluster</th></tr></thead>
+                    <thead><tr><th>Lista</th><th>Tipo</th><th>ID</th></tr></thead>
                     <tbody>
-                        <tr><td>Welcome Series - Educational</td><td>IDS 0-30 (TOFU)</td><td>Tutti</td></tr>
-                        <tr><td>Consideration Nurture</td><td>IDS 31-65 (MOFU)</td><td>Tutti</td></tr>
-                        <tr><td>High Intent - Conversion</td><td>IDS &gt;65 (BOFU)</td><td>Business, Modern</td></tr>
-                        <tr><td>Heritage Premium</td><td>IDS &gt;65 (BOFU)</td><td>Heritage, Italian</td></tr>
-                        <tr><td>Post-Purchase Unboxing</td><td>Ordine completato</td><td>Tutti</td></tr>
-                        <tr><td>Win-Back</td><td>90 giorni inattivi</td><td>Tutti</td></tr>
+                        <tr><td>WoM-Newsletter</td><td style={{color:'#60a5fa'}}>Newsletter generale</td><td style={{fontSize:'11px',color:'#52525b'}}>QZ8DYr</td></tr>
+                        <tr><td>WoM-Business Professional</td><td style={{color:'#4ade80'}}>Cluster</td><td style={{fontSize:'11px',color:'#52525b'}}>WeVxWa</td></tr>
+                        <tr><td>WoM-Conscious Premium</td><td style={{color:'#4ade80'}}>Cluster</td><td style={{fontSize:'11px',color:'#52525b'}}>UQec4u</td></tr>
+                        <tr><td>WoM-Heritage Mature</td><td style={{color:'#4ade80'}}>Cluster</td><td style={{fontSize:'11px',color:'#52525b'}}>Xwpphz</td></tr>
+                        <tr><td>WoM-Italian Authentic</td><td style={{color:'#4ade80'}}>Cluster</td><td style={{fontSize:'11px',color:'#52525b'}}>VtQuHt</td></tr>
+                        <tr><td>WoM-Modern Minimalist</td><td style={{color:'#4ade80'}}>Cluster</td><td style={{fontSize:'11px',color:'#52525b'}}>RhbEE3</td></tr>
+                        <tr><td>MU-Manifesto</td><td style={{color:'#a78bfa'}}>Lead Magnet</td><td style={{fontSize:'11px',color:'#52525b'}}>VSndyV</td></tr>
+                        <tr><td>MU-CPW White Paper</td><td style={{color:'#a78bfa'}}>Lead Magnet</td><td style={{fontSize:'11px',color:'#52525b'}}>VMKrV4</td></tr>
+                        <tr><td>Elenco di e-mail</td><td style={{color:'#52525b'}}>Default</td><td style={{fontSize:'11px',color:'#52525b'}}>QZmq6U</td></tr>
+                        <tr><td>Anteprima dell'elenco</td><td style={{color:'#52525b'}}>Default</td><td style={{fontSize:'11px',color:'#52525b'}}>Tkb5SC</td></tr>
+                        <tr><td>Elenco della messaggistica di testo</td><td style={{color:'#52525b'}}>Default SMS</td><td style={{fontSize:'11px',color:'#52525b'}}>VQfgm8</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -3235,6 +3304,265 @@ function ContentLibraryPage() {
                     </div>
                 </div>
             )}
+        </React.Fragment>
+    );
+}
+
+// ============================================================
+// GSC INDEXING MONITOR PAGE
+// ============================================================
+function GSCPage() {
+    const [scans, setScans] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [filter, setFilter] = useState('all');
+    const chartRef = useRef(null);
+    const chartInstance = useRef(null);
+
+    useEffect(() => {
+        loadData();
+    }, []);
+
+    useEffect(() => {
+        if (scans.length > 0) renderChart();
+        return () => { if (chartInstance.current) chartInstance.current.destroy(); };
+    }, [scans, filter]);
+
+    async function loadData() {
+        setLoading(true);
+        try {
+            const res = await api('/v1/gsc/history');
+            setScans(res.scans || []);
+        } catch (e) {
+            console.error('GSC load error:', e);
+        }
+        setLoading(false);
+    }
+
+    function getFiltered() {
+        if (filter === 'all') return scans;
+        return scans.filter(s => s.site.includes(filter));
+    }
+
+    function getLatest(site) {
+        return scans.find(s => s.site.includes(site));
+    }
+
+    function getHistory(site) {
+        return scans.filter(s => s.site.includes(site)).sort((a, b) => new Date(a.date) - new Date(b.date));
+    }
+
+    function pct(n, total) {
+        if (!total) return '—';
+        return (n / total * 100).toFixed(1) + '%';
+    }
+
+    function renderChart() {
+        if (!chartRef.current) return;
+        if (chartInstance.current) chartInstance.current.destroy();
+
+        const muHistory = getHistory('merinouniversity');
+        const womHistory = getHistory('worldofmerino');
+
+        // Collect all unique dates
+        const allDates = [...new Set([...muHistory.map(s => s.date), ...womHistory.map(s => s.date)])].sort();
+
+        const muData = allDates.map(d => {
+            const s = muHistory.find(x => x.date === d);
+            return s ? (s.indexed / s.total_urls * 100) : null;
+        });
+        const womData = allDates.map(d => {
+            const s = womHistory.find(x => x.date === d);
+            return s ? (s.indexed / s.total_urls * 100) : null;
+        });
+
+        const datasets = [];
+        if (filter === 'all' || filter === 'merinouniversity') {
+            datasets.push({
+                label: 'MU — Indexed %',
+                data: muData,
+                borderColor: '#60a5fa',
+                backgroundColor: 'rgba(96,165,250,0.1)',
+                fill: true,
+                tension: 0.3,
+                spanGaps: true,
+                pointRadius: 5,
+                pointBackgroundColor: '#60a5fa'
+            });
+        }
+        if (filter === 'all' || filter === 'worldofmerino') {
+            datasets.push({
+                label: 'WoM — Indexed %',
+                data: womData,
+                borderColor: '#f59e0b',
+                backgroundColor: 'rgba(245,158,11,0.1)',
+                fill: true,
+                tension: 0.3,
+                spanGaps: true,
+                pointRadius: 5,
+                pointBackgroundColor: '#f59e0b'
+            });
+        }
+
+        chartInstance.current = new Chart(chartRef.current, {
+            type: 'line',
+            data: { labels: allDates, datasets },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { labels: { color: '#a1a1aa', font: { size: 12 } } },
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y?.toFixed(1)}%`
+                        }
+                    }
+                },
+                scales: {
+                    x: { ticks: { color: '#71717a' }, grid: { color: '#1e1e21' } },
+                    y: {
+                        min: 0, max: 100,
+                        ticks: { color: '#a1a1aa', callback: v => v + '%' },
+                        grid: { color: '#1e1e21' }
+                    }
+                }
+            }
+        });
+    }
+
+    const muLatest = getLatest('merinouniversity');
+    const womLatest = getLatest('worldofmerino');
+
+    return (
+        <React.Fragment>
+            <div className="page-header">
+                <h2>📊 GSC Indexing Monitor</h2>
+                <button className="refresh-btn" onClick={loadData}>
+                    {loading ? <span className="spinner"></span> : '🔄 Aggiorna'}
+                </button>
+            </div>
+
+            {/* KPI Cards */}
+            <div className="cards-grid">
+                <div className="card">
+                    <div className="card-label">MU — Indexed</div>
+                    <div className={`card-value ${muLatest?.indexed > 20 ? 'green' : muLatest?.indexed > 0 ? 'yellow' : 'red'}`}>
+                        {muLatest ? muLatest.indexed : '—'}
+                    </div>
+                    <div className="card-sub">{muLatest ? `su ${muLatest.total_urls} URL (${pct(muLatest.indexed, muLatest.total_urls)})` : 'Nessuna scansione'}</div>
+                </div>
+                <div className="card">
+                    <div className="card-label">WoM — Indexed</div>
+                    <div className={`card-value ${womLatest?.indexed > 20 ? 'green' : womLatest?.indexed > 0 ? 'yellow' : 'red'}`}>
+                        {womLatest ? womLatest.indexed : '—'}
+                    </div>
+                    <div className="card-sub">{womLatest ? `su ${womLatest.total_urls} URL (${pct(womLatest.indexed, womLatest.total_urls)})` : 'In attesa scansione'}</div>
+                </div>
+                <div className="card">
+                    <div className="card-label">MU — Not Crawled</div>
+                    <div className="card-value red">{muLatest ? muLatest.not_crawled : '—'}</div>
+                    <div className="card-sub">{muLatest ? pct(muLatest.not_crawled, muLatest.total_urls) + ' del totale' : ''}</div>
+                </div>
+                <div className="card">
+                    <div className="card-label">Scansioni Totali</div>
+                    <div className="card-value">{scans.length}</div>
+                    <div className="card-sub">{scans.length > 0 ? `Ultima: ${scans[0]?.date}` : 'Nessun dato'}</div>
+                </div>
+            </div>
+
+            {/* Progression Chart */}
+            <div className="chart-card" style={{marginBottom:'28px'}}>
+                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'16px'}}>
+                    <h3>Progressione Indicizzazione</h3>
+                    <div style={{display:'flex', gap:'8px'}}>
+                        {['all','merinouniversity','worldofmerino'].map(f => (
+                            <button key={f} onClick={()=>setFilter(f)}
+                                className={filter === f ? 'btn btn-primary' : 'btn btn-secondary'}
+                                style={{padding:'5px 12px', fontSize:'12px'}}>
+                                {f === 'all' ? 'Tutti' : f === 'merinouniversity' ? 'MU' : 'WoM'}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+                <div style={{height:'300px', position:'relative'}}>
+                    <canvas ref={chartRef}></canvas>
+                </div>
+                {scans.length < 2 && (
+                    <div style={{textAlign:'center', padding:'12px', color:'#71717a', fontSize:'12px', marginTop:'8px'}}>
+                        ℹ️ Il grafico mostrerà la progressione dopo almeno 2 scansioni mensili
+                    </div>
+                )}
+            </div>
+
+            {/* Detail Table */}
+            <div className="table-wrap">
+                <div className="table-header">
+                    <h3>Storico Scansioni</h3>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Sito</th>
+                            <th>URL Totali</th>
+                            <th>Indexed</th>
+                            <th>%</th>
+                            <th>Crawled (non indexed)</th>
+                            <th>Not Crawled</th>
+                            <th>Errori</th>
+                            <th>Durata</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {getFiltered().map(s => (
+                            <tr key={s.id}>
+                                <td>{s.date}</td>
+                                <td>
+                                    <span className={`badge ${s.site.includes('merino') ? 'badge-blue' : 'badge-purple'}`}>
+                                        {s.site.includes('merinouniversity') ? 'MU' : 'WoM'}
+                                    </span>
+                                    {' '}{s.site}
+                                </td>
+                                <td>{s.total_urls}</td>
+                                <td style={{fontWeight:600}}>{s.indexed}</td>
+                                <td>
+                                    <span className={`badge ${s.indexed/s.total_urls > 0.5 ? 'badge-green' : s.indexed/s.total_urls > 0.1 ? 'badge-yellow' : 'badge-red'}`}>
+                                        {pct(s.indexed, s.total_urls)}
+                                    </span>
+                                </td>
+                                <td>{s.crawled_not_indexed || 0}</td>
+                                <td>{s.not_crawled || 0}</td>
+                                <td>{s.errors || 0}</td>
+                                <td>{s.duration_minutes ? s.duration_minutes + ' min' : '—'}</td>
+                            </tr>
+                        ))}
+                        {getFiltered().length === 0 && (
+                            <tr><td colSpan={9} style={{textAlign:'center', color:'#71717a', padding:'24px'}}>Nessuna scansione disponibile</td></tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
+
+            {/* Instructions */}
+            <div className="card" style={{marginTop:'16px'}}>
+                <h3 style={{fontSize:'14px', fontWeight:600, marginBottom:'12px', color:'#fafafa'}}>📋 Come eseguire una scansione</h3>
+                <div style={{fontSize:'12px', color:'#a1a1aa', lineHeight:'1.8'}}>
+                    <div>1. Apri il Terminale Mac</div>
+                    <div style={{fontFamily:'SF Mono, monospace', background:'#111113', padding:'8px 12px', borderRadius:'6px', margin:'6px 0', color:'#60a5fa'}}>
+                        cd /Users/roberto/Documents/Claude/Projects/albeni1905.com/scripts
+                    </div>
+                    <div>2. Lancia MU:</div>
+                    <div style={{fontFamily:'SF Mono, monospace', background:'#111113', padding:'8px 12px', borderRadius:'6px', margin:'6px 0', color:'#60a5fa'}}>
+                        python3 gsc_index_monitor.py --property "https://merinouniversity.com/" --sitemap https://merinouniversity.com/sitemap_index.xml
+                    </div>
+                    <div>3. Lancia WoM:</div>
+                    <div style={{fontFamily:'SF Mono, monospace', background:'#111113', padding:'8px 12px', borderRadius:'6px', margin:'6px 0', color:'#60a5fa'}}>
+                        python3 gsc_index_monitor.py --property "https://worldofmerino.com/" --sitemap https://worldofmerino.com/sitemap_index.xml
+                    </div>
+                    <div style={{marginTop:'8px', color:'#71717a'}}>
+                        ⏱️ ~1h40m per 280 URL · 📅 Task schedulato: 1° di ogni mese · I risultati vengono inviati automaticamente a questa dashboard
+                    </div>
+                </div>
+            </div>
         </React.Fragment>
     );
 }

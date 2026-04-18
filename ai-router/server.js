@@ -26,6 +26,9 @@ const crmRoutes = require('./routes/crm');
 // Import middleware
 const { botProtection } = require('./middleware/botProtection');
 const { c2paMiddleware } = require('./middleware/c2pa');
+const { createRoutes: createIndexRoutes } = require('./middleware/indexAwareRouter');
+const { createRoutes: createContentPriorityRoutes } = require('./middleware/contentPrioritizer');
+const { createRoutes: createAdvBudgetRoutes } = require('./middleware/advBudgetAllocator');
 
 // Security middleware (relaxed CSP for dashboard CDN scripts)
 app.use(helmet({
@@ -101,10 +104,17 @@ app.use('/v1/track', trackingRoutes);
 app.use('/v1/router', routerRoutes);
 app.use('/v1/crm', crmRoutes);
 
+// Index-Aware Cross-Domain Router (GSC crawl map fallback)
+// Must be BEFORE the ML Worker catch-all proxy at app.all('/v1/*')
+const dashboardPath_early = process.env.DASHBOARD_PATH || path.join(__dirname, 'dashboard');
+app.use('/v1/router', createIndexRoutes(dashboardPath_early));
+
 // Serve static files from dashboard folder (JS snippets, JSON, etc.)
 // Railway: dashboard is at /app/dashboard (copied during build)
 // Docker-compose: dashboard is mounted at /app/dashboard
 const dashboardPath = process.env.DASHBOARD_PATH || path.join(__dirname, 'dashboard');
+app.use('/v1/content/priorities', createContentPriorityRoutes(dashboardPath));
+app.use('/v1/adv', createAdvBudgetRoutes(dashboardPath));
 app.use(express.static(dashboardPath, {
     setHeaders: (res, filePath) => {
         if (filePath.endsWith('.js')) {
@@ -146,6 +156,56 @@ app.get('/v1/content-library', (req, res) => {
         res.json({ ...db, contents: items, filtered_count: items.length });
     } catch (e) {
         res.status(404).json({ error: 'content_library.json not found', detail: e.message });
+    }
+});
+
+// --- GSC Indexing Monitor API ---
+// Stores and serves Google Search Console indexing scan results
+app.get('/v1/gsc/history', (req, res) => {
+    const fs = require('fs');
+    const dbPath = path.join(dashboardPath, 'gsc_data.json');
+    try {
+        const raw = fs.readFileSync(dbPath, 'utf8');
+        const data = JSON.parse(raw);
+        const { site } = req.query;
+        let scans = data.scans || [];
+        if (site) scans = scans.filter(s => s.site === site);
+        scans.sort((a, b) => new Date(b.date) - new Date(a.date));
+        res.json({ scans, total: scans.length });
+    } catch (e) {
+        res.status(404).json({ error: 'gsc_data.json not found', detail: e.message });
+    }
+});
+
+app.post('/v1/gsc/report', (req, res) => {
+    const fs = require('fs');
+    const dbPath = path.join(dashboardPath, 'gsc_data.json');
+    // Simple API key check
+    const apiKey = req.headers['x-api-key'] || req.query.api_key;
+    if (apiKey !== (process.env.API_KEY || 'albeni-gsc-2026')) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+    try {
+        let data = { scans: [] };
+        if (fs.existsSync(dbPath)) {
+            data = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
+        }
+        const report = req.body;
+        // Validate required fields
+        if (!report.site || !report.date || report.total_urls === undefined) {
+            return res.status(400).json({ error: 'Missing required fields: site, date, total_urls' });
+        }
+        // Generate ID
+        const siteShort = report.site.includes('merinouniversity') ? 'mu' : 'wom';
+        report.id = `${siteShort}-${report.date}`;
+        // Replace if same id exists (re-scan same day)
+        data.scans = data.scans.filter(s => s.id !== report.id);
+        data.scans.push(report);
+        data.scans.sort((a, b) => new Date(b.date) - new Date(a.date));
+        fs.writeFileSync(dbPath, JSON.stringify(data, null, 2), 'utf8');
+        res.json({ status: 'ok', id: report.id, total_scans: data.scans.length });
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to save report', detail: e.message });
     }
 });
 
