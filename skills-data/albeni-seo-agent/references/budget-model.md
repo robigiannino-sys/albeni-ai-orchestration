@@ -39,7 +39,36 @@ Budget €1.667/mese. Organic cresce (CTR 5%→8%), paid si riduce.
 ### Phase 3 — M13-M18: "Organic-Led" (€5.000)
 Budget €833/mese. Organic domina (CTR 8.5%→11%), paid su retargeting + BOFU.
 
-## Allocazione Budget per Mercato
+## Allocazione Budget per Mercato (AGGIORNATA 2026-04-02)
+
+⚠ **Revised post-audit SEMrush — DE is now the #1 priority market.**
+
+| Mercato | Budget ADV € | % Totale | Rationale |
+|---------|-------------|----------|-----------|
+| **DE** | **10.500** | **35%** | #1 Opportunity Score (7.8/10), DE "merino t-shirt" vol 16,230 > US, CPC 39% lower |
+| US | 7.500 | 25% | Reduced — high competition, high CPC |
+| IT | 5.400 | 18% | Reduced — "maglia intima" keyword trap limits safe volume |
+| UK | 3.600 | 12% | Reduced — lower opportunity score |
+| FR | 3.000 | 10% | Unchanged |
+| **TOT** | **30.000** | **100%** | |
+
+### Paid → Organic Transition Priority
+
+Budget within each market should prioritize low-KD keywords first:
+1. "merino wool base layer" (29K vol, KD 23%) — START NOW, target top-5 organic by M9
+2. "merino wool t shirt" (6.2K vol, KD 22%) — START NOW, target top-5 organic by M9
+3. "capsule wardrobe" (36K vol, KD ~35%) — organic strong, paid as accelerator
+4. "merino wool" (45K vol, KD ~45%) — long-term, paid stays structural
+
+As each keyword's organic position reaches top 5, shift its paid budget to the next keyword in queue.
+
+### Corrected Conversion Rates
+
+- **Organic CR: 1.5%** (corrected from original 2.5% — original was ~2× benchmark for premium e-commerce)
+- **Paid CR: 5.0%** (corrected from 9.8%)
+- Impact: revenue projections reduced by ~€75K vs original model
+
+### Previous allocation (superseded, shown for reference)
 
 | Mercato | Budget ADV € | % Totale | Vol/Mese | Conv ADV 18M | Conv Org 18M | Conv Tot |
 |---------|-------------|----------|----------|--------------|--------------|----------|
@@ -48,7 +77,6 @@ Budget €833/mese. Organic domina (CTR 8.5%→11%), paid su retargeting + BOFU.
 | DE | 6.000 | 20% | 14.345 | 456 | 206 | 662 |
 | IT | 3.000 | 10% | 10.126 | 280 | 147 | 427 |
 | FR | 1.500 | 5% | 4.219 | 118 | 59 | 177 |
-| **TOT** | **30.000** | **100%** | **84.382** | **2.095** | **1.251** | **3.344** |
 
 ## Allocazione Budget per Cluster (Paid ADV)
 

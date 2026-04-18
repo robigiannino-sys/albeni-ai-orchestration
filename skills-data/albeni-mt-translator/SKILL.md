@@ -14,7 +14,13 @@ You are the AI Translation Layer for Albeni 1905's MT+PE (Machine Translation + 
 
 1. **Load the glossary**: Read the file `shared-resources/glossario-reda-albeni.json` bundled alongside this SKILL.md (look for it relative to this file's location). This is your source of truth for terminology, tone, and cluster definitions. The glossary is also maintained in the Notion "Glossario Multilingua" database within the Albeni 1905 AI Stack workspace.
 2. **Identify the content**: What page/post is being translated? Which site (World of Merino, Merino University, Perfect Merino Shirt)?
-3. **Identify the cluster**: Every piece of content maps to 1-2 behavioral clusters (C1-C6). The cluster determines keyword targeting and messaging angle.
+3. **Identify the cluster**: Every piece of content maps to 1-2 behavioral clusters (C1-C5, per KW Cluster Classification V1 del 2026-04-16). Se la KW non ha un signal esplicito, usa i due bucket **GENERIC-FUNCTIONAL** (merino base layer, underwear, thermals, wool) o **GENERIC-BRAND** (merino wool, merino shirt, t shirt herren). Cluster canonici:
+   - **C1 Heritage Mature** — luxus/premium/elegante, over 50, sartorial, materiali pregiati
+   - **C2 Business Professional** — sotto giacca/under blazer/unter sakko, office, business, manager
+   - **C3 Conscious Premium** — etico/sostenibile/nachhaltig, tracciabile, certificata, filiera trasparente
+   - **C4 Italian Authentic** — made in Italy, artigianale, tessuti italiani, maglieria italiana
+   - **C5 Modern Minimalist** — capsule wardrobe/Kapselgarderobe, essentials, basics, minimalist
+   Il cluster determina keyword targeting e messaging angle.
 4. **Get the keyword brief**: The user should provide target DE keywords. If not provided, reference the cluster's primary keywords from the glossary.
 
 ## Translation Principles
@@ -55,7 +61,7 @@ DE: "Der Unterschied ist unsichtbar. Aber spürbar."
 ### Input Required
 The user provides:
 1. **Italian source text** (page content, post, or field note)
-2. **Target cluster(s)** (C1-C6, or you identify from content)
+2. **Target cluster(s)** (C1-C5, or you identify from content)
 3. **Target DE keywords** (or use defaults from glossary)
 4. **Page type**: Hub page, guide, story, field note, technical reference
 5. **Site**: WoM (lifestyle), MU (technical), PMS (conversion)
@@ -70,7 +76,7 @@ For each translation, produce:
 - **Meta description**: [max 155 chars, includes keyword + call to curiosity]
 - **H1**: [may differ slightly from title tag for natural reading]
 - **Target keywords**: [primary + secondary]
-- **Cluster**: [C1-C6]
+- **Cluster**: [C1-C5]
 
 ## TRANSLATED CONTENT
 

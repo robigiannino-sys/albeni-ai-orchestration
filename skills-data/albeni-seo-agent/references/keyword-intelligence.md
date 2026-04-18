@@ -1,6 +1,29 @@
 # Albeni 1905 — Keyword Intelligence Database
 
 Source: Semrush KMT Broad Match | Data: 9-10 March 2026
+Updated: 2026-04-05 — 2-Level KW Model adopted
+
+## 2-Level Keyword Model
+
+The 150 KW operational matrix is split into two tiers:
+
+### L1 — Head-term (62 KW with SEMrush volume)
+These drive all projections and budget decisions. Key high-value L1 keywords:
+
+| Keyword | Volume/mo | KD% | Domain | Status |
+|---------|-----------|-----|--------|--------|
+| merino wool | 45K | ~45% | WoM pillar 2086 | Deployed, 7 inbound links |
+| capsule wardrobe | 36K | ~35% | WoM page 195 | Optimized, 11 inbound links |
+| merino wool base layer | 29K | 23% | WoM pillar 2090 | Deployed, 8 inbound links |
+| merino wool t shirt | 6.2K | 22% | PMS/Albeni | **Priority paid→organic** |
+| smart casual men | 132K (UK) | high | WoM TOFU | Long-term organic play |
+
+### L2 — Long-tail behavioral (88 KW, no SEMrush volume)
+Not included in projections. Generate real traffic via conversational/voice/AI queries. Function as topical support for L1 head-terms via interlinking (WPCode snippet #2063).
+
+Examples: "t-shirt che non fa sudare uomo", "come vestirsi aereo business", "guardaroba minimalista uomo"
+
+**Rule: All traffic/revenue projections use L1 only. L2 is tracked as bonus upside.**
 
 ## Keyword Universe Overview
 

@@ -113,9 +113,12 @@ DE Translation:  [███░░░░░░░] 30%
 When asked "what should we translate next?", apply this priority logic:
 
 **Priority 1 — ALTA pages first**: These have the highest DE search volume and best business impact.
-**Priority 2 — By cluster value**: C6 Technical > C2 Heritage > C5 Italian > C4 Minimalist > C1 Business > C3 Conscious (based on DE market validation data).
+**Priority 2 — By cluster value (aggiornato 2026-04-16, coerente con KW Cluster Classification V1)**:
+   `C2 Business Professional > C1 Heritage Mature > C3 Conscious Premium > C5 Modern Minimalist > C4 Italian Authentic`
+   Il mix reale pesato sui volumi BOFU validati (278.640 vol/mese, 150 KW) è **C2 44% / C1 34% / C3 22%**, con C3 dominato dal mercato DE (nachhaltige kleidung 2.500 vol). C5 Modern Minimalist ha head-term forte ("capsule wardrobe" 36K) ma è al momento bloccato a livello funnel (vedi Priority 5). C4 Italian Authentic ha volumi bassi (320 vol pure) ma è essenziale come segnale di autorevolezza brand.
 **Priority 3 — Content dependencies**: Pages that other pages link to should be translated first (hub pages before spoke pages).
 **Priority 4 — Quick wins**: Short pages (<5,000 chars) that can be completed in one session.
+**Priority 5 — C5 attivazione BOFU-first (2026-04-16)**: il Welcome Flow C5 (Klaviyo XEDD2q) è LIVE dal 2026-04-05 ma la lista trigger **RhbEE3 ha 0 profili** → C5 contribuisce ZERO al baseline. Traduzioni C5 vanno schedulate dopo il go-live del piano BOFU-first 78/22 (LP prodotto transazionale + retargeting MOFU 22%). Fino a quel momento non schedulare batch C5 > 2 pagine/settimana.
 
 Generate a recommended batch:
 ```markdown

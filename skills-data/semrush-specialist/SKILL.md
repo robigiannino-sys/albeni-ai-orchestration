@@ -168,7 +168,7 @@ This is your highest-value capability. You turn SEMrush competitive data into st
 
 **What you do:**
 - **Traffic Analysis**: Query `domain_ranks` for each competitor to compare organic traffic, paid traffic, Authority Score, and keyword counts. Build a competitive landscape table.
-- **Keyword Gap**: Use `domain_organic` on both the Albeni domain and each competitor. Cross-reference to find keywords where competitors rank but Albeni doesn't. Categorize the gaps by: cluster (C1-C6), intent (informational/commercial/transactional), and estimated difficulty.
+- **Keyword Gap**: Use `domain_organic` on both the Albeni domain and each competitor. Cross-reference to find keywords where competitors rank but Albeni doesn't. Categorize the gaps by: cluster (C1-C5 + GENERIC-FUNCTIONAL/GENERIC-BRAND), intent (informational/commercial/transactional), and estimated difficulty.
 - **Backlink Gap**: Compare `backlinks_overview` across domains. Identify high-authority referring domains that link to competitors but not to Albeni — these become outreach targets.
 - **Market Share**: Use domain overview data across all 5 databases to calculate Albeni's "share of voice" relative to the competitive set.
 
@@ -199,14 +199,17 @@ When the user identifies a keyword opportunity, don't just report the keyword da
 3. Analyze content length, keyword density, and backlink count of the ranking pages
 4. Produce a "Content Blueprint" that specifies what Albeni needs to create to outperform the current top results
 
-**Cluster Mapping:**
-Every keyword must be assigned to one of the 6 behavioral clusters + Semantic Defense. If a keyword doesn't fit, it's either cross-cluster (flag it for cannibalization monitoring) or irrelevant (discard it). Use this mapping framework:
-- C1 Heritage Mature → premium quality, craftsmanship, tradition
-- C2 Business Professional → smart casual, office wear, versatile
-- C3 Conscious Premium → sustainability, ethical fashion, eco-friendly
-- C4 Italian Authentic → made in Italy, Italian brands, artisan
-- C5 Modern Minimalist → capsule wardrobe, essentials, timeless
-- C6 Semantic Defense → merino wool technical, 17-micron, Reda fabric
+**Cluster Mapping (aggiornato 2026-04-16 — KW Cluster Classification V1):**
+Every keyword must be assigned to one of the 5 behavioral clusters (C1–C5) or to the 2 generic buckets (FUNCTIONAL/BRAND). If a keyword doesn't fit, it's either cross-cluster (flag it for cannibalization monitoring) or irrelevant (discard it). Priority rule when multiple signals fire: **C4 > C2 > C3 > C5 > C1**. Use this mapping framework:
+- **C1 Heritage Mature** → luxus/luxury/luxe, premium, elegante, over 50, qualità, sartorial, bespoke, materiali pregiati
+- **C2 Business Professional** → sotto giacca/blazer, under blazer, unter sakko, office, business, ufficio, viaggio d'affari, manager, unsichtbares unterhemd
+- **C3 Conscious Premium** → etico, sostenibile, tracciabile, nachhaltig, ethical, sustainable, environmental, certificata, filiera trasparente
+- **C4 Italian Authentic** → made in Italy, italiana, artigianale, tessuti italiani, maglieria italiana, tradizione italiana
+- **C5 Modern Minimalist** → capsule wardrobe, capsula, kapselgarderobe, guardaroba essenziale, minimalist, basics
+- **GENERIC-FUNCTIONAL** (bucket) → merino base layer, underwear, thermals, wool t-shirt generici (46 KW, 117.490 vol, 42% volume totale)
+- **GENERIC-BRAND** (bucket) → merino wool, merino shirt, t shirt herren, wool t shirt men (28 KW, 115.940 vol, 42% volume totale)
+
+Il precedente "C6 Semantic Defense" è stato assorbito dal bucket **GENERIC-FUNCTIONAL** dove risiedono le KW tecniche ad alto volume (merino base layer, merino thermals). Il segnale "17-micron / Reda fabric" rimane rilevante come editorial angle, ma non costituisce più un cluster comportamentale distinto.
 
 ### 3. SEO Audit e Ottimizzazione Tecnica
 
@@ -236,7 +239,13 @@ Transform raw SEMrush data into reports that tell a story. Your audience is Robe
 **What you do:**
 - **Position Tracking**: Monitor daily/weekly rank changes for target keywords. Flag significant movements (±5 positions) with possible causes (algorithm update, new competitor content, technical issue).
 - **Automated Dashboards**: Produce structured reports combining organic, paid, and competitive data. Format as XLSX or structured markdown — always include trend direction (↑↓→) and period-over-period comparison.
-- **ROI Analysis**: Connect SEMrush traffic data to the Albeni business model. Calculate: estimated organic traffic → conversion rate (1.2%) → orders → pieces (×2.0 multiplier) → revenue (×€130 AOV). This bridges the gap between "SEO metrics" and "business results."
+- **ROI Analysis**: Connect SEMrush traffic data to the Albeni business model. Use the **post-audit 2026-04-16 benchmarks**:
+  - **Organic CR: 1.5%** (post-SEMrush-audit, premium e-commerce AOV €130)
+  - **Paid CR: 5.0%**
+  - **BOFU CR ponderato sul mix 44/34/22 (C2/C1/C3): 2.45%** (vs 2.8% uniforme del modello v3 pre-audit)
+  - Multiplier pezzi/ordine: 2.0×
+  - AOV: €130
+  Calcolo standard: estimated traffic → CR (organic 1.5% / paid 5.0%) → orders → pieces (×2.0) → revenue (×€130). Per proiezioni sul modello BOFU-only (33.220 vol BOFU/mese, 18M) usa CR 2.45% → Conversioni ~1.080 → Revenue ~€141K, CPA ~€27.78 (sopra target €15 — flag al SEO agent per ribilanciamento verso C1 Heritage Mature che mostra CPC ≥ €1/KW su luxury head-terms).
 - **Volatility Monitoring**: Track the SEMrush Sensor / Volatility data. When there's a ranking drop, determine if it's site-specific or an industry-wide algorithm update affecting all competitors.
 
 **Report Templates:**
@@ -278,7 +287,7 @@ This skill operates autonomously but produces outputs that feed into the broader
 **Shared Resources:**
 Use the path resolution logic from "Before You Begin" to locate the writable shared-resources directory. Read AND write from this location:
 
-- `keyword-matrix.csv` — the master keyword inventory (55 keywords, 5 markets, 6 clusters). **Always check before recommending new keywords** to avoid duplicates. **Write new keywords here** after analysis — this is how your intelligence propagates to other agents. CSV columns: `Keyword,Volume US,Volume UK,Volume DE,Volume IT,Volume FR,Difficulty,Intent,Cluster,Dominio Assegnato,Funnel Stage,Priorità,Rischio Cannibalizzazione,Note,Source,Data Aggiornamento`
+- `keyword-matrix.csv` — the master keyword inventory. **Ultimo aggiornamento 2026-04-16: 150 KW validate × 5 mercati × 5 cluster comportamentali (C1–C5) + 2 bucket generici (FUNCTIONAL/BRAND). Volume totale 278.640/mese** (US 148.290, DE 50.830, UK 44.840, IT 17.850, FR 16.830). **Always check before recommending new keywords** to avoid duplicates. **Write new keywords here** after analysis — this is how your intelligence propagates to other agents. CSV columns: `Keyword,Volume US,Volume UK,Volume DE,Volume IT,Volume FR,Difficulty,Intent,Cluster,Dominio Assegnato,Funnel Stage,Priorità,Rischio Cannibalizzazione,Note,Source,Data Aggiornamento`. File sorgente: `Albeni1905_KW_Cluster_Classification_2026-04-16.xlsx` sheet `MASTER CLASSIFIED`.
 - `content-pipeline.csv` — content production status. Don't recommend content that's already in progress.
 - `glossario-reda-albeni.json` — brand terminology. Never recommend keywords that violate brand positioning (e.g., never "merino underwear" — the product is an outer garment, NOT underwear). The glossary contains never-translate terms: "Made in Italy", "Reda 1865", "CompACT®", "Invisible Luxury".
 - `glossario-multilingua.csv` — IT/EN/FR/DE terminology for translation coordination.

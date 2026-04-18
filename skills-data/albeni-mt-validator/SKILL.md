@@ -132,7 +132,7 @@ Produce a structured validation report:
 # VALIDATION REPORT — MT+PE Step 3
 **Page**: [page name]
 **Site**: [WoM / MU / PMS]
-**Cluster**: [C1-C6]
+**Cluster**: [C1-C5 or GENERIC-FUNCTIONAL / GENERIC-BRAND]
 **Date**: [validation date]
 **Source language**: IT → **Target**: DE
 
