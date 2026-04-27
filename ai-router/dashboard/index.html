@@ -2768,11 +2768,24 @@ function TerminalPage() {
         setLoading(true);
 
         try {
+            // POST with explicit empty JSON body — without it, FastAPI/uvicorn
+            // rejects with "Invalid HTTP request received." (Content-Type declared
+            // application/json but no body present). The endpoint takes `command`
+            // as query string, so the body itself is unused.
             const res = await fetch(`${ML_API}/v1/terminal/execute?command=${encodeURIComponent(cmd)}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                body: '{}',
             });
-            const data = await res.json();
+            // Defensive parse: if upstream returned plain text (proxy / 4xx error),
+            // surface the actual text instead of throwing on JSON.parse.
+            const raw = await res.text();
+            let data;
+            try {
+                data = JSON.parse(raw);
+            } catch (e) {
+                throw new Error(`Backend returned non-JSON (HTTP ${res.status}): ${raw.substring(0, 200)}`);
+            }
 
             if (data.response) {
                 // Help or text response
