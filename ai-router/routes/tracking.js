@@ -40,8 +40,17 @@ router.post('/event', async (req, res) => {
     const lang = body.lang || body.language || 'it';
     const event_type = body.event_type;
     const page_url = body.page_url || body.url || '';
-    const timestamp = body.timestamp || Date.now();
     const session_id = body.session_id || body.sessionId || null;
+
+    // ml-worker Pydantic expects timestamp: Optional[int] (millis since epoch).
+    // The legacy snippet sends ISO 8601 string. Coerce to int millis.
+    let timestamp = body.timestamp;
+    if (typeof timestamp === 'string') {
+        const parsed = Date.parse(timestamp);
+        timestamp = isNaN(parsed) ? Date.now() : parsed;
+    } else if (typeof timestamp !== 'number') {
+        timestamp = Date.now();
+    }
 
     // Build metadata from explicit metadata/event_value (modern) PLUS any top-level
     // signal fields the legacy snippet sends (dwell_time_ms, scroll_depth_pct, etc.)
