@@ -114,8 +114,12 @@
 <script type="text/babel">
 const { useState, useEffect, useRef, useCallback } = React;
 
-const ML_API = 'http://localhost:8000';
-const ROUTER_API = 'http://localhost:3000';
+// ML_API and ROUTER_API: empty string = same origin (Railway production).
+// ai-router serves the dashboard AND proxies /v1/* to ml-worker via app.all('/v1/*').
+// For local dev override with ?api=http://localhost:8000&router=http://localhost:3000
+const _qs = new URLSearchParams(window.location.search);
+const ML_API = _qs.get('api') ?? '';
+const ROUTER_API = _qs.get('router') ?? '';
 
 // ============================================================
 // API Helper
