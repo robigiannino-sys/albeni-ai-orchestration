@@ -9,6 +9,7 @@ The cognitive engine that powers:
 - Klaviyo CRM synchronization
 - SEO monitoring (85/15 balance)
 """
+import asyncio
 import logging
 import time
 import json
@@ -57,6 +58,7 @@ from services.customer_care import CustomerCareAI
 from services.ads_intelligence import ADVIntelligence, UTMSensor
 from services.ads_routing import ADVRouter
 from services.bot_shield import BotShield
+from services.bot_shield_cache import refresh_bot_shield_cache, periodic_refresh_loop
 from services.visual_generator import VisualGenerator
 
 # Logging setup
@@ -71,11 +73,29 @@ redis_client: Optional[aioredis.Redis] = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application lifecycle: connect/disconnect Redis."""
+    """Application lifecycle: connect/disconnect Redis + bot_shield cache refresh task."""
     global redis_client
     redis_client = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
     logger.info("Redis connected")
+
+    # Initial refresh of the bot_shield Redis SET that ai-router consults as a
+    # gate before persisting tracking events. Without this the SET would be
+    # whatever was left from previous deploys; we want a fresh truth on boot.
+    await refresh_bot_shield_cache(redis_client)
+
+    # Spawn the periodic refresh task so newly added exclusions in Postgres
+    # propagate to the gate within 5 minutes without manual intervention.
+    bot_shield_task = asyncio.create_task(periodic_refresh_loop(redis_client))
+
     yield
+
+    # Shutdown: cancel the periodic task, then close Redis.
+    bot_shield_task.cancel()
+    try:
+        await bot_shield_task
+    except asyncio.CancelledError:
+        pass
+
     if redis_client:
         await redis_client.close()
         logger.info("Redis disconnected")
