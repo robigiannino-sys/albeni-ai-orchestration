@@ -76,6 +76,27 @@ router.post('/event', async (req, res) => {
 
     try {
         const redisClient = redis.getClient();
+
+        // === BOT SHIELD GATE ===
+        // Check if visitor is in active exclusions list before any persistence.
+        // The set 'bot_shield:exclusions' is populated/refreshed from Postgres
+        // (see scripts/refresh_bot_shield_cache.py). Fail-open on Redis errors:
+        // we prefer noisy data to a black hole.
+        try {
+            const isExcluded = await redisClient.sismember('bot_shield:exclusions', user_id);
+            if (isExcluded) {
+                return res.status(202).json({
+                    status: 'excluded',
+                    latency_ms: Date.now() - startTime,
+                    persisted: false,
+                    reason: 'visitor_in_bot_shield_exclusions'
+                });
+            }
+        } catch (gateErr) {
+            console.warn('bot_shield gate check failed (failing open):', gateErr.message);
+        }
+        // === END GATE ===
+
         const eventId = uuidv4();
 
         // 1. Store signal in Redis for fast ML Worker access
