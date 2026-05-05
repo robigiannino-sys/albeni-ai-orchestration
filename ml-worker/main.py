@@ -233,13 +233,21 @@ async def track_event(event: TrackEventRequest, db: DBSession = Depends(get_db))
 # ===================================================================
 
 @app.post("/v1/intent/calculate", response_model=IDSCalculationResponse)
-async def calculate_ids(request: IDSCalculationRequest, db: DBSession = Depends(get_db)):
+async def calculate_ids(payload: Dict = Body(...), db: DBSession = Depends(get_db)):
     """
     Calculate the Intent Depth Score for a user.
     IDS = (T*0.2) + (S*0.2) + (I*0.4) + (R*0.2) scaled to 0-100.
+
+    Schema-tolerant: accepts both modern {user_id, force_recalculate}
+    and legacy widget payloads {visitor_id, dwell_time_ms, scroll_depth_pct, ...}.
+    Bug 1bis fix (2026-05-05).
     """
+    user_id = payload.get("user_id") or payload.get("visitor_id")
+    if not user_id:
+        raise HTTPException(status_code=400, detail="user_id or visitor_id required")
+    force_recalculate = bool(payload.get("force_recalculate", False))
     calculator = IDSCalculator(redis_client, db)
-    result = await calculator.calculate(request.user_id, request.force_recalculate)
+    result = await calculator.calculate(user_id, force_recalculate)
     return result
 
 
@@ -248,13 +256,20 @@ async def calculate_ids(request: IDSCalculationRequest, db: DBSession = Depends(
 # ===================================================================
 
 @app.post("/v1/cluster/predict", response_model=ClusterPredictionResponse)
-async def predict_cluster(request: ClusterPredictionRequest, db: DBSession = Depends(get_db)):
+async def predict_cluster(payload: Dict = Body(...), db: DBSession = Depends(get_db)):
     """
     Predict which of the 5 behavioral clusters a user belongs to.
     Target accuracy: >85%.
+
+    Schema-tolerant: accepts both modern {user_id} and legacy widget payloads
+    {visitor_id, domain_type, page_url, return_visits, ...}.
+    Bug 1bis fix (2026-05-05).
     """
+    user_id = payload.get("user_id") or payload.get("visitor_id")
+    if not user_id:
+        raise HTTPException(status_code=400, detail="user_id or visitor_id required")
     predictor = ClusterPredictor(redis_client, db)
-    result = await predictor.predict(request.user_id)
+    result = await predictor.predict(user_id)
     return result
 
 
@@ -1706,23 +1721,36 @@ async def adv_route_visitor(
 
 @app.post("/v1/adv/shield/analyze")
 async def adv_shield_analyze(
-    visitor_id: str,
-    ip_address: str,
-    user_agent: str = "",
-    dwell_time_ms: int = 0,
-    mouse_events: int = 0,
-    scroll_depth_pct: float = 0,
-    pages_viewed: int = 1,
-    session_duration_ms: int = 0,
-    is_paid: bool = False,
-    referrer: Optional[str] = None,
+    payload: Dict = Body(...),
     db: DBSession = Depends(get_db),
 ):
     """
     Bot Shield: analyze visitor behavior for click fraud.
     Returns threat score and recommended action (allow/monitor/flag/block).
     Persists exclusions to Postgres for cross-restart protection.
+
+    Schema-tolerant: accepts JSON body (was previously query-params, which
+    caused 422 errors when the widget JS sent a JSON body via fetch()).
+    Bug 1bis fix (2026-05-05).
     """
+    visitor_id = payload.get("visitor_id") or payload.get("user_id") or ""
+    ip_address = payload.get("ip_address") or payload.get("ip") or ""
+    if not visitor_id:
+        raise HTTPException(status_code=400, detail="visitor_id required")
+    if not ip_address:
+        # IP often not available client-side; use a placeholder so the
+        # shield can still score behavior signals.
+        ip_address = "0.0.0.0"
+
+    user_agent = payload.get("user_agent", "")
+    dwell_time_ms = int(payload.get("dwell_time_ms", 0) or 0)
+    mouse_events = int(payload.get("mouse_events", 0) or 0)
+    scroll_depth_pct = float(payload.get("scroll_depth_pct", 0) or 0)
+    pages_viewed = int(payload.get("pages_viewed", 1) or 1)
+    session_duration_ms = int(payload.get("session_duration_ms", 0) or 0)
+    is_paid = bool(payload.get("is_paid", False))
+    referrer = payload.get("referrer")
+
     shield = get_bot_shield()
     result = shield.analyze_visitor(
         visitor_id=visitor_id,
