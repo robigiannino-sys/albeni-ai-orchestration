@@ -60,6 +60,11 @@ from services.ads_routing import ADVRouter
 from services.bot_shield import BotShield
 from services.bot_shield_cache import refresh_bot_shield_cache, periodic_refresh_loop
 from services.visual_generator import VisualGenerator
+from services.pipeline_consumer import recompute_pipeline
+
+# Pipeline consumer scheduler (added 2026-05-06 to fix the downstream pipeline that
+# never aggregated behavioral_signals into sessions/intent_intelligence/routing_decisions).
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 # Logging setup
 logging.basicConfig(level=logging.INFO)
@@ -73,7 +78,7 @@ redis_client: Optional[aioredis.Redis] = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application lifecycle: connect/disconnect Redis + bot_shield cache refresh task."""
+    """Application lifecycle: Redis + bot_shield cache + pipeline consumer scheduler."""
     global redis_client
     redis_client = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
     logger.info("Redis connected")
@@ -87,9 +92,31 @@ async def lifespan(app: FastAPI):
     # propagate to the gate within 5 minutes without manual intervention.
     bot_shield_task = asyncio.create_task(periodic_refresh_loop(redis_client))
 
+    # Pipeline consumer scheduler (added 2026-05-06).
+    # Periodically processes new behavioral_signals so the downstream tables
+    # (sessions, intent_intelligence, routing_decisions) keep up with edge ingest.
+    async def _scheduled_recompute():
+        from sqlalchemy import text as _sql_text  # local import keeps module load light
+        try:
+            db = next(get_db())
+            try:
+                stats = await recompute_pipeline(db, redis_client)
+                logger.info(f"Scheduled pipeline recompute OK: {stats}")
+            finally:
+                db.close()
+        except Exception as e:
+            logger.exception(f"Scheduled pipeline recompute FAILED: {e}")
+
+    scheduler = AsyncIOScheduler()
+    scheduler.add_job(_scheduled_recompute, "interval", minutes=15, id="pipeline_consumer",
+                      coalesce=True, max_instances=1, misfire_grace_time=300)
+    scheduler.start()
+    logger.info("Pipeline consumer scheduled every 15 minutes")
+
     yield
 
-    # Shutdown: cancel the periodic task, then close Redis.
+    # Shutdown: stop scheduler, cancel periodic task, close Redis.
+    scheduler.shutdown(wait=False)
     bot_shield_task.cancel()
     try:
         await bot_shield_task
@@ -601,6 +628,29 @@ async def process_intent(data: ProcessIntentRequest, db: DBSession = Depends(get
     except Exception as e:
         logger.error(f"Process intent failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===================================================================
+# ADMIN: PIPELINE CONSUMER (added 2026-05-06)
+# ===================================================================
+
+@app.post("/v1/admin/recompute-pipeline")
+async def admin_recompute_pipeline(
+    x_admin_key: Optional[str] = Header(None, alias="X-Admin-Key"),
+    db: DBSession = Depends(get_db),
+):
+    """
+    Force a full pipeline backfill: cluster prediction + IDS calculation +
+    sessions aggregation for every user. Normally this runs every 15 minutes
+    via the APScheduler job in lifespan(); this endpoint exists so an
+    operator can trigger it on demand from the dashboard or a CLI script.
+
+    Auth: X-Admin-Key must match settings.API_KEY.
+    """
+    if not settings.API_KEY or x_admin_key != settings.API_KEY:
+        raise HTTPException(status_code=401, detail="Invalid admin key")
+    stats = await recompute_pipeline(db, redis_client)
+    return {"status": "ok", "stats": stats}
 
 
 # ===================================================================

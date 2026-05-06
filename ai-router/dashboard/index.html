@@ -267,16 +267,21 @@ function DashboardPage({ health, notionStats }) {
     useEffect(() => { api('/v1/dashboard/metrics').then(setMetrics); }, []);
 
     useEffect(() => {
-        if (!notionStats) return;
+        // Fix 2026-05-06: usa metrics (visitatori) come fonte primaria; notionStats è fallback per contenuti.
+        // Bug A: il guard precedente usciva se notionStats era null (Notion not_configured) bloccando entrambi i chart.
+        // Bug B: typo nel funnel chart che riassegnava clusterChart.current invece di funnelChart.current.
+        const clusterData = (metrics && metrics.cluster_distribution) || (notionStats && notionStats.by_cluster) || {};
+        const funnelData  = (metrics && metrics.intent_stage_distribution) || (notionStats && notionStats.by_funnel) || {};
+        if (!Object.keys(clusterData).length && !Object.keys(funnelData).length) return;
         // Cluster chart
         if (clusterChart.current) clusterChart.current.destroy();
         const ctx1 = document.getElementById('clusterChart')?.getContext('2d');
-        if (ctx1) {
+        if (ctx1 && Object.keys(clusterData).length) {
             clusterChart.current = new Chart(ctx1, {
                 type: 'doughnut',
                 data: {
-                    labels: Object.keys(notionStats.by_cluster || {}),
-                    datasets: [{ data: Object.values(notionStats.by_cluster || {}),
+                    labels: Object.keys(clusterData),
+                    datasets: [{ data: Object.values(clusterData),
                         backgroundColor: ['#8b5cf6','#3b82f6','#22c55e','#f97316','#6b7280','#ec4899','#eab308'] }]
                 },
                 options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: '#a1a1aa', font: { size: 11 } } } } }
@@ -285,19 +290,19 @@ function DashboardPage({ health, notionStats }) {
         // Funnel chart
         if (funnelChart.current) funnelChart.current.destroy();
         const ctx2 = document.getElementById('funnelChart')?.getContext('2d');
-        if (ctx2) {
-            clusterChart.current = new Chart(ctx2, {
+        if (ctx2 && Object.keys(funnelData).length) {
+            funnelChart.current = new Chart(ctx2, {
                 type: 'bar',
                 data: {
-                    labels: Object.keys(notionStats.by_funnel || {}),
-                    datasets: [{ label: 'Contenuti', data: Object.values(notionStats.by_funnel || {}),
+                    labels: Object.keys(funnelData),
+                    datasets: [{ label: 'Visitatori', data: Object.values(funnelData),
                         backgroundColor: ['#3b82f6','#f97316','#ef4444'] }]
                 },
                 options: { responsive: true, indexAxis: 'y', plugins: { legend: { display: false } },
                     scales: { x: { ticks: { color: '#71717a' }, grid: { color: '#1e1e21' } }, y: { ticks: { color: '#a1a1aa' }, grid: { display: false } } } }
             });
         }
-    }, [notionStats]);
+    }, [notionStats, metrics]);
 
     const services = health?.services || {};
     const totalContent = notionStats?.total || 0;
