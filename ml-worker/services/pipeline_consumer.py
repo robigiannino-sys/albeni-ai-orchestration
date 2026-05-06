@@ -77,7 +77,7 @@ async def recompute_pipeline(db: DBSession, redis_client) -> Dict:
                 last_intent = (
                     db.query(IntentIntelligence)
                     .filter(IntentIntelligence.user_id == user.id)
-                    .order_by(IntentIntelligence.calculated_at.desc())
+                    .order_by(IntentIntelligence.created_at.desc())
                     .first()
                 )
                 last_signal = (
@@ -89,7 +89,7 @@ async def recompute_pipeline(db: DBSession, redis_client) -> Dict:
 
                 needs_recalc = (
                     last_signal is not None
-                    and (last_intent is None or last_signal.created_at > last_intent.calculated_at)
+                    and (last_intent is None or last_signal.created_at > last_intent.created_at)
                 )
                 if needs_recalc or user.ids_score == 0:
                     try:
