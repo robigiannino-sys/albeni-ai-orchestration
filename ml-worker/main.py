@@ -38,6 +38,7 @@ from models.schemas import (
     ClusterPredictionRequest, ClusterPredictionResponse,
     RoutingRequest, RoutingResponse,
     ContentGenerationRequest, ContentGenerationResponse,
+    ContentValidationRequest,
     KlaviyoSyncRequest, KlaviyoSyncResponse,
     ProcessIntentRequest, ProcessIntentResponse,
     DashboardMetrics, SEOHealthCheck, HealthResponse,
@@ -414,6 +415,63 @@ async def generate_content(request: ContentGenerationRequest, db: DBSession = De
             f"Content quality below threshold: {result.content_quality_score} < {settings.CONTENT_QUALITY_MIN} "
             f"for cluster={request.cluster.value}, lang={request.language}"
         )
+
+    return result
+
+
+# ===================================================================
+# AI PROVIDER DIAGNOSTICS
+# ===================================================================
+
+@app.get("/v1/diagnostics/ai-provider")
+async def diagnostics_ai_provider():
+    """
+    Diagnostica lo stato del provider AI senza esporre chiavi.
+    Fix P0.2a (2026-05-12): /v1/content/generate ritornava sempre
+    model_used="fallback" / tokens_used=0. Questo endpoint espone
+    perché — config issue vs init runtime vs runtime exception.
+
+    Restituisce:
+      provider: stringa configurata (gemini/openai)
+      gemini_key_set: bool — se GEMINI_API_KEY è non vuoto
+      gemini_key_len: int — lunghezza della key (0 se mancante)
+      gemini_model_name: stringa configurata
+      gemini_init_ok: bool — True se il GenerativeModel si è inizializzato
+      gemini_smoke_test_ok: bool/None — esegue una call minima a Gemini se key+init ok
+      gemini_smoke_test_error: stringa — errore se smoke fallisce
+      openai_key_set: bool
+    """
+    result = {
+        "provider": settings.AI_PROVIDER,
+        "gemini_key_set": bool(settings.GEMINI_API_KEY),
+        "gemini_key_len": len(settings.GEMINI_API_KEY or ""),
+        "gemini_model_name": settings.GEMINI_MODEL,
+        "gemini_init_ok": False,
+        "gemini_smoke_test_ok": None,
+        "gemini_smoke_test_error": None,
+        "openai_key_set": bool(settings.OPENAI_API_KEY),
+    }
+
+    if settings.AI_PROVIDER == "gemini" and settings.GEMINI_API_KEY:
+        try:
+            import google.generativeai as genai
+            genai.configure(api_key=settings.GEMINI_API_KEY)
+            model = genai.GenerativeModel(settings.GEMINI_MODEL)
+            result["gemini_init_ok"] = True
+
+            # Smoke test minimo (1 token output, no cost rilevante)
+            try:
+                resp = model.generate_content(
+                    "Reply with the single word: ok",
+                    generation_config={"temperature": 0, "max_output_tokens": 5},
+                )
+                result["gemini_smoke_test_ok"] = bool(resp.text)
+            except Exception as smoke_err:
+                result["gemini_smoke_test_ok"] = False
+                result["gemini_smoke_test_error"] = type(smoke_err).__name__ + ": " + str(smoke_err)[:200]
+        except Exception as init_err:
+            result["gemini_smoke_test_ok"] = False
+            result["gemini_smoke_test_error"] = "INIT: " + type(init_err).__name__ + ": " + str(init_err)[:200]
 
     return result
 
@@ -1006,46 +1064,49 @@ async def create_notion_task(
 # ===================================================================
 
 @app.post("/v1/content/validate")
-async def validate_content(
-    content: Dict,
-    cluster: str = "business_professional",
-    language: str = "it",
-    content_type: str = "blog_draft",
-    domain: str = "",
-    keyword_target: str = "",
-    funnel_stage: str = ""
-):
+async def validate_content(req: ContentValidationRequest):
     """
     Standalone validation endpoint.
     Validates content against brand rules, technical accuracy,
     cluster alignment, SEO, and domain coherence.
     Returns detailed CQS score with pass/fail.
+
+    Fix P0.2b (2026-05-12): refactor signature → ContentValidationRequest
+    Pydantic model. Prima i campi cluster/language/content_type erano scalari
+    top-level dell'handler, quindi FastAPI li parsava come query params e
+    ignorava i field omonimi nel body JSON (cluster restava sempre il default
+    "business_professional", causando cluster_alignment errato per ogni cluster
+    non-business). Ora tutto viene dal body.
     """
+    # Wrap stringhe come dict per compatibilità con validator.validate (json.dumps)
+    content_payload = req.content if isinstance(req.content, dict) else {"content": req.content}
+
     validator = ContentValidator()
 
     # Rule-based validation
     result = await validator.validate(
-        content=content,
-        cluster=cluster,
-        language=language,
-        content_type=content_type,
-        domain=domain,
-        keyword_target=keyword_target,
-        funnel_stage=funnel_stage
+        content=content_payload,
+        cluster=req.cluster,
+        language=req.language,
+        content_type=req.content_type,
+        domain=req.domain,
+        keyword_target=req.keyword_target,
+        funnel_stage=req.funnel_stage
     )
 
     # AI second-pass
     ai_result = await validator.validate_with_ai(
-        content=content,
-        cluster=cluster,
-        language=language,
-        keyword_target=keyword_target
+        content=content_payload,
+        cluster=req.cluster,
+        language=req.language,
+        keyword_target=req.keyword_target
     )
 
     return {
         "cqs_score": result.overall_score,
         "passed": result.passed,
         "threshold": settings.CONTENT_QUALITY_MIN,
+        "cluster": req.cluster,
         "checks": result.checks,
         "errors": result.errors,
         "warnings": result.warnings,

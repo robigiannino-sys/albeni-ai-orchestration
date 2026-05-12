@@ -225,6 +225,17 @@ class ContentGenerator:
         tokens_used = 0
         model_used = "fallback"
 
+        # P0.2a (2026-05-12): log esplicito quando il provider configurato
+        # ma il client non si è inizializzato → root cause del fallback silente.
+        if self.provider == "gemini" and not self.gemini_model:
+            logger.warning(
+                "Provider=gemini ma gemini_model is None. "
+                f"GEMINI_API_KEY set: {bool(settings.GEMINI_API_KEY)}. "
+                "Vedi /v1/diagnostics/ai-provider per dettagli init."
+            )
+        elif self.provider == "openai" and not self.openai_client:
+            logger.warning("Provider=openai ma openai_client is None. OPENAI_API_KEY may be missing.")
+
         # Try Gemini first (default provider) with retry for rate limits
         if self.provider == "gemini" and self.gemini_model:
             full_prompt = f"{system_prompt}\n\n---\n\n{user_prompt}"

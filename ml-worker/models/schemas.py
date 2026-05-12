@@ -140,6 +140,25 @@ class ContentGenerationResponse(BaseModel):
     tokens_used: int = 0
 
 
+# --- Content Validation ---
+
+class ContentValidationRequest(BaseModel):
+    """
+    Body schema for POST /v1/content/validate.
+    Fix P0.2b (2026-05-12): precedentemente l'endpoint definiva cluster/language
+    come parametri non-body (FastAPI li trattava come query string), quindi
+    i field nel body JSON venivano IGNORATI e cluster restava sempre il default
+    "business_professional". Spostati in Pydantic model per essere parsati dal body.
+    """
+    content: Any  # Dict, list, or string — flexible. Validator serializes via json.dumps.
+    cluster: str = "business_professional"
+    language: str = "it"
+    content_type: str = "blog_draft"
+    domain: str = ""
+    keyword_target: str = ""
+    funnel_stage: str = ""
+
+
 # --- Klaviyo CRM Sync ---
 
 class KlaviyoSyncRequest(BaseModel):
