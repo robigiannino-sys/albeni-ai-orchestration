@@ -38,7 +38,13 @@ class Settings(BaseSettings):
 
     # Google Gemini (DEFAULT)
     GEMINI_API_KEY: str = ""
-    GEMINI_MODEL: str = "gemini-2.0-flash"
+    # P0.2a fix (2026-05-12): gemini-2.0-flash è stato deprecato da Google per
+    # nuovi utenti ("404 no longer available to new users"). Diagnostica via
+    # /v1/diagnostics/ai-provider confermava key OK + init OK ma smoke test
+    # 404 sul modello → root cause del fallback silente. Aggiornato a 2.5-flash
+    # (coerente anche con label dashboard "AI Provider: Gemini 2.5").
+    # Override via env GEMINI_MODEL se serve un modello diverso (es. 2.5-pro).
+    GEMINI_MODEL: str = "gemini-2.5-flash"
 
     # OpenAI (alternative)
     OPENAI_API_KEY: str = ""
