@@ -157,6 +157,11 @@ class ContentValidationRequest(BaseModel):
     domain: str = ""
     keyword_target: str = ""
     funnel_stage: str = ""
+    # P0.2 follow-up (2026-05-12): opt-out per smoke test rapidi. validate_with_ai
+    # impiega 30-90s (Gemini sync + time.sleep(2) + Data Hub query). Quando True,
+    # ritorna {'ai_validation': 'skipped', 'reason': 'opted out'} e l'endpoint
+    # risponde in <3s (solo rule-based checks). Usato dal verify-p02-fixes.sh.
+    skip_ai_validation: bool = False
 
 
 # --- Klaviyo CRM Sync ---

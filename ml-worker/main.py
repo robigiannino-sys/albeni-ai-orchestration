@@ -1094,13 +1094,16 @@ async def validate_content(req: ContentValidationRequest):
         funnel_stage=req.funnel_stage
     )
 
-    # AI second-pass
-    ai_result = await validator.validate_with_ai(
-        content=content_payload,
-        cluster=req.cluster,
-        language=req.language,
-        keyword_target=req.keyword_target
-    )
+    # AI second-pass — opt-out for fast smoke tests (P0.2 follow-up 2026-05-12)
+    if req.skip_ai_validation:
+        ai_result = {"ai_validation": "skipped", "reason": "opted out via skip_ai_validation=true"}
+    else:
+        ai_result = await validator.validate_with_ai(
+            content=content_payload,
+            cluster=req.cluster,
+            language=req.language,
+            keyword_target=req.keyword_target
+        )
 
     return {
         "cqs_score": result.overall_score,

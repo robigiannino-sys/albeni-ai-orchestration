@@ -229,9 +229,11 @@ app.all('/v1/*', async (req, res) => {
             },
             // Fix P0.2 follow-up (2026-05-12): /v1/content/validate ora chiama
             // anche Gemini second-pass (validate_with_ai) che può impiegare
-            // fino a 35s. Override via env AI_ROUTER_PROXY_TIMEOUT_MS se serve
-            // più tempo per altri endpoint (es. content/generate batch).
-            timeout: parseInt(process.env.AI_ROUTER_PROXY_TIMEOUT_MS || '60000', 10),
+            // 30-90s (Gemini sync + time.sleep(2) buffer + Data Hub query DB).
+            // Default 120s per coprire i worst case. Override via env
+            // AI_ROUTER_PROXY_TIMEOUT_MS. Smoke test fast: usare
+            // skip_ai_validation=true nel body per saltare il second-pass.
+            timeout: parseInt(process.env.AI_ROUTER_PROXY_TIMEOUT_MS || '120000', 10),
             validateStatus: () => true // forward all status codes as-is
         };
 
