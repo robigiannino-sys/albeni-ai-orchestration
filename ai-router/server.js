@@ -227,7 +227,11 @@ app.all('/v1/*', async (req, res) => {
                 'x-forwarded-for': req.ip,
                 'x-forwarded-proto': req.protocol
             },
-            timeout: 30000, // 30s timeout for AI operations
+            // Fix P0.2 follow-up (2026-05-12): /v1/content/validate ora chiama
+            // anche Gemini second-pass (validate_with_ai) che può impiegare
+            // fino a 35s. Override via env AI_ROUTER_PROXY_TIMEOUT_MS se serve
+            // più tempo per altri endpoint (es. content/generate batch).
+            timeout: parseInt(process.env.AI_ROUTER_PROXY_TIMEOUT_MS || '60000', 10),
             validateStatus: () => true // forward all status codes as-is
         };
 
@@ -261,9 +265,10 @@ app.all('/v1/*', async (req, res) => {
                 target: targetUrl
             });
         } else if (error.code === 'ETIMEDOUT') {
+            const timeoutSec = Math.round(parseInt(process.env.AI_ROUTER_PROXY_TIMEOUT_MS || '60000', 10) / 1000);
             res.status(504).json({
                 error: 'ML Worker timeout',
-                detail: 'The request took longer than 30 seconds.',
+                detail: `The request took longer than ${timeoutSec} seconds.`,
                 target: targetUrl
             });
         } else {
