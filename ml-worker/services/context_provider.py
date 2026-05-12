@@ -699,6 +699,26 @@ class DataHubContextProvider:
             "priority": 9,
             "label": "🔄 MT+PE Orchestrator — Workflow Pipeline",
         },
+        "voice-baseline-albeni-content.md": {
+            "tags": ["voice_guidelines", "tone_of_voice", "anti_ai_tell", "instructions"],
+            "priority": 10,
+            "label": "🎙️ Voice Baseline Universale — Linee guida contenuti",
+        },
+        "wom-radar-validator/SKILL.md": {
+            "tags": ["voice_guidelines", "validator", "anti_ai_tell", "instructions"],
+            "priority": 9,
+            "label": "✅ WoM Radar Validator — Skill instructions",
+        },
+        "wom-radar-validator/rubric-v1.1.md": {
+            "tags": ["voice_guidelines", "validator", "anti_ai_tell", "rubric"],
+            "priority": 10,
+            "label": "📐 WoM Radar Validator — Rubric v1.1 (8 estensioni regex)",
+        },
+        "merino-news-scanner/references/wom-radar-voice-config.md": {
+            "tags": ["voice_guidelines", "tone_of_voice", "anti_ai_tell", "few_shot_exemplar"],
+            "priority": 10,
+            "label": "🎙️ WoM Radar Voice Config v1.1 — Drop-in scanner Phase 4",
+        },
     }
 
     def sync_skills(self, skills_base_path: str = "/app/skills-data") -> Dict:

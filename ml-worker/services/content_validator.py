@@ -212,10 +212,21 @@ class ContentValidator:
         lang_score, lang_details = self._check_language_register(content_str, language)
         result.checks["language_register"] = {"score": lang_score, "max": 5, **lang_details}
 
-        # Calculate overall score
-        total_score = brand_score + protected_score + tech_score + cluster_score + seo_score + domain_score + lang_score
-        result.overall_score = round(total_score, 1)
-        result.passed = total_score >= settings.CONTENT_QUALITY_MIN  # 76
+        # 8. Voice Compliance — Anti-AI-tell (Voice Baseline v1.0, Rubric v1.1)
+        # Score modifier (negative penalty, max -25) + HARD FAIL gate
+        voice_score, voice_details, voice_hard_fail = self._check_voice_compliance(content_str)
+        result.checks["voice_compliance"] = {
+            "score": voice_score,
+            "max": 0,  # additive penalty (negative)
+            "hard_fail": voice_hard_fail,
+            **voice_details,
+        }
+
+        # Calculate overall score (voice_score is negative modifier 0..-25)
+        total_score = brand_score + protected_score + tech_score + cluster_score + seo_score + domain_score + lang_score + voice_score
+        result.overall_score = round(max(0, total_score), 1)
+        # Voice HARD FAIL forces passed=False regardless of score
+        result.passed = (total_score >= settings.CONTENT_QUALITY_MIN) and (not voice_hard_fail)
 
         # Collect all errors and warnings
         for check_name, check_data in result.checks.items():
@@ -564,3 +575,112 @@ Rispondi SOLO con un JSON valido:
             )
 
         return max(0, score), details
+
+    def _check_voice_compliance(self, content_str: str):
+        """
+        Voice Baseline v1.0 + Rubric v1.1 — anti-AI-tell compliance check.
+        Returns: (score_modifier, details, hard_fail_flag)
+          score_modifier: 0 to -25 (negative penalty deducted from total_score)
+          hard_fail_flag: True if blacklist HARD_FAIL pattern matches → forces passed=False
+        Patterns embedded in code (Voice Baseline universale §2.1-§2.5).
+        Reference: voice-baseline-albeni-content.md v1.0, rubric-v1.1.md
+        """
+        import re
+        score_modifier = 0.0
+        details = {"errors": [], "warnings": [], "suggestions": []}
+        hard_fail = False
+
+        text = content_str  # already lowercased by validate()
+
+        # §2.1 Superlativi / parole-bandiera
+        BLACKLIST_SUPER = [
+            r"\brivoluzionari[oae]\b", r"\bstraordinari[oae]\b",
+            r"\bincredibil[ei]\b", r"\bepocali?\b", r"\biconic[oae]\b",
+            r"\bmust[\s-]have\b", r"\bintramontabil[ei]\b",
+            r"\b(deve|devono) avere\b", r"\bogni guardarob[ao]\b",
+        ]
+        for pat in BLACKLIST_SUPER:
+            if re.search(pat, text):
+                score_modifier -= 3
+                details["errors"].append(f"§2.1 superlativo AI-tell vietato: {pat}")
+                hard_fail = True
+                break
+
+        # §2.2 Connettori retorici AI
+        BLACKLIST_CONN = [
+            r"\bnon e un caso che\b", r"\bnon e' un caso che\b",
+            r"\bnon a caso\b",
+            r"\bin un'epoca in cui\b", r"\bin un epoca in cui\b",
+            r"\bin un mondo (in cui|dove)\b", r"\bnel cuore di\b",
+            r"\bimmagina (un mondo|un'epoca|un futuro|un guardaroba) in cui\b",
+            r"\bnon e (utopia|fantascienza|magia|fantasia)[:.]\s*(e|e solo)\b",
+        ]
+        for pat in BLACKLIST_CONN:
+            if re.search(pat, text):
+                score_modifier -= 5
+                details["errors"].append(f"§2.2 connettore retorico AI-tell: {pat}")
+                hard_fail = True
+                break
+
+        # §2.3 Antitesi cascata (3+ occorrenze = HARD)
+        ANTITESI_PATTERNS = [
+            r"\b[nN]on (e|sono|fa|si tratta|porta|si celebra|riguarda)\s+.{1,80}?,\s+(ma|e|porta|si rende|si tratta)\s+",
+            r"\b[nN]on (e|sono|si tratta)( solo| soltanto)?\s+.{1,80}?[:.]\s*[eE]\b",
+        ]
+        antitesi_count = 0
+        for pat in ANTITESI_PATTERNS:
+            antitesi_count += len(re.findall(pat, text, re.IGNORECASE))
+        if antitesi_count >= 3:
+            score_modifier -= 10
+            details["errors"].append(f"§2.3 antitesi cascata: {antitesi_count} occorrenze (>=3 = HARD FAIL)")
+            hard_fail = True
+        elif antitesi_count >= 1:
+            score_modifier -= 3 * antitesi_count
+            details["warnings"].append(f"§2.3 antitesi: {antitesi_count} occorrenza/e (soft penalty)")
+
+        # §2.4 Chiusure morali / aforistiche
+        BLACKLIST_CLOSURE = [
+            r"\buna lezione (che|da)\b",
+            r"\bforse (la|e|sembra)\s+.{1,30}?\b(lezione|verita|lettura|chiave)\b",
+            r"\b(era|e stato) solo bastato (dirlo|capirlo|notarlo|nominarlo)\b",
+            r"\bcomincia da (questa|questo|quella|quello)\s+(domanda|gesto|capo|silenzio|scelta)\b",
+            r"\b(porta|reca) (in se)?\s*.{1,30}?\s+(impronta|traccia|memoria) di\b",
+            r"\bvale la pena\s+(fissare|sottolineare|notare|ricordare|considerare)\b",
+        ]
+        for pat in BLACKLIST_CLOSURE:
+            if re.search(pat, text):
+                score_modifier -= 5
+                details["errors"].append(f"§2.4 chiusura morale/aforistica AI-tell: {pat}")
+                hard_fail = True
+                break
+
+        # §2.5 Apertura narrativo-letteraria (prime 200 char)
+        opening = text[:200].strip()
+        OPENING_PATTERNS = [
+            r"^[c]'(?:e|era) (?:un|una|un')\s+\w+",
+            r"^immagina\s+(?:un|una|un')\s+(?:mondo|epoca|futuro|capo|guardaroba)",
+            r"^per\s+\w+\s+\w+,?\s+\w+\s+(?:ha|e|si e)\s+(?:smesso|tornato|chiuso|aperto|cominciato)",
+            r"^quando\s+(?:il|la|lo|i|le|gli|un|una)\s+\w+\s+(?:incontra|si chiude|comincia|si apre|ha smesso)",
+        ]
+        for pat in OPENING_PATTERNS:
+            if re.search(pat, opening, re.IGNORECASE):
+                score_modifier -= 8
+                details["errors"].append(f"§2.5 apertura narrativo-letteraria AI-tell: {pat}")
+                hard_fail = True
+                break
+
+        score_modifier = max(score_modifier, -25)
+
+        if hard_fail:
+            details["errors"].append(
+                "VOICE HARD FAIL — rigenerare il contenuto applicando le 4 regole di "
+                "voice-baseline-albeni-content.md: (1) apertura ancora al fatto NOT scena, "
+                "(2) max 1 antitesi, (3) chiusura = CTA al Lead Magnet del cluster NOT lezione, "
+                "(4) il mercato non parla (no personificazione). Vedere wom-radar-validator/rubric-v1.1.md per dettagli."
+            )
+
+        if score_modifier == 0 and not hard_fail:
+            details["suggestions"].append("Voice compliance OK — nessun pattern AI-tell rilevato.")
+
+        return score_modifier, details, hard_fail
+

@@ -28,6 +28,45 @@ Tone of Voice: Autorevole, sobrio, colto. Mai posizionare come abbigliamento spo
 Brand heritage: 270+ anni di eccellenza tessile (Albeni 1905 + Reda 1865).
 Materiale: Fibra Merino 17 micron Reda, costruzione Cut & Sewn (non knit).
 Non menzionare mai: abbigliamento sportivo, underwear, fast fashion, sconti aggressivi."""
+# Voice Guidelines v1.0 — Anti-AI-tell (Voice Baseline universale, rubric v1.1)
+# Reference: voice-baseline-albeni-content.md
+VOICE_GUIDELINES_v1 = """
+LINEE GUIDA DI VOCE — REGOLE ANTI-AI-TELL (Voice Baseline v1.0, Rubric v1.1)
+
+Applica queste 4 regole-base prima di emettere QUALSIASI contenuto editoriale:
+
+1. APERTURA ANCORATA AL FATTO, NON ALLA SCENA.
+   - VIETATO aprire con: "C'e un X che", "Immagina un mondo in cui", "Per N giorni Y ha smesso", "Quando il X incontra".
+   - OBBLIGATORIO aprire con: data + soggetto + verbo + numero/fonte.
+
+2. ANTITESI MAX UNA NEL PEZZO.
+   - VIETATO in cascata: "Non X, ma Y" / "Non e X: e Y" / "Non e X, non e Y, non e Z. E W".
+   - 3+ antitesi = hard-fail AI-tell. Riformulare le ulteriori in forma affermativa.
+
+3. CHIUSURA = CTA AL LEAD MAGNET DEL CLUSTER, NON LEZIONE.
+   - VIETATO chiudere con: "Forse la lezione piu semplice", "Era solo bastato dirlo", "comincia da questa domanda".
+   - OBBLIGATORIO chiudere con rimando esplicito al Lead Magnet del cluster bersaglio:
+     C1 Business Professional -> Business Layering Guide
+     C2 Heritage Mature -> La Guida Definitiva ai Tessuti Nobili
+     C3 Conscious Premium -> Filiera Reda - 270 anni di responsabilita
+     C4 Modern Minimalist -> Wardrobe Essentials Minimalist Edition
+     C5 Italian Authentic -> Guida all'uso quotidiano (150/190)
+
+4. IL MERCATO NON PARLA, LE PERSONE PARLANO.
+   - VIETATO: "Il mercato ha preso parola", "L'industria sta dicendo", "La filiera sussurra".
+   - VIETATO ammicco al lettore: "di nuovo", "come sapevamo", "per chi vuole ascoltare".
+   - Soggetti narranti: autore (giornalistico) + fonti nominate (McKinsey, Commissione UE, AgResearch, Reda).
+
+BLACKLIST IMMEDIATA - Se generi anche UNA di queste, RIGENERA:
+- rivoluzionario, straordinario, incredibile, epocale, iconico
+- must-have, deve avere, ogni guardaroba, intramontabile
+- "non e un caso che", "in un'epoca in cui", "in un mondo in cui"
+- "Immagina un mondo in cui", "Non e utopia: e"
+- "vale la pena ricordare/sottolineare/fissare"
+
+Self-check post-output: scansiona il testo contro questa lista. Se 1+ pattern -> riscrivi.
+"""
+
 
 CLUSTER_PROMPTS = {
     "business_professional": {
@@ -295,6 +334,8 @@ class ContentGenerator:
         protected = ", ".join(PROTECTED_TERMS)
 
         return f"""{SYSTEM_PROMPT_BASE}
+
+{VOICE_GUIDELINES_v1}
 
 CLUSTER FOCUS: {cluster_config.get('focus', '')}
 TONE: {cluster_config.get('tone', '')}

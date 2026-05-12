@@ -6,6 +6,32 @@ description: |
   - Also trigger when: user asks to update/create/fix WordPress pages, translate page content, fix broken links, apply SEO metadata, build HTML widgets, manage multilingual content on merinouniversity.com, debug redirects, edit FSE templates, or deploy structured data
 ---
 
+## 🎙️ Voice Guidelines — MANDATORY READ (v1.0 — 2026-05-12)
+
+**Before producing or modifying any editorial content**, this skill MUST load and apply the universal voice baseline:
+
+📄 `voice-baseline-albeni-content.md` (workspace root, also mirrored at `skills-data/voice-baseline-albeni-content.md`)
+
+It defines:
+1. **5 cluster TOV** (C1 Business / C2 Heritage / C3 Conscious / C4 Minimalist / C5 Italian) — §1
+2. **Anti-AI-tell hard-fail patterns** (regex v1.1: antitesi cascata, chiusure aforistiche, apertura magazine-cover, personificazione mercato) — §2
+3. **4 regole-base distillate** (apertura ancora al fatto, antitesi UNA, chiusura CTA, mercato non parla) — §3
+4. **Format-specific overrides** (Radar 300-550w, Story 800+, Osservatorio, MU checklist, customer care, email, ADV) — §4
+5. **CTA standard per cluster** — §5
+6. **7 anti-exemplar bocciati dal validator** — §6
+7. **9-point self-check pre-publish** — §7
+
+For Radar-specific work: also load `merino-news-scanner/references/wom-radar-voice-config.md` v1.1 (already extends this baseline) and validate output against `wom-radar-validator/rubric-v1.1.md`.
+
+**Self-check**: if your output contains any of these phrases, STOP and rewrite:
+- "Immagina un mondo in cui", "C'è un X che", "Non è utopia: è", "in un'epoca in cui"
+- Multiple antitesi cascata ("Non X, ma Y. Non Z, ma W. Non...")
+- Closures like "Forse la lezione più", "Era solo bastato dirlo", "comincia da questa domanda"
+- Personificazione "Il mercato ha preso parola", "L'industria sta dicendo"
+- Absent CTA to cluster Lead Magnet
+
+---
+
 # Albeni 1905 — WordPress Operator
 
 You are the operational agent for the Albeni 1905 "Invisible Luxury" WordPress ecosystem. This skill encodes battle-tested patterns learned through extensive trial-and-error across hundreds of API calls, page builds, and multilingual deployments.
@@ -497,6 +523,77 @@ document.body.className.match(/page-id-(\d+)/)?.[1]
 
 This is the definitive check — it tells you which page WordPress actually resolved for that URL. All content edits must target THIS page ID, not whichever ID the REST API search returns.
 
+### Polylang — `get_category_by_slug()` ritorna NULL su lingue non-default
+
+In contesto runtime filtrato da Polylang (frontend multilingua, WPCode snippet su home, qualsiasi PHP che gira con lingua attiva ≠ default), `get_category_by_slug('radar')` può tornare `NULL` sulle lingue non-default anche se la categoria esiste. Polylang silenziosamente filtra le query category per la lingua corrente.
+
+**Workaround**: mappare direttamente gli ID categoria e passare `'lang' => $current_lang` a `get_posts()`:
+
+```php
+// CATEGORY ID MAP — Radar (WoM, confermato 2026-04-23)
+$radar_categories = [
+    'it'    => 324,
+    'en-us' => 326,
+    'de'    => 328,
+    'fr'    => 330,
+];
+
+// Get current Polylang language (returns 'en' on MU, 'en-us' on WoM — verify!)
+$lang = function_exists('pll_current_language') ? pll_current_language('slug') : 'it';
+if (!isset($radar_categories[$lang])) {
+    // Fallback for languages not in map
+    $cat_id = $radar_categories['it'];
+} else {
+    $cat_id = $radar_categories[$lang];
+}
+
+// Query posts WITH explicit lang param
+$posts = get_posts([
+    'category' => $cat_id,
+    'posts_per_page' => 12,
+    'lang' => $lang,  // ESSENTIAL — without this Polylang may return wrong language posts
+]);
+```
+
+Confermato sul widget home Radar 2026-04-23 (snippet WPCode #2249). Senza il fix, le home EN/DE/FR mostravano widget vuoto anche se i post Radar EN/DE/FR esistevano.
+
+### Custom REST Endpoints `/wp-json/albeni/v1/*` (WoM, deployati 2026-04-24)
+
+Ecosistema di **3 endpoint** per automazione headless deploy Radar — splittati in 2 WPCode snippet PHP per separation of concerns:
+
+| Snippet ID | Nome | Endpoint | Scopo |
+|---|---|---|---|
+| **2250** | Albeni Visual Upload API | `POST /wp-json/albeni/v1/upload-visual` | Upload immagini hero ai post (legacy, usato da `generate_visuals.py --upload-wp`) |
+| **2278** | Albeni — Radar deploy endpoints | `POST /wp-json/albeni/v1/create-radar-post` | Crea post Radar 4L con content + meta + categoria |
+| **2278** | (stesso snippet) | `POST /wp-json/albeni/v1/pll-link` | Polylang linking 4L per gruppo post |
+
+**Auth comune**: header `X-Upload-Key: <WP_UPLOAD_SECRET>`. Il secret è in `.env` del `merino-news-scanner` (`WP_UPLOAD_SECRET`).
+
+**Pattern di chiamata**:
+```bash
+curl -X POST https://worldofmerino.com/wp-json/albeni/v1/create-radar-post \
+  -H "Content-Type: application/json" \
+  -H "X-Upload-Key: $WP_UPLOAD_SECRET" \
+  -d '{
+    "lang": "en-us",
+    "title": "Buy less, buy true — EU ESPR ban",
+    "slug": "en-buy-less-buy-true-eu-ban-unsold-textiles",
+    "content": "<!-- wp:paragraph --><p>...</p><!-- /wp:paragraph -->",
+    "category_id": 326,
+    "featured_media": 2277,
+    "rank_math_focus_keyword": "EU ESPR textile ban"
+  }'
+# Response: {"success":true,"post_id":2261,"slug":"en-buy-less-buy-true-eu-ban-unsold-textiles"}
+```
+
+**Naming convention nei 2 snippet**: per evitare collision di nomi funzioni PHP fra i 2 snippet, il nuovo 2278 prefissa tutto con `_v1` (es. `albeni_check_secret_v1`, `ALBENI_UPLOAD_SECRET_V1`). Importante quando aggiungi nuovi endpoint: usa il prefisso `_v1` o cambia versione (`_v2`) per non collidere con 2250.
+
+**Quando usarli vs Chrome MCP**:
+- **Headless / cron / pipeline Python** (es. `merino-news-scanner` → deploy Radar quotidiano): usa questi endpoint, non serve sessione browser.
+- **One-off / debug / fix manuale**: usa Chrome MCP + wp.apiFetch (più immediato, no setup secret).
+
+Pipeline che li usa: `/Claude/Projects/Merino News/merino-news-scanner/pipeline/deploy_radar_post.py`.
+
 ### LiteSpeed Cache — The False Negative Generator
 
 After making Polylang or content changes, the frontend may show stale content. `?nocache=1` does NOT bypass LiteSpeed on Hostinger.
@@ -618,12 +715,115 @@ fetch(url).then(r => 'Status: ' + r.status + ' Redirected: ' + r.redirected)
 - **PHP in "Header per l'intero sito"**: NEVER executes in admin context
 - **Recommendation**: Don't rely on WPCode for PHP execution. Use functions.php AJAX handlers instead.
 
+### WPCode Lite — Runtime Cache: re-save dall'UI è OBBLIGATORIO
+
+Modificare il codice di uno snippet WPCode via `wp_update_post` (REST o PHP) aggiorna `post_content` ma **NON invalida la cache runtime di WPCode**. Lo snippet continua a girare con la versione precedente finché non viene ri-salvato tramite l'UI nativa (pagina `admin.php?page=wpcode-snippet-manager&snippet_id=N`, click bottone blu "Aggiorna"). Il toast "Snippet aggiornato." conferma il ricompilato.
+
+**Sintomo classico**: edit via REST torna 200 OK, l'editor preview mostra il nuovo codice, ma il comportamento runtime resta quello vecchio. WPCode Lite non ha endpoint REST proprio (`/wpcode/v1/...` → `rest_no_route`).
+
+**Pattern corretto via Chrome MCP / wp.apiFetch**:
+```javascript
+// 1. Naviga alla pagina di edit dello snippet
+// /wp-admin/admin.php?page=wpcode-snippet-manager&snippet_id=2943
+// 2. Modifica il content via CodeMirror
+const cm = document.querySelectorAll('.CodeMirror')[0].CodeMirror;
+const updated = cm.getValue().split('OLD_HOST').join('NEW_HOST');
+cm.setValue(updated);
+cm.save();  // sincronizza textarea sottostante
+// 3. CRITICAL — click bottone "Aggiorna" — ricompila la cache runtime
+const buttons = Array.from(document.querySelectorAll('button'));
+const updateBtn = buttons.find(b => (b.textContent || '').trim().toLowerCase() === 'aggiorna' && b.className.includes('primary'));
+updateBtn.click();
+// 4. Aspetta toast "Snippet aggiornato."
+```
+
+Senza step 3 lo snippet resta cached. **Confermato il 2026-04-23 (sessione Radar ESPR) e ri-confermato il 2026-04-27 (fix tracking endpoints)** — quando ho aggiornato gli snippet 2943 (MU) e 1181 (WoM) per puntare al nuovo Railway, il click "Aggiorna" è stato ESSENZIALE perché altrimenti gli snippet avrebbero continuato a inviare eventi al Railway vecchio.
+
 ### Hostinger Rate Limiting
 
 - **Batch size**: max 8-10 sequential API calls before risking timeout
 - **Nonce lifetime**: ~15 minutes of inactivity
 - **Payload size**: Chrome extension JS tool times out on payloads >15KB
 - **Solution for large content**: Build content in browser memory across multiple JS calls, then PUT once
+- **Theme editor save XHR**: `action=edit-theme-plugin-file` + nonce può richiedere fino a 6s. Se usi XHR custom, imposta `xhr.timeout = 90000`. Risposta successo: `{"success":true,"data":{"message":"File modificato con successo."}}`.
+
+### Hostinger PHP-FPM — 504 Gateway Timeout su handler temporanei
+
+Handler AJAX temporanei (in `functions.php`) che fanno operazioni pesanti — loop su molti post, serialize completo di `post_meta`, `inspect_wpcode` con dump completo, query non-indicizzate — possono saturare i PHP-FPM workers di Hostinger.
+
+**Sintomo**: nginx 504 su tutto il dominio (non solo sull'endpoint AJAX). Il sito diventa irraggiungibile per ~60 secondi.
+
+**Recovery**: smetti di pushare richieste e aspetta ~60 secondi che `max_execution_time` di PHP killi i worker bloccati. NON tentare di "rilanciare" la richiesta — peggiora.
+
+**Mitigation pattern**: handler temp DEVONO essere snelli:
+- Singola operazione (no loop su >50 elementi)
+- No dump completi (`var_export($post)` su molti post saturerebbe)
+- No `wp_get_object_terms` ricorsivo
+- Usa `wp_send_json_success(...)` con dati MINIMI (solo IDs + flag)
+- Se serve elaborazione pesante, splitta in batch via parametri query (es. `?batch=1`, `?batch=2`)
+
+### Hostinger CDN (hcdn) — il layer dimenticato
+
+worldofmerino.com (e probabilmente MU/PMS) risponde con header `server: hcdn` — c'è un **CDN edge di Hostinger DAVANTI a LiteSpeed**. I purge fatti dal plugin LiteSpeed (LSCache, Object Cache, OPcode Cache) **NON toccano hcdn**. Finché hcdn serve la versione cached, l'utente continua a vedere il sito vecchio anche dopo "Svuota tutta la cache" del LiteSpeed plugin.
+
+**Sintomo diagnostico**:
+```bash
+curl -sI https://worldofmerino.com/ | grep -i 'server\|cache'
+# server: hcdn   ← se vedi questo, c'è il CDN edge davanti
+```
+Il fetch response ha `server: hcdn` e le modifiche al frontend non appaiono nemmeno dopo LSCache purge + hard reload + incognito.
+
+**Workaround**:
+1. Vai su `https://hpanel.hostinger.com/websites/worldofmerino.com`
+2. Sezione "Cancella la cache"
+3. Bottone "Cancella la cache"
+4. Conferma "Clear cache" nella modal
+
+Questo fa purge simultaneo di:
+- Caching Plugin (= LiteSpeed)
+- Hostinger CDN (= hcdn)
+- Server side cache
+
+Toast di conferma: "Cache cleaned successfully". Stessa procedura per merinouniversity.com e gli altri siti Hostinger.
+
+**Trick di workaround per piccole modifiche frontend**: il re-save di un post via REST (`POST /wp/v2/posts/:id` con `{status:'publish'}`) forza purge mirato sulla URL del post — sufficiente per verificare metadati freschi senza toccare hcdn globale.
+
+### Hostinger DNS panel — gestione subdomain via External Domain (verificato 28/04)
+
+I 3 domini WP (worldofmerino.com, merinouniversity.com, perfectmerinoshirt.com) sono "External Domains" su Hostinger — registrati altrove ma con DNS gestito da Hostinger nameservers. Per aggiungere CNAME/TXT (es. per custom domain Railway):
+
+**Path canonico**:
+```
+https://hpanel.hostinger.com/external-domain/<domain>/dns
+```
+
+**UI workflow per aggiungere un record**:
+1. Login hpanel → "Domini" sidebar → "Portafoglio di domini"
+2. Scroll giù a "Domini esterni" — click "Gestisci DNS" sulla riga del dominio target
+3. Form "Manage DNS records" / "Gestire i record DNS":
+   - **Type** (dropdown): A, AAAA, **CNAME**, MX, **TXT**, SRV
+     - Nota: la search per "TXT option" via Chrome MCP è affidabile, mentre il click cieco sull'index potrebbe perdersi
+   - **Name**: solo il subdomain (es. `tower` per `tower.worldofmerino.com`, NON il FQDN)
+   - **Points to / TXT value**: l'intero valore inclusi prefissi (es. `railway-verify=<token>` per TXT)
+   - **TTL**: 14400 (4h, default)
+4. "Add Record" / "Aggiungi record" → toast "DNS Record created successfully"
+
+**Velocità di propagazione Hostinger DNS**: la risoluzione è **immediata**. `dig +short CNAME tower.worldofmerino.com` risolve subito senza ore di attesa. L'unico delay osservabile è quello del tool di verifica esterno (es. Railway TXT polling).
+
+**Pattern per Railway custom domain** (vedi anche `albeni-railway-operator` Pattern 8):
+- CNAME `tower` → `<random>.up.railway.app` (target da Railway dashboard)
+- TXT `_railway-verify.tower` → `railway-verify=<token>` (verifica ownership)
+
+**Estrazione automatica record da Railway dashboard** (per copy-paste sicuro, evita BLOCKED filter):
+```javascript
+(() => {
+  const lines = document.body.innerText.split('\n').map(l => l.trim()).filter(l => l);
+  return lines.filter(l =>
+    /^[a-z0-9]{6,}\.up\.railway\.app$/.test(l) ||
+    /^railway-verify=[0-9a-f]{50,}$/.test(l)
+  );
+})();
+```
 
 ### Content Size Workaround
 
