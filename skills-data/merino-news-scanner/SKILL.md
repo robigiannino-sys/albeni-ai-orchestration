@@ -174,6 +174,9 @@ If any gate fails, stop here and output "SKIP" with the reason. Do not generate 
 
 Generate the brief ONLY for the authorized destination(s). The brief structure adapts based on the routing verdict:
 
+**For WoM Radar drafts (LIFESTYLE → WoM): MANDATORY load** `references/wom-radar-voice-config.md` before generating. It contains the cluster-specific TOV routing, the 5 few-shot exemplar (one per cluster C1-C5), the anti-AI-tell blacklist, and the required output schema. Failure to load it produces hyperbolic AI-generated content that fails the wom-radar-validator gate.
+
+
 **If routed to WoM only**: Full WoM section + optional 1-line MU "segnalazione". No forced MU angle.
 **If routed to MU only**: Full MU section + optional 1-line WoM "segnalazione". No forced WoM angle.
 **If routed to BOTH (crossover)**: Full independent sections for both, each standing on its own.
