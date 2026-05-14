@@ -257,6 +257,79 @@ class GSCIndexingScan(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+class CROSlot(Base):
+    """
+    CRO Engine — un "slot" è un punto di personalizzazione del testo nel frontend
+    (es. "homepage_hero_cta", "newsletter_signup_headline", "product_card_cta").
+    Ogni slot ha N variant gestite dal MAB.
+
+    Step 7.1 (2026-05-14): modulo 6 dei 7 AI Stack originali.
+    """
+    __tablename__ = "cro_slots"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    slot_key = Column(String(80), unique=True, nullable=False, index=True)
+    description = Column(Text)
+    active = Column(Boolean, default=True, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class CROVariant(Base):
+    """
+    Una variant testuale per un CRO slot. Filtrabile per cluster comportamentale
+    e/o lingua. win_count + exposure_count alimentano il MAB epsilon-greedy
+    (winrate = win_count / exposure_count).
+
+    UPSERT su (slot_id, variant_key) garantito a livello applicativo.
+    """
+    __tablename__ = "cro_variants"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    slot_id = Column(Integer, ForeignKey("cro_slots.id"), nullable=False, index=True)
+    variant_key = Column(String(80), nullable=False, index=True)
+    text = Column(Text, nullable=False)
+    cluster = Column(String(50), nullable=True, index=True)        # filter: heritage_mature, business_professional, ...
+    language = Column(String(5), default="it", index=True)
+    active = Column(Boolean, default=True, index=True)
+    exposure_count = Column(Integer, default=0)
+    win_count = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class CROExposure(Base):
+    """
+    Log di ogni serving di una variant. Inserito dal /v1/cro/microcopy GET
+    con TTL implicito (l'engine non risserve la stessa variant allo stesso user
+    nella stessa sessione — controllo in select_variant).
+    converted=true quando una /v1/cro/conversion successiva linka questa exposure.
+    """
+    __tablename__ = "cro_exposures"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    variant_id = Column(Integer, ForeignKey("cro_variants.id"), nullable=False, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True)
+    session_id = Column(String(100), nullable=True, index=True)
+    served_at = Column(DateTime, default=datetime.utcnow, index=True)
+    converted = Column(Boolean, default=False, index=True)
+    conversion_recorded_at = Column(DateTime, nullable=True)
+
+
+class CROConversion(Base):
+    """
+    Evento di conversione attribuito a una specifica exposure CRO.
+    conversion_type: 'purchase', 'lead', 'newsletter', 'click_through', custom.
+    value_eur: opzionale (per conversion economiche, alimenta ROAS futuro).
+    """
+    __tablename__ = "cro_conversions"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    exposure_id = Column(BigInteger, ForeignKey("cro_exposures.id"), nullable=False, index=True)
+    conversion_type = Column(String(50), nullable=False, index=True)
+    value_eur = Column(Numeric(10, 2), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+
 class KPISnapshot(Base):
     """
     Snapshot daily di un KPI della Dashboard Executive.

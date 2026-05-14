@@ -1362,6 +1362,425 @@ async def adv_spend_summary(
 
 
 # ===================================================================
+# CRO ENGINE — Step 7 (2026-05-14)
+# Multi-Armed Bandit per microcopy adattivo. Modulo 6 dei 7 AI Stack originali.
+# Algoritmo: epsilon-greedy 10% exploration / 90% exploitation.
+# Step 7.1 (questa sessione): schema + helper + select_variant() + record_*
+# Step 7.2: endpoint REST. Step 7.3: frontend integration.
+# ===================================================================
+
+import random as _cro_random
+
+# Soglie MAB (override via env se serve calibrare exploration)
+_CRO_EPSILON         = float(os.environ.get("CRO_EPSILON", "0.10"))        # 10% exploration
+_CRO_MIN_EXPOSURES   = int(os.environ.get("CRO_MIN_EXPOSURES", "30"))      # sotto questa soglia gira pure exploration
+_CRO_TIE_BREAK_BY_RECENCY = True  # se più variant hanno stesso winrate, preferisci la meno esposta (esplora di più)
+
+
+def _ensure_cro_tables(db: DBSession):
+    """Auto-create cro_slots + cro_variants + cro_exposures + cro_conversions. Idempotente."""
+    from models.database import CROSlot, CROVariant, CROExposure, CROConversion, engine
+    try:
+        CROSlot.__table__.create(bind=engine, checkfirst=True)
+        CROVariant.__table__.create(bind=engine, checkfirst=True)
+        CROExposure.__table__.create(bind=engine, checkfirst=True)
+        CROConversion.__table__.create(bind=engine, checkfirst=True)
+    except Exception as e:
+        logger.warning(f"CRO tables create check failed (probably already exist): {e}")
+
+
+def _eligible_variants(db: DBSession, slot_key: str, cluster: Optional[str] = None,
+                        language: str = "it"):
+    """
+    Ritorna le variant attive per uno slot, filtrate per cluster + language.
+    Fallback hierarchy:
+      1. Match esatto: cluster + language
+      2. Fallback: cluster=NULL (generic) + language match
+      3. Fallback finale: cluster=NULL + language=NULL (catch-all)
+    """
+    from models.database import CROSlot, CROVariant
+    slot = db.query(CROSlot).filter(CROSlot.slot_key == slot_key, CROSlot.active == True).first()
+    if not slot:
+        return [], None
+
+    base_q = db.query(CROVariant).filter(
+        CROVariant.slot_id == slot.id,
+        CROVariant.active == True
+    )
+
+    # Tier 1: cluster + language match esatti (più specifico)
+    if cluster:
+        rows = base_q.filter(CROVariant.cluster == cluster, CROVariant.language == language).all()
+        if rows:
+            return rows, slot
+
+    # Tier 2: cluster generic (NULL) ma language match
+    rows = base_q.filter(CROVariant.cluster.is_(None), CROVariant.language == language).all()
+    if rows:
+        return rows, slot
+
+    # Tier 3: catch-all (qualsiasi cluster, qualsiasi language)
+    rows = base_q.all()
+    return rows, slot
+
+
+def _select_variant(db: DBSession, slot_key: str, cluster: Optional[str] = None,
+                     language: str = "it"):
+    """
+    MAB epsilon-greedy:
+      - Se total exposures per slot < _CRO_MIN_EXPOSURES → pure random (cold start)
+      - Altrimenti: con probabilità EPSILON → random (exploration);
+                    altrimenti → variant con winrate massimo (exploitation).
+      - Tie-break per winrate uguali: variant con meno esposizioni (più esplorazione).
+
+    Ritorna (variant, slot) oppure (None, None) se nessuna variant eligibile.
+    """
+    variants, slot = _eligible_variants(db, slot_key, cluster=cluster, language=language)
+    if not variants:
+        return None, None
+
+    total_exposures = sum(v.exposure_count or 0 for v in variants)
+
+    # Cold start: troppo poco signal, gira pure random
+    if total_exposures < _CRO_MIN_EXPOSURES:
+        return _cro_random.choice(variants), slot
+
+    # Exploration: con epsilon% probabilità → random
+    if _cro_random.random() < _CRO_EPSILON:
+        return _cro_random.choice(variants), slot
+
+    # Exploitation: prendi quella con winrate massimo
+    def winrate(v):
+        return (v.win_count or 0) / max(v.exposure_count or 0, 1)
+
+    sorted_variants = sorted(variants, key=lambda v: (-winrate(v), v.exposure_count or 0))
+    return sorted_variants[0], slot
+
+
+def _record_exposure(db: DBSession, variant_id: int, user_id: Optional[str] = None,
+                      session_id: Optional[str] = None):
+    """
+    Log un'esposizione. Increment exposure_count atomicamente.
+    Ritorna CROExposure persisted (con id valido per future conversion linking).
+    """
+    from models.database import CROVariant, CROExposure
+    from datetime import datetime as dt
+
+    exposure = CROExposure(
+        variant_id=variant_id,
+        user_id=user_id,
+        session_id=session_id,
+        served_at=dt.utcnow(),
+    )
+    db.add(exposure)
+    # Bump counter
+    variant = db.query(CROVariant).filter(CROVariant.id == variant_id).first()
+    if variant:
+        variant.exposure_count = (variant.exposure_count or 0) + 1
+    db.commit()
+    db.refresh(exposure)
+    return exposure
+
+
+def _record_conversion(db: DBSession, exposure_id: int, conversion_type: str,
+                        value_eur: Optional[float] = None):
+    """
+    Registra una conversion linkata a un'exposure. Increment win_count della variant.
+    Idempotente: se l'exposure è già 'converted', non duplica.
+    """
+    from models.database import CROVariant, CROExposure, CROConversion
+    from datetime import datetime as dt
+    from decimal import Decimal
+
+    exposure = db.query(CROExposure).filter(CROExposure.id == exposure_id).first()
+    if not exposure:
+        return None, "exposure_not_found"
+    if exposure.converted:
+        return exposure, "already_converted"
+
+    conversion = CROConversion(
+        exposure_id=exposure_id,
+        conversion_type=conversion_type,
+        value_eur=Decimal(str(value_eur)) if value_eur is not None else None,
+    )
+    db.add(conversion)
+    exposure.converted = True
+    exposure.conversion_recorded_at = dt.utcnow()
+    variant = db.query(CROVariant).filter(CROVariant.id == exposure.variant_id).first()
+    if variant:
+        variant.win_count = (variant.win_count or 0) + 1
+    db.commit()
+    return conversion, "ok"
+
+
+@app.post("/v1/cro/slot")
+async def cro_slot_upsert(
+    request: Request,
+    payload: Dict = Body(...),
+    db: DBSession = Depends(get_db)
+):
+    """
+    Admin: crea/aggiorna uno slot CRO. Auth API_KEY.
+    Body: {slot_key, description?, active?}
+    Idempotente: UPSERT su slot_key.
+    """
+    from models.database import CROSlot
+
+    api_key = (request.headers.get("x-api-key") or request.query_params.get("api_key") or "").strip()
+    expected = (os.environ.get("API_KEY") or "albeni-gsc-2026").strip()
+    if api_key != expected:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    slot_key = (payload.get("slot_key") or "").strip()
+    if not slot_key:
+        raise HTTPException(status_code=400, detail="Missing slot_key")
+
+    _ensure_cro_tables(db)
+    existing = db.query(CROSlot).filter(CROSlot.slot_key == slot_key).first()
+    if existing:
+        if "description" in payload:
+            existing.description = payload.get("description")
+        if "active" in payload:
+            existing.active = bool(payload.get("active"))
+        db.commit()
+        return {"status": "updated", "slot_id": existing.id, "slot_key": slot_key}
+    slot = CROSlot(
+        slot_key=slot_key,
+        description=payload.get("description"),
+        active=bool(payload.get("active", True)),
+    )
+    db.add(slot)
+    db.commit()
+    db.refresh(slot)
+    return {"status": "created", "slot_id": slot.id, "slot_key": slot_key}
+
+
+@app.post("/v1/cro/variant")
+async def cro_variant_upsert(
+    request: Request,
+    payload: Dict = Body(...),
+    db: DBSession = Depends(get_db)
+):
+    """
+    Admin: crea/aggiorna una variant. Auth API_KEY.
+    Body: {slot_key, variant_key, text, cluster?, language?, active?}
+    UPSERT su (slot_key, variant_key).
+    NB: non resetta exposure_count/win_count su update — questi accumulano.
+    """
+    from models.database import CROSlot, CROVariant
+
+    api_key = (request.headers.get("x-api-key") or request.query_params.get("api_key") or "").strip()
+    expected = (os.environ.get("API_KEY") or "albeni-gsc-2026").strip()
+    if api_key != expected:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    slot_key = (payload.get("slot_key") or "").strip()
+    variant_key = (payload.get("variant_key") or "").strip()
+    text = payload.get("text") or ""
+    if not slot_key or not variant_key or not text:
+        raise HTTPException(status_code=400, detail="Required: slot_key, variant_key, text")
+
+    _ensure_cro_tables(db)
+    slot = db.query(CROSlot).filter(CROSlot.slot_key == slot_key).first()
+    if not slot:
+        raise HTTPException(status_code=404, detail=f"Slot '{slot_key}' not found (create via POST /v1/cro/slot first)")
+
+    existing = db.query(CROVariant).filter(
+        CROVariant.slot_id == slot.id, CROVariant.variant_key == variant_key
+    ).first()
+
+    if existing:
+        existing.text = text
+        if "cluster" in payload:
+            existing.cluster = payload.get("cluster") or None
+        if "language" in payload:
+            existing.language = (payload.get("language") or "it").lower()[:5]
+        if "active" in payload:
+            existing.active = bool(payload.get("active"))
+        db.commit()
+        return {"status": "updated", "variant_id": existing.id,
+                "exposure_count": existing.exposure_count, "win_count": existing.win_count}
+
+    variant = CROVariant(
+        slot_id=slot.id,
+        variant_key=variant_key,
+        text=text,
+        cluster=payload.get("cluster") or None,
+        language=(payload.get("language") or "it").lower()[:5],
+        active=bool(payload.get("active", True)),
+    )
+    db.add(variant)
+    db.commit()
+    db.refresh(variant)
+    return {"status": "created", "variant_id": variant.id}
+
+
+@app.get("/v1/cro/microcopy")
+async def cro_microcopy(
+    slot: str = Query(..., description="slot_key (es. 'homepage_hero_cta')"),
+    cluster: Optional[str] = Query(None, description="Filtro cluster comportamentale"),
+    language: str = Query(default="it", description="Codice lingua (it, en, de, fr)"),
+    user_id: Optional[str] = Query(None, description="UUID utente (per dedup esposizioni)"),
+    session_id: Optional[str] = Query(None, description="Session ID per dedup intra-sessione"),
+    db: DBSession = Depends(get_db)
+):
+    """
+    Endpoint principale del CRO Engine — serve il testo della variant scelta dal MAB.
+    Chiamato dal widget JS al pageload, ritorna {variant_id, variant_key, text, exposure_id}.
+
+    Logica:
+    1. Selection MAB epsilon-greedy (10% exploration / 90% exploitation, vedi _select_variant)
+    2. Log exposure su cro_exposures (bump exposure_count della variant)
+    3. Ritorna l'exposure_id per il widget — necessario per /v1/cro/conversion futuro
+
+    No auth: read-only public endpoint (chiamato da WP frontend senza credenziali).
+    """
+    _ensure_cro_tables(db)
+
+    variant, slot_obj = _select_variant(db, slot, cluster=cluster, language=language)
+    if not variant:
+        # No variant configurata → ritorna 200 con fallback null, il widget mostrerà il default hardcoded
+        return {
+            "found": False,
+            "slot_key": slot,
+            "reason": "no_active_variant_for_slot_cluster_language",
+            "filters": {"cluster": cluster, "language": language},
+        }
+
+    exposure = _record_exposure(db, variant.id, user_id=user_id, session_id=session_id)
+
+    return {
+        "found": True,
+        "slot_key": slot,
+        "variant_id": variant.id,
+        "variant_key": variant.variant_key,
+        "text": variant.text,
+        "exposure_id": exposure.id,
+        "cluster": variant.cluster,
+        "language": variant.language,
+    }
+
+
+@app.post("/v1/cro/conversion")
+async def cro_conversion(
+    request: Request,
+    payload: Dict = Body(...),
+    db: DBSession = Depends(get_db)
+):
+    """
+    Registra conversion event attribuita a una specifica exposure.
+    Body: {exposure_id, conversion_type, value_eur?}
+    Auth API_KEY (per evitare conversion injection da client malevoli).
+
+    Effetti: incrementa win_count della variant, marca l'exposure converted=True.
+    Idempotente: se l'exposure è già 'converted', non incrementa nuovamente.
+    """
+    api_key = (request.headers.get("x-api-key") or request.query_params.get("api_key") or "").strip()
+    expected = (os.environ.get("API_KEY") or "albeni-gsc-2026").strip()
+    if api_key != expected:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    exposure_id = payload.get("exposure_id")
+    conversion_type = (payload.get("conversion_type") or "").strip() or "default"
+    value_eur = payload.get("value_eur")
+
+    if not exposure_id:
+        raise HTTPException(status_code=400, detail="Missing exposure_id")
+
+    _ensure_cro_tables(db)
+    conversion, status = _record_conversion(db, int(exposure_id), conversion_type,
+                                             value_eur=float(value_eur) if value_eur is not None else None)
+    if status == "exposure_not_found":
+        raise HTTPException(status_code=404, detail="Exposure not found")
+    return {
+        "status": status,
+        "exposure_id": exposure_id,
+        "conversion_type": conversion_type,
+        "value_eur": value_eur,
+    }
+
+
+@app.get("/v1/cro/stats")
+async def cro_stats(
+    slot: Optional[str] = Query(None, description="Filtra per slot_key (omesso = tutti)"),
+    db: DBSession = Depends(get_db)
+):
+    """
+    Performance per variant. Comodo per dashboard CRO Live tile (Task #7.3)
+    + decisioni operative (pause/promote variant manualmente).
+
+    Ritorna per ogni variant: exposures, wins, cr_pct, lift_vs_avg, status_band.
+    Status band:
+      - 'cold'    → meno di 30 esposizioni (cold start MAB)
+      - 'live'    → tra 30 e 200 esposizioni
+      - 'mature'  → oltre 200 esposizioni, stats statisticamente solide
+    """
+    from models.database import CROSlot, CROVariant
+
+    _ensure_cro_tables(db)
+
+    q = db.query(CROVariant).filter(CROVariant.active == True)
+    slot_obj = None
+    if slot:
+        slot_obj = db.query(CROSlot).filter(CROSlot.slot_key == slot).first()
+        if not slot_obj:
+            raise HTTPException(status_code=404, detail=f"Slot '{slot}' not found")
+        q = q.filter(CROVariant.slot_id == slot_obj.id)
+    variants = q.all()
+
+    results = []
+    by_slot: Dict[int, List] = {}
+    for v in variants:
+        by_slot.setdefault(v.slot_id, []).append(v)
+
+    for slot_id, slot_variants in by_slot.items():
+        s = db.query(CROSlot).filter(CROSlot.id == slot_id).first()
+        if not s:
+            continue
+        total_exp = sum(v.exposure_count or 0 for v in slot_variants)
+        total_wins = sum(v.win_count or 0 for v in slot_variants)
+        avg_cr = (total_wins / total_exp * 100) if total_exp > 0 else 0
+
+        variant_data = []
+        for v in slot_variants:
+            exp = v.exposure_count or 0
+            wins = v.win_count or 0
+            cr = (wins / exp * 100) if exp > 0 else 0
+            lift = (cr - avg_cr) if total_exp > 0 else 0
+            if exp < 30:
+                band = "cold"
+            elif exp < 200:
+                band = "live"
+            else:
+                band = "mature"
+            variant_data.append({
+                "variant_id": v.id,
+                "variant_key": v.variant_key,
+                "text": v.text,
+                "cluster": v.cluster,
+                "language": v.language,
+                "exposures": exp,
+                "wins": wins,
+                "cr_pct": round(cr, 2),
+                "lift_vs_avg_pp": round(lift, 2),
+                "band": band,
+            })
+
+        # Sort by CR desc per default
+        variant_data.sort(key=lambda x: -x["cr_pct"])
+        results.append({
+            "slot_key": s.slot_key,
+            "description": s.description,
+            "total_exposures": total_exp,
+            "total_conversions": total_wins,
+            "avg_cr_pct": round(avg_cr, 2),
+            "variants": variant_data,
+        })
+
+    return {"slots": results, "total_slots": len(results)}
+
+
+# ===================================================================
 # CRAWL MAP — Step 5 (2026-05-14, NEW-02 audit closure)
 # Migrazione di wom_crawl_map.json + mu_crawl_map.json dal filesystem
 # committato a git verso Postgres con UPSERT incrementale.
