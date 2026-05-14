@@ -14,7 +14,7 @@ import logging
 import time
 import json
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from contextlib import asynccontextmanager
 from typing import Optional, Dict, List
 
@@ -109,11 +109,29 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.exception(f"Scheduled pipeline recompute FAILED: {e}")
 
+    # Anomaly Detection v0 (Step 3b, 2026-05-14). Daily KPI snapshot + detection.
+    # Gira alle 04:15 UTC (≈06:15 Europe/Rome estate) — finestra notturna,
+    # marketing_attributions del giorno prima sono già consolidate.
+    async def _scheduled_anomaly():
+        try:
+            db = next(get_db())
+            try:
+                snap = _take_kpi_snapshot(db)
+                det = _detect_anomalies(db)
+                logger.info(f"Scheduled anomaly snapshot OK: written={snap.get('written')} "
+                            f"alerts_created={det.get('alerts_created')}")
+            finally:
+                db.close()
+        except Exception as e:
+            logger.exception(f"Scheduled anomaly snapshot FAILED: {e}")
+
     scheduler = AsyncIOScheduler()
     scheduler.add_job(_scheduled_recompute, "interval", minutes=15, id="pipeline_consumer",
                       coalesce=True, max_instances=1, misfire_grace_time=300)
+    scheduler.add_job(_scheduled_anomaly, "cron", hour=4, minute=15, id="anomaly_daily",
+                      coalesce=True, max_instances=1, misfire_grace_time=3600)
     scheduler.start()
-    logger.info("Pipeline consumer scheduled every 15 minutes")
+    logger.info("Schedulers active: pipeline_consumer (15m) + anomaly_daily (04:15 UTC)")
 
     yield
 
@@ -1344,6 +1362,610 @@ async def adv_spend_summary(
 
 
 # ===================================================================
+# CRAWL MAP — Step 5 (2026-05-14, NEW-02 audit closure)
+# Migrazione di wom_crawl_map.json + mu_crawl_map.json dal filesystem
+# committato a git verso Postgres con UPSERT incrementale.
+# Fase 1 (questa): tabella + endpoint + migration script.
+# Fase 2 (Task #14): switch dei middleware Node a leggere via API.
+# ===================================================================
+
+_CRAWL_VERDICTS = {"PASS", "NEUTRAL", "N/A", "FAIL", "UNKNOWN"}
+_CRAWL_SITES = {"mu", "wom"}
+
+
+def _ensure_crawl_map_table(db: DBSession):
+    """Auto-create crawl_map_entries. Idempotente."""
+    from models.database import CrawlMapEntry, engine
+    try:
+        CrawlMapEntry.__table__.create(bind=engine, checkfirst=True)
+    except Exception as e:
+        logger.warning(f"crawl_map_entries create check failed (probably already exists): {e}")
+
+
+def _normalize_url_path(path_str: str) -> str:
+    """
+    Normalizza il path per matchare la logica di getVerdict() in indexAwareRouter.js:
+    rimuove trailing slash (eccetto root '/'). Idempotente.
+    """
+    if not path_str:
+        return "/"
+    p = path_str.strip()
+    if p == "/":
+        return p
+    return p.rstrip("/")
+
+
+@app.post("/v1/crawl-map/batch")
+async def crawl_map_batch(
+    request: Request,
+    payload: Dict = Body(...),
+    db: DBSession = Depends(get_db)
+):
+    """
+    Batch UPSERT di verdetti crawl. Auth API_KEY.
+    Body: {"site": "mu" | "wom", "entries": [{"url_path": "/...", "verdict": "PASS", "source"?: "..."}], "source"?: "..."}
+    Idempotente: re-POST stessa URL+site sovrascrive.
+    """
+    from models.database import CrawlMapEntry
+    from datetime import datetime as dt
+
+    api_key = (request.headers.get("x-api-key") or request.query_params.get("api_key") or "").strip()
+    expected = (os.environ.get("API_KEY") or "albeni-gsc-2026").strip()
+    if api_key != expected:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    site = (payload.get("site") or "").strip().lower()
+    if site not in _CRAWL_SITES:
+        raise HTTPException(status_code=400, detail=f"Invalid site '{site}'. Allowed: {sorted(_CRAWL_SITES)}")
+    entries = payload.get("entries")
+    if not isinstance(entries, list) or not entries:
+        raise HTTPException(status_code=400, detail="Body must contain non-empty 'entries' array")
+    default_source = (payload.get("source") or "manual")[:50]
+
+    _ensure_crawl_map_table(db)
+
+    inserted = 0
+    errors = []
+    now_dt = dt.utcnow()
+    for i, e in enumerate(entries):
+        try:
+            url_path = _normalize_url_path(e.get("url_path") or "")
+            verdict = (e.get("verdict") or "").strip().upper()
+            if not url_path:
+                raise ValueError("missing url_path")
+            if verdict not in _CRAWL_VERDICTS:
+                raise ValueError(f"invalid verdict '{verdict}' (allowed: {sorted(_CRAWL_VERDICTS)})")
+            # UPSERT delete-then-insert (pattern coerente con gsc/adv)
+            db.query(CrawlMapEntry).filter(
+                CrawlMapEntry.site == site,
+                CrawlMapEntry.url_path == url_path
+            ).delete()
+            db.add(CrawlMapEntry(
+                site=site,
+                url_path=url_path,
+                verdict=verdict,
+                last_scanned_at=now_dt,
+                source=(e.get("source") or default_source)[:50],
+            ))
+            inserted += 1
+        except (ValueError, TypeError) as ex:
+            errors.append({"index": i, "error": str(ex), "entry": e})
+
+    db.commit()
+    total = db.query(CrawlMapEntry).filter(CrawlMapEntry.site == site).count()
+    return {
+        "status": "ok" if not errors else "partial",
+        "site": site,
+        "inserted": inserted,
+        "errors": errors,
+        "total_rows_for_site": total,
+    }
+
+
+@app.get("/v1/crawl-map")
+async def crawl_map_get(
+    site: str = Query(..., description="'mu' | 'wom'"),
+    url: Optional[str] = Query(None, description="Optional url_path filter (single URL lookup)"),
+    verdict: Optional[str] = Query(None, description="Filter by verdict (PASS/NEUTRAL/...)"),
+    limit: int = Query(default=500, ge=1, le=5000),
+    db: DBSession = Depends(get_db)
+):
+    """
+    Lookup crawl map. 3 modalità d'uso:
+      1) Single URL: ?site=mu&url=/path → ritorna {verdict, last_scanned_at} o 404
+      2) Filter by verdict: ?site=mu&verdict=PASS → ritorna lista URL con quel verdict
+      3) Full dump per site: ?site=mu → ritorna fino a `limit` entries
+
+    Pensato per:
+      - Middleware Node (Task #14): single URL lookup con cache 5min
+      - Dashboard / debug: full dump
+      - Sync script: filter by verdict per identificare URL da ri-scan
+    """
+    from models.database import CrawlMapEntry
+
+    site_norm = site.strip().lower()
+    if site_norm not in _CRAWL_SITES:
+        raise HTTPException(status_code=400, detail=f"Invalid site '{site}'. Allowed: {sorted(_CRAWL_SITES)}")
+
+    _ensure_crawl_map_table(db)
+
+    # Single URL mode
+    if url:
+        url_norm = _normalize_url_path(url)
+        row = db.query(CrawlMapEntry).filter(
+            CrawlMapEntry.site == site_norm,
+            CrawlMapEntry.url_path == url_norm
+        ).first()
+        if not row:
+            return {"site": site_norm, "url_path": url_norm, "verdict": "UNKNOWN", "found": False}
+        return {
+            "site": site_norm,
+            "url_path": row.url_path,
+            "verdict": row.verdict,
+            "last_scanned_at": row.last_scanned_at.isoformat() if row.last_scanned_at else None,
+            "source": row.source,
+            "found": True,
+        }
+
+    # List mode
+    q = db.query(CrawlMapEntry).filter(CrawlMapEntry.site == site_norm)
+    if verdict:
+        q = q.filter(CrawlMapEntry.verdict == verdict.strip().upper())
+    rows = q.order_by(CrawlMapEntry.url_path.asc()).limit(limit).all()
+    return {
+        "site": site_norm,
+        "filter_verdict": verdict,
+        "total": len(rows),
+        "entries": [
+            {"url_path": r.url_path, "verdict": r.verdict,
+             "last_scanned_at": r.last_scanned_at.isoformat() if r.last_scanned_at else None,
+             "source": r.source}
+            for r in rows
+        ],
+    }
+
+
+@app.get("/v1/crawl-map/stats")
+async def crawl_map_stats(
+    site: Optional[str] = Query(None, description="Optional filter, otherwise both sites"),
+    db: DBSession = Depends(get_db)
+):
+    """
+    Distribuzione verdetti per site. Comodo per dashboard / decisioni ADV budget allocator
+    (es. quante URL stanno in NEUTRAL → paid coverage da attivare).
+    """
+    from models.database import CrawlMapEntry
+    from sqlalchemy import func
+
+    _ensure_crawl_map_table(db)
+
+    sites_to_check = [site.strip().lower()] if site else sorted(_CRAWL_SITES)
+    out: Dict = {}
+    for s in sites_to_check:
+        if s not in _CRAWL_SITES:
+            continue
+        rows = (
+            db.query(CrawlMapEntry.verdict, func.count(CrawlMapEntry.id))
+            .filter(CrawlMapEntry.site == s)
+            .group_by(CrawlMapEntry.verdict)
+            .all()
+        )
+        breakdown = {v: int(n) for v, n in rows}
+        total = sum(breakdown.values())
+        latest = db.query(func.max(CrawlMapEntry.last_scanned_at)).filter(CrawlMapEntry.site == s).scalar()
+        out[s] = {
+            "total": total,
+            "by_verdict": breakdown,
+            "pct_indexed": round(breakdown.get("PASS", 0) / total * 100, 1) if total else None,
+            "latest_scan_at": latest.isoformat() if latest else None,
+        }
+    return {"sites": out}
+
+
+# ===================================================================
+# ANOMALY DETECTION v0 — Step 3b (2026-05-14)
+# Cron daily registra KPI snapshot; detection confronta vs rolling 7d avg;
+# alert generati in anomaly_alerts.
+# Sblocca Tile T8 della Dashboard Executive (oggi buglist statica).
+#
+# KPI monitorati v0 (lista estendibile):
+#   - cpa_7d                       — CPA paid (€) calcolato in /v1/executive/aggregates
+#   - organic_pct                  — % attribuzioni organic vs paid
+#   - cluster_heritage_mature_cr   — CR % del cluster narrativo principale
+#
+# Soglie deviazione default:
+#   INFO 10-25% · WARNING 25-50% · CRITICAL >50%  (o cross-threshold)
+# ===================================================================
+
+# Soglie deviazione (override via env se serve)
+_ANOMALY_INFO_PCT     = float(os.environ.get("ANOMALY_INFO_PCT", "10"))
+_ANOMALY_WARN_PCT     = float(os.environ.get("ANOMALY_WARN_PCT", "25"))
+_ANOMALY_CRIT_PCT     = float(os.environ.get("ANOMALY_CRIT_PCT", "50"))
+_ANOMALY_BASELINE_DAYS = int(os.environ.get("ANOMALY_BASELINE_DAYS", "7"))
+
+
+def _ensure_anomaly_tables(db: DBSession):
+    """Auto-create kpi_snapshots + anomaly_alerts. Idempotente."""
+    from models.database import KPISnapshot, AnomalyAlert, engine
+    try:
+        KPISnapshot.__table__.create(bind=engine, checkfirst=True)
+        AnomalyAlert.__table__.create(bind=engine, checkfirst=True)
+    except Exception as e:
+        logger.warning(f"anomaly tables create check failed (probably already exist): {e}")
+
+
+def _classify_severity(deviation_pct: float, cross_threshold: bool = False) -> Optional[str]:
+    """
+    Severity ladder con override "cross-threshold" che forza CRITICAL.
+    Ritorna None se la deviazione è sotto la soglia INFO (nessun alert da creare).
+    """
+    if cross_threshold:
+        return "CRITICAL"
+    abs_dev = abs(deviation_pct)
+    if abs_dev >= _ANOMALY_CRIT_PCT:
+        return "CRITICAL"
+    if abs_dev >= _ANOMALY_WARN_PCT:
+        return "WARNING"
+    if abs_dev >= _ANOMALY_INFO_PCT:
+        return "INFO"
+    return None
+
+
+def _take_kpi_snapshot(db: DBSession, target_date: Optional[date] = None) -> Dict:
+    """
+    Calcola i 3 KPI v0 di oggi e li scrive in kpi_snapshots (UPSERT su date,metric_name).
+    Ritorna {date, metrics: {metric_name: {value, sample_size, extra}}, written: N}.
+
+    NB: target_date opzionale per backfill (es. _take_kpi_snapshot(db, target_date=date(2026,5,10))).
+    """
+    from models.database import KPISnapshot
+    from sqlalchemy import text as sql_text
+    from datetime import datetime, timezone, timedelta, date as dt_date
+
+    _ensure_anomaly_tables(db)
+    snap_date = target_date or datetime.now(timezone.utc).date()
+
+    # Finestra di riferimento per i KPI "rolling 7d" (=cpa_7d, org_paid_mix)
+    window_end = snap_date + timedelta(days=1)  # esclusivo
+    window_start = window_end - timedelta(days=7)
+
+    metrics: Dict[str, Dict] = {}
+
+    # ── 1) CPA 7d ──
+    spend_row = db.execute(sql_text(
+        "SELECT COALESCE(SUM(amount_eur), 0) AS s "
+        "FROM adv_spend WHERE date >= :s AND date < :e"
+    ), {"s": window_start, "e": window_end}).fetchone()
+    spend = float(spend_row[0] or 0)
+    conv_row = db.execute(sql_text(
+        "SELECT COUNT(*) FROM marketing_attributions "
+        "WHERE converted=true "
+        "  AND created_at >= :s AND created_at < :e "
+        "  AND LOWER(COALESCE(medium,'')) IN ('cpc','ppc','paid_social','sponsored','dpa','display','story')"
+    ), {"s": datetime.combine(window_start, datetime.min.time()),
+        "e": datetime.combine(window_end, datetime.min.time())}).fetchone()
+    paid_conv = int(conv_row[0] or 0)
+    cpa = (spend / paid_conv) if (spend > 0 and paid_conv > 0) else None
+    cpa_band = None
+    if cpa is not None:
+        cpa_band = "VERDE" if cpa <= 9 else "GIALLO" if cpa <= 15 else "ROSSO" if cpa <= 34 else "NERO"
+    metrics["cpa_7d"] = {
+        "value": cpa,
+        "sample_size": paid_conv,
+        "extra": {"total_spend_eur": round(spend, 2), "band": cpa_band},
+    }
+
+    # ── 2) Organic share ──
+    mix_rows = db.execute(sql_text("""
+        SELECT
+            CASE WHEN LOWER(COALESCE(medium,'')) IN ('organic','referral','none','(none)','email','direct') THEN 'org'
+                 WHEN LOWER(COALESCE(medium,'')) IN ('cpc','ppc','paid_social','sponsored','dpa','display','story') THEN 'paid'
+                 ELSE 'unk' END AS bkt,
+            COUNT(*)
+        FROM marketing_attributions
+        WHERE created_at >= :s AND created_at < :e
+        GROUP BY bkt
+    """), {"s": datetime.combine(window_start, datetime.min.time()),
+           "e": datetime.combine(window_end, datetime.min.time())}).fetchall()
+    mix = {b: int(n) for b, n in mix_rows}
+    total_mix = sum(mix.values())
+    org_pct = round(mix.get("org", 0) / total_mix * 100, 2) if total_mix else None
+    metrics["organic_pct"] = {
+        "value": org_pct,
+        "sample_size": total_mix,
+        "extra": {"org": mix.get("org", 0), "paid": mix.get("paid", 0), "unk": mix.get("unk", 0)},
+    }
+
+    # ── 3) Heritage Mature CR ──
+    hm_row = db.execute(sql_text("""
+        SELECT COUNT(*) AS attr,
+               COUNT(*) FILTER (WHERE ma.converted=true) AS conv
+        FROM marketing_attributions ma
+        JOIN users u ON u.id = ma.user_id
+        WHERE LOWER(COALESCE(u.assigned_cluster, '')) = 'heritage_mature'
+          AND ma.created_at >= :s AND ma.created_at < :e
+    """), {"s": datetime.combine(window_start, datetime.min.time()),
+           "e": datetime.combine(window_end, datetime.min.time())}).fetchone()
+    hm_attr = int(hm_row[0] or 0); hm_conv = int(hm_row[1] or 0)
+    hm_cr = round(hm_conv / hm_attr * 100, 2) if hm_attr > 0 else None
+    metrics["cluster_heritage_mature_cr"] = {
+        "value": hm_cr,
+        "sample_size": hm_attr,
+        "extra": {"conversions": hm_conv, "target_cr_pct": 4.8},
+    }
+
+    # ── Persist (UPSERT per metric_name + date) ──
+    written = 0
+    for name, m in metrics.items():
+        db.query(KPISnapshot).filter(
+            KPISnapshot.date == snap_date,
+            KPISnapshot.metric_name == name
+        ).delete()
+        db.add(KPISnapshot(
+            date=snap_date,
+            metric_name=name,
+            value=m["value"],
+            sample_size=m["sample_size"],
+            extra=m["extra"],
+        ))
+        written += 1
+    db.commit()
+    return {"date": snap_date.isoformat(), "metrics": metrics, "written": written}
+
+
+def _detect_anomalies(db: DBSession, ref_date: Optional[date] = None) -> Dict:
+    """
+    Confronta i valori di ref_date (default = oggi) con la media rolling sui giorni precedenti.
+    Per ogni metrica fuori soglia (e con baseline non-null) crea un AnomalyAlert.
+    Idempotente per metric+date: se esiste già un alert UNRESOLVED stesso giorno+metric, non duplica.
+    Ritorna {ref_date, baseline_days, alerts_created}.
+    """
+    from models.database import KPISnapshot, AnomalyAlert
+    from sqlalchemy import text as sql_text
+    from datetime import datetime, timezone, timedelta
+
+    _ensure_anomaly_tables(db)
+    today = ref_date or datetime.now(timezone.utc).date()
+    baseline_from = today - timedelta(days=_ANOMALY_BASELINE_DAYS)
+    baseline_to = today  # esclusivo: rolling AVG dei N giorni PRECEDENTI
+
+    today_snaps = db.query(KPISnapshot).filter(KPISnapshot.date == today).all()
+    if not today_snaps:
+        return {"ref_date": today.isoformat(), "alerts_created": 0,
+                "skipped_reason": "no_snapshots_for_ref_date"}
+
+    alerts_created = 0
+    details = []
+    for snap in today_snaps:
+        if snap.value is None:
+            continue
+        current = float(snap.value)
+
+        # Rolling baseline (escludiamo il giorno stesso)
+        rows = db.query(KPISnapshot.value).filter(
+            KPISnapshot.metric_name == snap.metric_name,
+            KPISnapshot.date >= baseline_from,
+            KPISnapshot.date < baseline_to,
+            KPISnapshot.value.isnot(None),
+        ).all()
+        baseline_vals = [float(r[0]) for r in rows if r[0] is not None]
+        if len(baseline_vals) < 3:
+            # Troppo pochi datapoint storici per giudicare → no alert (warming-up)
+            details.append({"metric": snap.metric_name, "skipped": "insufficient_baseline",
+                            "baseline_count": len(baseline_vals)})
+            continue
+        baseline = sum(baseline_vals) / len(baseline_vals)
+
+        if baseline == 0:
+            # division by zero edge case: tratta qualsiasi current != 0 come CRITICAL
+            deviation_pct = float("inf") if current != 0 else 0.0
+        else:
+            deviation_pct = (current - baseline) / baseline * 100.0
+
+        # Cross-threshold: per cpa_7d, se la banda è cambiata in peggio rispetto a baseline → CRITICAL
+        cross_threshold = False
+        if snap.metric_name == "cpa_7d" and snap.extra:
+            current_band = snap.extra.get("band")
+            # Compare con band del giorno prima
+            prev_snap = db.query(KPISnapshot).filter(
+                KPISnapshot.metric_name == "cpa_7d",
+                KPISnapshot.date < today,
+                KPISnapshot.value.isnot(None),
+            ).order_by(KPISnapshot.date.desc()).first()
+            if prev_snap and prev_snap.extra:
+                prev_band = prev_snap.extra.get("band")
+                band_order = {"VERDE": 0, "GIALLO": 1, "ROSSO": 2, "NERO": 3}
+                if prev_band in band_order and current_band in band_order \
+                   and band_order[current_band] > band_order[prev_band]:
+                    cross_threshold = True
+
+        severity = _classify_severity(deviation_pct, cross_threshold=cross_threshold)
+        if severity is None:
+            details.append({"metric": snap.metric_name, "skipped": "below_info_threshold",
+                            "deviation_pct": round(deviation_pct, 2)})
+            continue
+
+        # Dedup: esiste già alert UNRESOLVED per stessa metric creato oggi?
+        already = db.query(AnomalyAlert).filter(
+            AnomalyAlert.metric_name == snap.metric_name,
+            AnomalyAlert.resolved == False,  # noqa: E712
+            AnomalyAlert.created_at >= datetime.combine(today, datetime.min.time()),
+        ).first()
+        if already:
+            details.append({"metric": snap.metric_name, "skipped": "alert_already_open_today",
+                            "existing_alert_id": already.id})
+            continue
+
+        direction = "↑" if deviation_pct > 0 else "↓"
+        msg = (
+            f"{snap.metric_name}: current={current:.2f}, baseline_{len(baseline_vals)}d_avg={baseline:.2f}, "
+            f"deviation {direction}{abs(deviation_pct):.1f}%"
+        )
+        if cross_threshold:
+            msg += " · CROSS-THRESHOLD CPA band"
+
+        alert = AnomalyAlert(
+            metric_name=snap.metric_name,
+            severity=severity,
+            current_value=current,
+            baseline_value=baseline,
+            deviation_pct=round(deviation_pct, 2) if deviation_pct != float("inf") else None,
+            message=msg,
+            resolved=False,
+        )
+        db.add(alert)
+        alerts_created += 1
+        details.append({"metric": snap.metric_name, "severity": severity,
+                        "current": current, "baseline": round(baseline, 4),
+                        "deviation_pct": round(deviation_pct, 2) if deviation_pct != float("inf") else "inf"})
+
+    db.commit()
+    return {
+        "ref_date": today.isoformat(),
+        "baseline_days": _ANOMALY_BASELINE_DAYS,
+        "alerts_created": alerts_created,
+        "details": details,
+    }
+
+
+@app.post("/v1/anomaly/snapshot")
+async def anomaly_snapshot(
+    request: Request,
+    backfill_date: Optional[str] = Query(default=None, description="YYYY-MM-DD, default oggi"),
+    db: DBSession = Depends(get_db)
+):
+    """
+    Trigger manuale dello snapshot KPI + anomaly detection.
+    Auth: stesso API_KEY usato dagli altri endpoint di ingest.
+    Chiamato automaticamente dallo scheduler APScheduler (lifespan job).
+    """
+    api_key = (request.headers.get("x-api-key") or request.query_params.get("api_key") or "").strip()
+    expected = (os.environ.get("API_KEY") or "albeni-gsc-2026").strip()
+    if api_key != expected:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    from datetime import datetime as dt
+    target_date = None
+    if backfill_date:
+        try:
+            target_date = dt.fromisoformat(backfill_date).date()
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Invalid date '{backfill_date}'")
+
+    snap = _take_kpi_snapshot(db, target_date=target_date)
+    det = _detect_anomalies(db, ref_date=target_date)
+    return {"status": "ok", "snapshot": snap, "detection": det}
+
+
+@app.get("/v1/anomaly/alerts")
+async def anomaly_alerts(
+    days: int = Query(default=7, ge=1, le=90),
+    include_resolved: bool = Query(default=False),
+    min_severity: str = Query(default="INFO", description="INFO | WARNING | CRITICAL"),
+    db: DBSession = Depends(get_db)
+):
+    """
+    Lista alert per Tile T8 della Dashboard Executive. Default: 7gg, solo aperti, severity ≥ INFO.
+    """
+    from models.database import AnomalyAlert
+    from datetime import datetime, timezone, timedelta
+
+    _ensure_anomaly_tables(db)
+    since = datetime.now(timezone.utc) - timedelta(days=days)
+
+    sev_order = {"INFO": 0, "WARNING": 1, "CRITICAL": 2}
+    min_idx = sev_order.get(min_severity.upper(), 0)
+
+    q = db.query(AnomalyAlert).filter(AnomalyAlert.created_at >= since)
+    if not include_resolved:
+        q = q.filter(AnomalyAlert.resolved == False)  # noqa: E712
+    rows = q.order_by(AnomalyAlert.created_at.desc()).all()
+
+    items = []
+    counts = {"INFO": 0, "WARNING": 0, "CRITICAL": 0}
+    for r in rows:
+        if sev_order.get(r.severity, 0) < min_idx:
+            continue
+        counts[r.severity] = counts.get(r.severity, 0) + 1
+        items.append({
+            "id": r.id,
+            "metric_name": r.metric_name,
+            "severity": r.severity,
+            "current_value": float(r.current_value) if r.current_value is not None else None,
+            "baseline_value": float(r.baseline_value) if r.baseline_value is not None else None,
+            "deviation_pct": float(r.deviation_pct) if r.deviation_pct is not None else None,
+            "message": r.message,
+            "resolved": r.resolved,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+        })
+
+    return {
+        "window_days": days,
+        "total": len(items),
+        "counts": counts,
+        "min_severity": min_severity.upper(),
+        "alerts": items,
+    }
+
+
+@app.get("/v1/anomaly/baseline")
+async def anomaly_baseline(
+    metric: str = Query(..., description="metric_name (es. cpa_7d)"),
+    days: int = Query(default=14, ge=1, le=90),
+    db: DBSession = Depends(get_db)
+):
+    """Debug endpoint: ritorna gli snapshot storici di una metrica + media."""
+    from models.database import KPISnapshot
+    from datetime import datetime, timezone, timedelta
+
+    _ensure_anomaly_tables(db)
+    since = (datetime.now(timezone.utc) - timedelta(days=days)).date()
+    rows = (
+        db.query(KPISnapshot)
+        .filter(KPISnapshot.metric_name == metric, KPISnapshot.date >= since)
+        .order_by(KPISnapshot.date.asc())
+        .all()
+    )
+    values = [float(r.value) for r in rows if r.value is not None]
+    avg = sum(values) / len(values) if values else None
+    return {
+        "metric": metric,
+        "window_days": days,
+        "snapshots": [
+            {"date": r.date.isoformat(), "value": float(r.value) if r.value is not None else None,
+             "sample_size": r.sample_size, "extra": r.extra}
+            for r in rows
+        ],
+        "avg": avg,
+        "n_with_value": len(values),
+    }
+
+
+@app.post("/v1/anomaly/alerts/{alert_id}/resolve")
+async def anomaly_alert_resolve(
+    alert_id: int,
+    request: Request,
+    db: DBSession = Depends(get_db)
+):
+    """Marca un alert come risolto. Auth API_KEY come endpoint di ingest."""
+    from models.database import AnomalyAlert
+    from datetime import datetime
+
+    api_key = (request.headers.get("x-api-key") or request.query_params.get("api_key") or "").strip()
+    expected = (os.environ.get("API_KEY") or "albeni-gsc-2026").strip()
+    if api_key != expected:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    alert = db.query(AnomalyAlert).filter(AnomalyAlert.id == alert_id).first()
+    if not alert:
+        raise HTTPException(status_code=404, detail="Alert not found")
+    alert.resolved = True
+    alert.resolved_at = datetime.utcnow()
+    db.commit()
+    return {"status": "ok", "alert_id": alert_id, "resolved_at": alert.resolved_at.isoformat()}
+
+
+# ===================================================================
 # DASHBOARD EXECUTIVE — Aggregates (T1 CPA · T2 Org/Paid · T6 CR Cluster)
 # Spec: Spec_Dashboard_Executive_2026-05-14.docx
 # ===================================================================
@@ -1435,13 +2057,55 @@ async def executive_aggregates(
     }
 
     # ── T1 CPA vs Target ──
-    # We don't have an adv_spend table → return null with explicit reason.
-    # Expose proxies (paid attributions, paid conversions) so UI can show context.
+    # CPA = SUM(adv_spend.amount_eur) / COUNT(paid_conversions) sulla stessa finestra di T2.
+    # Soglie tile (Audit_Closure_2026-05-14): VERDE ≤€9 · GIALLO €10-15 · ROSSO €16-34 · NERO ≥€35.
+    # Target sostenibilità modello 36M (doc 19): €17.92 sostenibile · €19.39 max.
+    _ensure_adv_spend_table(db)  # idempotente, costo zero — copre prima esecuzione
+
+    if used_window == "all_time":
+        spend_row = db.execute(text(
+            "SELECT COALESCE(SUM(amount_eur), 0) AS s, COUNT(*) AS n FROM adv_spend"
+        )).fetchone()
+    else:
+        spend_row = db.execute(text(
+            "SELECT COALESCE(SUM(amount_eur), 0) AS s, COUNT(*) AS n "
+            "FROM adv_spend WHERE date >= :since_date"
+        ), {"since_date": window_start.date()}).fetchone()
+    total_spend_eur = float(spend_row[0] or 0)
+    spend_rows = int(spend_row[1] or 0)
+    paid_conv = conv_by_bucket["paid"]
+
+    if total_spend_eur <= 0:
+        cpa_value = None
+        cpa_band = None
+        cpa_reason = "no_spend_in_window" if used_window != "all_time" else "no_adv_spend_data"
+    elif paid_conv <= 0:
+        cpa_value = None
+        cpa_band = None
+        cpa_reason = "no_paid_conversions_in_window"
+    else:
+        cpa = total_spend_eur / paid_conv
+        cpa_value = round(cpa, 2)
+        if cpa <= 9:
+            cpa_band = "VERDE"
+        elif cpa <= 15:
+            cpa_band = "GIALLO"
+        elif cpa <= 34:
+            cpa_band = "ROSSO"
+        else:
+            cpa_band = "NERO"
+        cpa_reason = None
+
     cpa_payload = {
         "window": used_window,
         "computed_at": now.isoformat(),
-        "value": None,
-        "reason": "no_adv_spend_table",
+        "value": cpa_value,
+        "band": cpa_band,
+        "reason": cpa_reason,
+        "total_spend_eur": round(total_spend_eur, 2),
+        "spend_rows": spend_rows,
+        "paid_conversions": paid_conv,
+        "thresholds": {"green_max": 9, "yellow_max": 15, "red_max": 34},
         "target_sustainable_eur": 17.92,
         "target_max_eur": 19.39,
         "proxy": {

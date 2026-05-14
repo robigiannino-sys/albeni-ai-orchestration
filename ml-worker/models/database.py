@@ -257,6 +257,81 @@ class GSCIndexingScan(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+class KPISnapshot(Base):
+    """
+    Snapshot daily di un KPI della Dashboard Executive.
+    Sostiene l'Anomaly Detection v0 (Step 3b, 2026-05-14):
+    - Cron daily registra valori KPI di oggi
+    - Detection confronta oggi vs rolling 7d avg
+    - Alert generati in anomaly_alerts quando deviazione fuori soglia
+
+    UPSERT su (date, metric_name): rerun stesso giorno sovrascrive.
+
+    metric_name convention (lowercase + snake_case):
+      - cpa_7d                       (€)
+      - organic_pct                  (%)
+      - paid_pct                     (%)
+      - cluster_heritage_mature_cr   (%)
+      - cluster_business_pro_cr      (%)
+      - ids_avg                      (n)
+      - pipeline_published_total     (n)
+    """
+    __tablename__ = "kpi_snapshots"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    date = Column(Date, nullable=False, index=True)
+    metric_name = Column(String(80), nullable=False, index=True)
+    value = Column(Numeric(14, 4), nullable=True)        # nullable se KPI non calcolabile (es. CPA con zero spend)
+    sample_size = Column(Integer, nullable=True)         # n. di datapoint usati (paid attr, attribuzioni, ecc.) — utile per filtri qualità
+    extra = Column(JSONB, nullable=True)                 # band, reason, breakdown — payload contestuale
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class AnomalyAlert(Base):
+    """
+    Alert generato dall'engine Anomaly Detection v0.
+    Severity ladder:
+      INFO     · deviazione 10-25% vs baseline 7d
+      WARNING  · deviazione 25-50% vs baseline 7d
+      CRITICAL · deviazione >50% OR cross-threshold (es. CPA che salta a NERO)
+
+    Alert sono "resolved=False" finché non manualmente chiusi via /v1/anomaly/alerts/{id}/resolve
+    (endpoint da aggiungere in iterazione successiva — per ora si lasciano aperti).
+    """
+    __tablename__ = "anomaly_alerts"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    metric_name = Column(String(80), nullable=False, index=True)
+    severity = Column(String(20), nullable=False, index=True)   # INFO | WARNING | CRITICAL
+    current_value = Column(Numeric(14, 4), nullable=True)
+    baseline_value = Column(Numeric(14, 4), nullable=True)
+    deviation_pct = Column(Numeric(8, 2), nullable=True)        # signed: positivo=sopra baseline, negativo=sotto
+    message = Column(Text, nullable=False)
+    resolved = Column(Boolean, default=False, index=True)
+    resolved_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+
+class CrawlMapEntry(Base):
+    """
+    Per-URL crawl/indexing verdict (PASS · NEUTRAL · N/A · FAIL).
+    Migrazione 2026-05-14 (NEW-02 audit closure): da wom_crawl_map.json / mu_crawl_map.json
+    (committati a git nella dashboard ai-router, read-only) a Postgres con UPSERT incrementale.
+
+    UPSERT su (site, url_path): re-scan stessa URL aggiorna senza duplicare.
+    """
+    __tablename__ = "crawl_map_entries"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    site = Column(String(20), nullable=False, index=True)            # 'mu' | 'wom' (matcha middleware Node)
+    url_path = Column(String(500), nullable=False, index=True)        # es. '/de/de-heritage-archive'
+    verdict = Column(String(20), nullable=False, index=True)          # PASS | NEUTRAL | N/A | FAIL | UNKNOWN
+    last_scanned_at = Column(DateTime, default=datetime.utcnow)
+    source = Column(String(50), default="manual")                     # manual | gsc_scan | semrush_scan | migration_json
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class AdvSpend(Base):
     """
     ADV daily spend by channel / campaign.
