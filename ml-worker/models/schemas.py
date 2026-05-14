@@ -231,12 +231,21 @@ class DashboardMetrics(BaseModel):
 
 class SEOHealthCheck(BaseModel):
     domain: str
+    role: Optional[str] = None
+    funnel_stage: Optional[str] = None  # TOFU / MOFU / BOFU
     behavioral_expansion_pct: float = 85.0
     semantic_defense_pct: float = 15.0
     cannibalization_score: float = 0
     conflicting_keywords: List[str] = []
     alert_level: str = "green"
     topical_authority_score: float = 0
+    # New fields (live SEMrush-derived data — see ml-worker/services/seo_monitor.py)
+    keywords_in_rank: int = 0       # n. di keyword in rank (top-100) per il dominio nel DB scelto
+    organic_traffic: int = 0         # traffico organico stimato dal SEMrush domain overview
+    authority_score: int = 0         # SEMrush authority score (0-100)
+    semrush_database: str = ""       # mercato SEMrush usato (it, us, de, fr, ...)
+    data_source: str = "live"        # 'live' = SEMrush ok; 'cached' = da Redis; 'fallback' = SEMrush vuoto
+    fetched_at: Optional[str] = None # timestamp ISO della misurazione
 
 
 # --- Health Check ---

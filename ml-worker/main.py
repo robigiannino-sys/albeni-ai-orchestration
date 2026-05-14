@@ -763,10 +763,11 @@ async def seo_health_check(
     db: DBSession = Depends(get_db)
 ):
     """
-    Run SEO health check across domains.
-    Monitors 85/15 balance and cannibalization (alert >6%, critical >12%).
+    Run SEO health check across domains using LIVE SEMrush data.
+    Behavioral / Defense / Cannibalization are computed from the actual in-rank
+    keywords per domain (cached 1h in Redis to spare SEMrush API units).
     """
-    monitor = SEOMonitor(db)
+    monitor = SEOMonitor(db, redis_client=redis_client)
     results = await monitor.run_health_check(domain)
     return {"domains": [r.model_dump() for r in results]}
 
