@@ -1,6 +1,32 @@
 {
   "scans": [
     {
+      "id": "wom-2026-05-13",
+      "site": "worldofmerino.com",
+      "property": "https://worldofmerino.com/",
+      "date": "2026-05-13",
+      "total_urls": 410,
+      "indexed": 319,
+      "crawled_not_indexed": 3,
+      "not_crawled": 88,
+      "errors": 0,
+      "neutral": 91,
+      "source": "manual-backfill-fix"
+    },
+    {
+      "id": "mu-2026-05-13",
+      "site": "merinouniversity.com",
+      "property": "https://merinouniversity.com/",
+      "date": "2026-05-13",
+      "total_urls": 281,
+      "indexed": 37,
+      "crawled_not_indexed": 7,
+      "not_crawled": 237,
+      "errors": 0,
+      "neutral": 244,
+      "source": "manual-backfill-fix"
+    },
+    {
       "id": "mu-2026-04-09",
       "site": "merinouniversity.com",
       "property": "https://merinouniversity.com/",
