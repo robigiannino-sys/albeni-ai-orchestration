@@ -255,3 +255,32 @@ class GSCIndexingScan(Base):
     duration_minutes = Column(Integer, nullable=True)
     source = Column(String(50), default="manual")
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class AdvSpend(Base):
+    """
+    ADV daily spend by channel / campaign.
+    Sblocca il Tile T1 CPA della Dashboard Executive: CPA = SUM(amount_eur)/COUNT(paid_conversions).
+    Soglie (doc 19): VERDE ≤€9 · GIALLO €10-15 · ROSSO €16-34 · NERO ≥€35.
+
+    Pattern speculare a GSCIndexingScan (filesystem→Postgres, fix 2026-05-14):
+    idempotency via spend_id, UPSERT semantics, auto-create al primo POST.
+    """
+    __tablename__ = "adv_spend"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    # spend_id pattern: "{channel}-{date}-{campaign_id}" — chiave naturale per UPSERT
+    spend_id = Column(String(200), unique=True, nullable=False, index=True)
+    date = Column(Date, nullable=False, index=True)
+    channel = Column(String(50), nullable=False, index=True)        # google_ads, meta_ads, tiktok_ads, ...
+    campaign_id = Column(String(100))                                # ID stabile della piattaforma
+    campaign_name = Column(String(255))                              # human-readable
+    amount_eur = Column(Numeric(10, 2), nullable=False, default=0)   # spend convertito in EUR
+    currency = Column(String(3), default="EUR")                      # valuta originale
+    amount_original = Column(Numeric(10, 2), nullable=True)          # importo nella valuta originale (audit)
+    impressions = Column(Integer, nullable=True)
+    clicks = Column(Integer, nullable=True)
+    country = Column(String(2), nullable=True)                       # ISO-2: IT, DE, FR, US, UK
+    source = Column(String(50), default="manual")                    # manual | google_ads_sync | meta_ads_sync | api
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

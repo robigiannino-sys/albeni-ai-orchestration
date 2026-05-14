@@ -1059,6 +1059,291 @@ async def get_notion_stats():
 
 
 # ===================================================================
+# ADV SPEND TRACKING — sblocca Tile T1 CPA (Dashboard Executive)
+# Pattern speculare al fix GSC del 2026-05-14: persistenza Postgres,
+# UPSERT idempotente, auto-create al primo POST.
+# Spec: Audit_Closure_2026-05-14.docx → Step 3a (P1).
+# Soglie CPA (doc 19): VERDE ≤€9 · GIALLO €10-15 · ROSSO €16-34 · NERO ≥€35
+# ===================================================================
+
+# Canali ADV supportati. Estendere qui se si aggiungono piattaforme.
+_ADV_CHANNELS = {"google_ads", "meta_ads", "tiktok_ads", "linkedin_ads", "manual"}
+
+
+def _ensure_adv_spend_table(db: DBSession):
+    """
+    Auto-create adv_spend table if missing. Idempotente.
+    Non c'è seed perché lo spend storico arriva dalla sync (Step 3a Sessione 2).
+    """
+    from models.database import AdvSpend, engine
+    try:
+        AdvSpend.__table__.create(bind=engine, checkfirst=True)
+    except Exception as e:
+        logger.warning(f"adv_spend table create check failed (probably already exists): {e}")
+
+
+def _build_spend_id(channel: str, date_str: str, campaign_id: Optional[str]) -> str:
+    """
+    Idempotency key per UPSERT. Re-sync stesso giorno/campagna sovrascrive.
+    Formato: {channel}-{YYYY-MM-DD}-{campaign_id|'_none_'}
+    """
+    cid = (campaign_id or "_none_").strip().replace(" ", "_")[:120]
+    return f"{channel}-{date_str}-{cid}"
+
+
+@app.post("/v1/adv/spend/report")
+async def adv_spend_report(
+    request: Request,
+    payload: Dict = Body(...),
+    db: DBSession = Depends(get_db)
+):
+    """
+    Ingest spend ADV — single row per channel/date/campaign.
+
+    Body atteso:
+        {
+            "channel": "google_ads" | "meta_ads" | ...,
+            "date": "YYYY-MM-DD",
+            "amount_eur": 12.34,
+            "campaign_id": "optional platform ID",
+            "campaign_name": "optional human label",
+            "currency": "EUR",
+            "amount_original": 12.34,
+            "impressions": 1000,
+            "clicks": 50,
+            "country": "IT" | "DE" | "FR" | "US" | "UK",
+            "source": "google_ads_sync" | "meta_ads_sync" | "manual"
+        }
+
+    Auth: header `x-api-key` o query `api_key` deve matchare env `API_KEY`
+          (effettivo su albeni-ai-orchestration: albeni1905-internal-api-v1).
+    Idempotenza: UPSERT su (channel, date, campaign_id).
+    """
+    from models.database import AdvSpend
+    from datetime import datetime as dt
+    from decimal import Decimal, InvalidOperation
+
+    # ── Auth ──
+    api_key = (request.headers.get("x-api-key") or request.query_params.get("api_key") or "").strip()
+    expected = (os.environ.get("API_KEY") or "albeni-gsc-2026").strip()
+    if api_key != expected:
+        logger.warning(f"ADV POST 401: api_key_len={len(api_key)} expected_len={len(expected)}")
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    # ── Validation ──
+    channel = (payload.get("channel") or "").strip().lower()
+    date_str = (payload.get("date") or "").strip()
+    amount_raw = payload.get("amount_eur")
+
+    if not channel:
+        raise HTTPException(status_code=400, detail="Missing required field: channel")
+    if channel not in _ADV_CHANNELS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported channel '{channel}'. Allowed: {sorted(_ADV_CHANNELS)}"
+        )
+    if not date_str:
+        raise HTTPException(status_code=400, detail="Missing required field: date")
+    try:
+        date_obj = dt.fromisoformat(date_str).date()
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=400, detail=f"Invalid date '{date_str}', expected YYYY-MM-DD")
+    if amount_raw is None:
+        raise HTTPException(status_code=400, detail="Missing required field: amount_eur")
+    try:
+        amount_eur = Decimal(str(amount_raw))
+    except (InvalidOperation, TypeError, ValueError):
+        raise HTTPException(status_code=400, detail=f"Invalid amount_eur '{amount_raw}'")
+    if amount_eur < 0:
+        raise HTTPException(status_code=400, detail="amount_eur must be >= 0")
+
+    _ensure_adv_spend_table(db)
+
+    spend_id = _build_spend_id(channel, date_str, payload.get("campaign_id"))
+
+    # UPSERT — delete-then-insert (stesso pattern di /v1/gsc/report)
+    db.query(AdvSpend).filter(AdvSpend.spend_id == spend_id).delete()
+    row = AdvSpend(
+        spend_id=spend_id,
+        date=date_obj,
+        channel=channel,
+        campaign_id=(payload.get("campaign_id") or None),
+        campaign_name=(payload.get("campaign_name") or None),
+        amount_eur=amount_eur,
+        currency=(payload.get("currency") or "EUR").upper()[:3],
+        amount_original=(
+            Decimal(str(payload["amount_original"]))
+            if payload.get("amount_original") is not None else None
+        ),
+        impressions=payload.get("impressions"),
+        clicks=payload.get("clicks"),
+        country=((payload.get("country") or "").upper()[:2] or None),
+        source=(payload.get("source") or "manual")[:50],
+    )
+    db.add(row)
+    db.commit()
+
+    total = db.query(AdvSpend).count()
+    return {
+        "status": "ok",
+        "spend_id": spend_id,
+        "channel": channel,
+        "date": date_str,
+        "amount_eur": float(amount_eur),
+        "total_rows": total,
+    }
+
+
+@app.post("/v1/adv/spend/batch")
+async def adv_spend_batch(
+    request: Request,
+    payload: Dict = Body(...),
+    db: DBSession = Depends(get_db)
+):
+    """
+    Batch ingest — accetta `{"rows": [...]}` con le stesse chiavi di /v1/adv/spend/report.
+    Pensato per sync giornaliero da Google Ads / Meta Ads (Step 3a Sessione 2).
+    Auth identica a /v1/adv/spend/report. UPSERT per riga.
+
+    Risposta: {ok, inserted, errors: [...]} così la sync sa cosa è andato a fuoco.
+    """
+    from models.database import AdvSpend
+    from datetime import datetime as dt
+    from decimal import Decimal, InvalidOperation
+
+    api_key = (request.headers.get("x-api-key") or request.query_params.get("api_key") or "").strip()
+    expected = (os.environ.get("API_KEY") or "albeni-gsc-2026").strip()
+    if api_key != expected:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    rows_in = payload.get("rows")
+    if not isinstance(rows_in, list) or not rows_in:
+        raise HTTPException(status_code=400, detail="Body must contain non-empty 'rows' array")
+
+    _ensure_adv_spend_table(db)
+
+    inserted = 0
+    errors = []
+    for i, item in enumerate(rows_in):
+        try:
+            channel = (item.get("channel") or "").strip().lower()
+            date_str = (item.get("date") or "").strip()
+            if channel not in _ADV_CHANNELS:
+                raise ValueError(f"unsupported channel '{channel}'")
+            date_obj = dt.fromisoformat(date_str).date()
+            amount_eur = Decimal(str(item.get("amount_eur", 0)))
+            if amount_eur < 0:
+                raise ValueError("amount_eur must be >= 0")
+
+            spend_id = _build_spend_id(channel, date_str, item.get("campaign_id"))
+            db.query(AdvSpend).filter(AdvSpend.spend_id == spend_id).delete()
+            db.add(AdvSpend(
+                spend_id=spend_id,
+                date=date_obj,
+                channel=channel,
+                campaign_id=(item.get("campaign_id") or None),
+                campaign_name=(item.get("campaign_name") or None),
+                amount_eur=amount_eur,
+                currency=(item.get("currency") or "EUR").upper()[:3],
+                amount_original=(
+                    Decimal(str(item["amount_original"]))
+                    if item.get("amount_original") is not None else None
+                ),
+                impressions=item.get("impressions"),
+                clicks=item.get("clicks"),
+                country=((item.get("country") or "").upper()[:2] or None),
+                source=(item.get("source") or "manual")[:50],
+            ))
+            inserted += 1
+        except (InvalidOperation, ValueError, TypeError, KeyError) as e:
+            errors.append({"index": i, "error": str(e), "item": item})
+
+    db.commit()
+    total = db.query(AdvSpend).count()
+    return {
+        "status": "ok" if not errors else "partial",
+        "inserted": inserted,
+        "errors": errors,
+        "total_rows": total,
+    }
+
+
+@app.get("/v1/adv/spend/summary")
+async def adv_spend_summary(
+    days: int = Query(default=7, ge=1, le=365, description="Lookback window in days"),
+    channel: Optional[str] = Query(default=None, description="Filter by channel"),
+    db: DBSession = Depends(get_db)
+):
+    """
+    Riepilogo spend per finestra mobile.
+    Usato da /v1/executive/aggregates per il calcolo CPA (Step 3a Sessione 3)
+    e disponibile come endpoint pubblico (con auth header non richiesto) per il debug rapido.
+
+    Risposta:
+        {
+            window_days, since, total_spend_eur, total_rows,
+            by_channel: [{channel, spend_eur, rows}],
+            by_day:     [{date, spend_eur}],
+            latest_date
+        }
+    """
+    from models.database import AdvSpend
+    from sqlalchemy import func, text
+    from datetime import datetime, timezone, timedelta
+
+    _ensure_adv_spend_table(db)
+
+    now = datetime.now(timezone.utc)
+    since_dt = (now - timedelta(days=days)).date()
+
+    base_q = db.query(AdvSpend).filter(AdvSpend.date >= since_dt)
+    if channel:
+        base_q = base_q.filter(AdvSpend.channel == channel.strip().lower())
+
+    total_spend = base_q.with_entities(func.coalesce(func.sum(AdvSpend.amount_eur), 0)).scalar() or 0
+    total_rows = base_q.count()
+
+    by_channel_q = (
+        base_q.with_entities(
+            AdvSpend.channel,
+            func.coalesce(func.sum(AdvSpend.amount_eur), 0),
+            func.count(AdvSpend.id),
+        )
+        .group_by(AdvSpend.channel)
+        .order_by(func.sum(AdvSpend.amount_eur).desc())
+    )
+
+    by_day_q = (
+        base_q.with_entities(
+            AdvSpend.date,
+            func.coalesce(func.sum(AdvSpend.amount_eur), 0),
+        )
+        .group_by(AdvSpend.date)
+        .order_by(AdvSpend.date.desc())
+    )
+
+    latest = db.query(func.max(AdvSpend.date)).scalar()
+
+    return {
+        "window_days": days,
+        "since": since_dt.isoformat(),
+        "computed_at": now.isoformat(),
+        "filter_channel": channel,
+        "total_spend_eur": float(total_spend),
+        "total_rows": total_rows,
+        "latest_date": latest.isoformat() if latest else None,
+        "by_channel": [
+            {"channel": c, "spend_eur": float(s), "rows": int(r)}
+            for c, s, r in by_channel_q.all()
+        ],
+        "by_day": [
+            {"date": d.isoformat(), "spend_eur": float(s)}
+            for d, s in by_day_q.all()
+        ],
+    }
+
+
+# ===================================================================
 # DASHBOARD EXECUTIVE — Aggregates (T1 CPA · T2 Org/Paid · T6 CR Cluster)
 # Spec: Spec_Dashboard_Executive_2026-05-14.docx
 # ===================================================================
