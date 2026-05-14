@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Smoke test /v1/adv/spend/* — Step 3a Sessione 1
-# Uso: API_KEY=albeni1905-internal-api-v1 BASE=https://albeni-ai-orchestration.up.railway.app ./smoke_test_adv_spend.sh
+# Uso: API_KEY=albeni1905-internal-api-v1 BASE=https://albeni-ai-orchestration-production.up.railway.app ./smoke_test_adv_spend.sh
 # Per test locale: BASE=http://localhost:8000 ./smoke_test_adv_spend.sh
 
 set -euo pipefail
 
-BASE="${BASE:-https://albeni-ai-orchestration.up.railway.app}"
+BASE="${BASE:-https://albeni-ai-orchestration-production.up.railway.app}"
 KEY="${API_KEY:-albeni1905-internal-api-v1}"
 TODAY=$(date -u +%Y-%m-%d)
 YDAY=$(date -u -v-1d +%Y-%m-%d 2>/dev/null || date -u -d "yesterday" +%Y-%m-%d)
