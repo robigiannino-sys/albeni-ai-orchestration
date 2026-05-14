@@ -39,7 +39,7 @@ from models.schemas import (
     ClusterPredictionRequest, ClusterPredictionResponse,
     RoutingRequest, RoutingResponse,
     ContentGenerationRequest, ContentGenerationResponse,
-    ContentValidationRequest,
+    ContentValidationRequest, VisualDryRunRequest, VisualGenerateRequest,
     KlaviyoSyncRequest, KlaviyoSyncResponse,
     ProcessIntentRequest, ProcessIntentResponse,
     DashboardMetrics, SEOHealthCheck, HealthResponse,
@@ -3940,12 +3940,11 @@ if __name__ == "__main__":
 # ===================================================================
 
 @app.post("/v1/visual/generate")
-async def generate_visuals(
-    brief_text: str = Body(..., embed=True, description="Markdown text of the editorial brief"),
-    max_facts: int = Body(2, embed=True, description="Max facts to generate visuals for"),
-    dry_run: bool = Body(False, embed=True, description="If true, only compose prompts without generating"),
-):
-    """Generate editorial visuals for a Merino News Scanner brief."""
+async def generate_visuals(req: VisualGenerateRequest):
+    """
+    Generate editorial visuals for a Merino News Scanner brief.
+    Fix BUG-07 sibling (2026-05-14): accetta sia `brief_text` sia `prompt` (Pydantic v2 AliasChoices).
+    """
     import base64
 
     import os
@@ -3955,11 +3954,11 @@ async def generate_visuals(
 
     generator = VisualGenerator(api_key=gemini_key)
 
-    if dry_run:
-        results = generator.dry_run(brief_text, max_facts=max_facts)
+    if req.dry_run:
+        results = generator.dry_run(req.brief_text, max_facts=req.max_facts)
         return {"status": "dry_run", "visuals": results, "count": len(results)}
 
-    raw_results = generator.generate_for_brief(brief_text, max_facts=max_facts)
+    raw_results = generator.generate_for_brief(req.brief_text, max_facts=req.max_facts)
     visuals = []
     for r in raw_results:
         visuals.append({
@@ -3980,13 +3979,14 @@ async def generate_visuals(
 
 
 @app.post("/v1/visual/dry-run")
-async def visual_dry_run(
-    brief_text: str = Body(..., embed=True, description="Markdown text of the editorial brief"),
-    max_facts: int = Body(2, embed=True, description="Max facts to generate visuals for"),
-):
-    """Compose visual prompts without generating images (preview mode)."""
+async def visual_dry_run(req: VisualDryRunRequest):
+    """
+    Compose visual prompts without generating images (preview mode).
+    Fix BUG-07 (2026-05-14): accetta sia `brief_text` sia `prompt` come body key
+    (Pydantic v2 AliasChoices, vedi models/schemas.py).
+    """
     import os
     gemini_key = os.environ.get("GEMINI_API_KEY") or settings.GEMINI_API_KEY or "dry-run"
     generator = VisualGenerator(api_key=gemini_key)
-    results = generator.dry_run(brief_text, max_facts=max_facts)
+    results = generator.dry_run(req.brief_text, max_facts=req.max_facts)
     return {"status": "dry_run", "visuals": results, "count": len(results)}

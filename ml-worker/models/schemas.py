@@ -2,7 +2,7 @@
 Pydantic Schemas - Request/Response Models
 AI Orchestration Layer - Albeni 1905
 """
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, Field, EmailStr, AliasChoices
 from typing import Optional, Dict, List, Any
 from datetime import datetime
 from enum import Enum
@@ -149,10 +149,15 @@ class ContentValidationRequest(BaseModel):
     come parametri non-body (FastAPI li trattava come query string), quindi
     i field nel body JSON venivano IGNORATI e cluster restava sempre il default
     "business_professional". Spostati in Pydantic model per essere parsati dal body.
+
+    Fix BUG-07 (2026-05-14): accetta sia `content` sia `text` come body key
+    (alcuni client/widget JS storici mandano `text`). Pattern AliasChoices
+    Pydantic v2. Per language anche `lang`.
     """
-    content: Any  # Dict, list, or string — flexible. Validator serializes via json.dumps.
+    # BUG-07 fix: AliasChoices accetta entrambi 'content' e 'text'. Pydantic v2.
+    content: Any = Field(validation_alias=AliasChoices("content", "text"))
     cluster: str = "business_professional"
-    language: str = "it"
+    language: str = Field(default="it", validation_alias=AliasChoices("language", "lang"))
     content_type: str = "blog_draft"
     domain: str = ""
     keyword_target: str = ""
@@ -162,6 +167,33 @@ class ContentValidationRequest(BaseModel):
     # ritorna {'ai_validation': 'skipped', 'reason': 'opted out'} e l'endpoint
     # risponde in <3s (solo rule-based checks). Usato dal verify-p02-fixes.sh.
     skip_ai_validation: bool = False
+
+    # Permette di costruire l'istanza anche dal nome originale del field (oltre che dall'alias)
+    model_config = {"populate_by_name": True}
+
+
+class VisualDryRunRequest(BaseModel):
+    """
+    Body schema for POST /v1/visual/dry-run.
+    Fix BUG-07 (2026-05-14): accetta sia `brief_text` sia `prompt` come body key.
+    Pattern AliasChoices Pydantic v2.
+    """
+    brief_text: str = Field(validation_alias=AliasChoices("brief_text", "prompt"))
+    max_facts: int = 2
+    model_config = {"populate_by_name": True}
+
+
+class VisualGenerateRequest(BaseModel):
+    """
+    Body schema for POST /v1/visual/generate.
+    Sibling di VisualDryRunRequest con flag `dry_run`. Stesso pattern alias
+    (BUG-07 sibling fix 2026-05-14): i client che chiamano /visual/dry-run con
+    `prompt` invece di `brief_text` chiamano spesso anche /visual/generate.
+    """
+    brief_text: str = Field(validation_alias=AliasChoices("brief_text", "prompt"))
+    max_facts: int = 2
+    dry_run: bool = False
+    model_config = {"populate_by_name": True}
 
 
 # --- Klaviyo CRM Sync ---
