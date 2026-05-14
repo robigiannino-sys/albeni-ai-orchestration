@@ -183,6 +183,25 @@
         .exec-pulse { width: 6px; height: 6px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 6px #22c55e; animation: exec-pulse 1.6s ease-in-out infinite; display: inline-block; margin-right: 4px; vertical-align: middle; }
         .exec-footnote { margin-top: 18px; padding: 12px 16px; background: #18181b; border: 1px solid #27272a; border-radius: 10px; font-size: 11px; color: #a1a1aa; line-height: 1.5; }
         .exec-footnote strong { color: #e4e4e7; }
+        .sd-panel { margin-top: 24px; padding: 18px 20px; background: #0f172a; border: 1px solid #1e3a5f; border-radius: 12px; }
+        .sd-header { display:flex; align-items:center; justify-content:space-between; margin-bottom: 14px; }
+        .sd-title { font-size: 14px; font-weight: 600; color: #e0e7ff; letter-spacing: 0.02em; }
+        .sd-subtitle { font-size: 10px; color: #94a3b8; margin-top: 2px; }
+        .sd-tag { font-size: 9px; padding: 2px 8px; background: #1e3a5f; border-radius: 4px; color: #93c5fd; text-transform: uppercase; letter-spacing: 0.05em; }
+        .sd-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+        .sd-card { padding: 14px; background: #1e293b; border: 1px solid #334155; border-radius: 8px; }
+        .sd-card-label { font-size: 10px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+        .sd-card-value { font-size: 28px; font-weight: 700; color: #e0e7ff; line-height: 1; }
+        .sd-card-unit { font-size: 10px; color: #94a3b8; margin-left: 4px; }
+        .sd-card-sub { font-size: 10px; color: #cbd5e1; margin-top: 8px; }
+        .sd-card-sub strong { color: #93c5fd; }
+        .sd-foot { margin-top: 14px; font-size: 10px; color: #64748b; display:flex; justify-content:space-between; }
+        .sd-foot code { background: #1e293b; padding: 2px 6px; border-radius: 4px; color: #93c5fd; font-family: monospace; }
+        .sd-kw-list { margin-top: 10px; padding: 10px 12px; background: #1e293b; border-radius: 6px; }
+        .sd-kw-row { display:flex; justify-content:space-between; font-size: 10px; color: #cbd5e1; padding: 4px 0; border-bottom: 1px solid #334155; }
+        .sd-kw-row:last-child { border-bottom: 0; }
+        .sd-kw-pos { font-weight: 700; color: #93c5fd; }
+        .sd-skel { color: #475569; font-style: italic; }
         .exec-skel { color: #52525b; font-style: italic; }
     </style>
 <!-- CONTENT_LIBRARY_DATA_START -->
@@ -4205,10 +4224,11 @@ function ExecutivePage() {
     const [routing, setRouting] = useState(null);
     const [aggregates, setAggregates] = useState(null);
     const [anomalies, setAnomalies] = useState(null);
+    const [semanticDefense, setSemanticDefense] = useState(null);
     const [loading, setLoading] = useState(true);
 
     const fetchAll = useCallback(async () => {
-        const [m, p, l, s, r, a, an] = await Promise.all([
+        const [m, p, l, s, r, a, an, sd] = await Promise.all([
             api('/v1/dashboard/metrics'),
             api('/v1/notion/pipeline/stats'),
             api('/v1/content/lake/stats/summary'),
@@ -4216,8 +4236,9 @@ function ExecutivePage() {
             api('/v1/router/assign?visitor_id=executive_dashboard_probe&lang=it'),
             api('/v1/executive/aggregates?window_days=7'),
             api('/v1/anomaly/alerts?days=7'),
+            api('/v1/semantic-defense/dashboard?days=30'),
         ]);
-        setMetrics(m); setPipeline(p); setLake(l); setSeoHealth(s); setRouting(r); setAggregates(a); setAnomalies(an);
+        setMetrics(m); setPipeline(p); setLake(l); setSeoHealth(s); setRouting(r); setAggregates(a); setAnomalies(an); setSemanticDefense(sd);
         setLoading(false);
     }, []);
 
@@ -4572,11 +4593,112 @@ function ExecutivePage() {
 
             </div>
 
+            {/* PANNELLO SEMANTIC DEFENSE — cluster C6 (moat competitivo Albeni 1905) */}
+            {(() => {
+                const sd = semanticDefense;
+                const latest = sd?.latest;
+                const hasData = !!latest;
+                const fmt = (n) => (n === null || n === undefined ? '—' : Number(n).toLocaleString('it-IT'));
+
+                return (
+                    <div className="sd-panel">
+                        <div className="sd-header">
+                            <div>
+                                <div className="sd-title">Cluster C6 · Semantic Defense — moat competitivo</div>
+                                <div className="sd-subtitle">
+                                    {hasData
+                                        ? `Snapshot del ${latest.date} · 25% budget · 3 cornerstones MerinoUniversity (Cut&Sew, Super 120's, 17-Micron Reda)`
+                                        : 'Engine in warming up — lancia POST /v1/semantic-defense/snapshot per il primo daily'}
+                                </div>
+                            </div>
+                            <span className="sd-tag">{hasData ? `${sd.snapshots_count} snapshot(s)` : 'NO DATA'}</span>
+                        </div>
+
+                        <div className="sd-grid">
+                            {/* Card 1: Featured Snippets */}
+                            <div className="sd-card">
+                                <div className="sd-card-label">Featured Snippets</div>
+                                <div>
+                                    <span className="sd-card-value">{hasData ? fmt(latest.featured_snippets_count) : '—'}</span>
+                                    <span className="sd-card-unit">pos 0 SERP</span>
+                                </div>
+                                <div className="sd-card-sub">
+                                    {hasData && latest.featured_snippets_data && latest.featured_snippets_data.length > 0
+                                        ? <>Top: <strong>{latest.featured_snippets_data[0].keyword}</strong></>
+                                        : <span className="sd-skel">Nessuna keyword in pos 0</span>}
+                                </div>
+                            </div>
+
+                            {/* Card 2: Authority Backlinks */}
+                            <div className="sd-card">
+                                <div className="sd-card-label">Authority Backlinks</div>
+                                <div>
+                                    <span className="sd-card-value">{hasData ? fmt(latest.authority_backlinks_count) : '—'}</span>
+                                    <span className="sd-card-unit">DR ≥ 40</span>
+                                </div>
+                                <div className="sd-card-sub">
+                                    {hasData && latest.authority_backlinks_top_domains && latest.authority_backlinks_top_domains.length > 0
+                                        ? <>Top: <strong>{latest.authority_backlinks_top_domains[0].domain}</strong></>
+                                        : <span className="sd-skel">Nessun backlink rilevato</span>}
+                                </div>
+                            </div>
+
+                            {/* Card 3: Topical Authority */}
+                            <div className="sd-card">
+                                <div className="sd-card-label">Topical Authority</div>
+                                <div>
+                                    <span className="sd-card-value">{hasData ? fmt(latest.keywords_top10) : '—'}</span>
+                                    <span className="sd-card-unit">keyword in top10</span>
+                                </div>
+                                <div className="sd-card-sub">
+                                    {hasData
+                                        ? <>top3 <strong>{latest.keywords_top3}</strong> · tracked <strong>{latest.keywords_total_tracked}</strong>{latest.keywords_avg_position !== null && <> · avg pos <strong>{latest.keywords_avg_position}</strong></>}</>
+                                        : <span className="sd-skel">Snapshot non disponibile</span>}
+                                </div>
+                            </div>
+
+                            {/* Card 4: Educational Engagement */}
+                            <div className="sd-card">
+                                <div className="sd-card-label">Educational Engagement</div>
+                                <div>
+                                    <span className="sd-card-value">{hasData ? fmt(latest.edu_sessions_count) : '—'}</span>
+                                    <span className="sd-card-unit">sess. MU 7gg</span>
+                                </div>
+                                <div className="sd-card-sub">
+                                    {hasData && latest.edu_avg_ids !== null
+                                        ? <>IDS medio <strong>{latest.edu_avg_ids}</strong></>
+                                        : <span className="sd-skel">Sessioni MU non sufficienti</span>}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Top 5 keyword in rank (se ci sono) */}
+                        {hasData && latest.keywords_data && latest.keywords_data.length > 0 && (
+                            <div className="sd-kw-list">
+                                <div className="sd-card-label" style={{marginBottom: 8}}>Top keyword in rank (snapshot più recente)</div>
+                                {latest.keywords_data.slice(0, 5).map((kw, i) => (
+                                    <div className="sd-kw-row" key={i}>
+                                        <span>{kw.keyword} <span style={{color:'#64748b'}}>· {kw.domain}</span></span>
+                                        <span className="sd-kw-pos">pos {kw.position}{kw.volume ? <span style={{color:'#94a3b8',fontWeight:400}}> · {kw.volume.toLocaleString('it-IT')} vol</span> : null}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        <div className="sd-foot">
+                            <span>Source: <code>/v1/semantic-defense/dashboard</code> · cron daily 04:45 UTC</span>
+                            <span>{hasData ? `↻ ${sd.window_days}d trend` : '↻ 60s'}</span>
+                        </div>
+                    </div>
+                );
+            })()}
+
             <div className="exec-footnote">
                 <strong>Dashboard Executive v1 · Step 1 wiring live.</strong>{' '}
                 Tile <span style={{color:'#4ade80'}}><strong>VERDE</strong></span> (3, 4, 5, 7) connessi agli endpoint reali con refresh 60s.{' '}
                 Tile <span style={{color:'#fbbf24'}}><strong>GIALLO</strong></span> (1, 2, 6) attendono aggregazione GA4 cross-channel.{' '}
-                Tile <strong>8</strong> ora live via <code>/v1/anomaly/alerts</code>: cron daily 04:15 UTC + 3 KPI monitorati (cpa_7d, organic_pct, heritage_mature_cr).
+                Tile <strong>8</strong> ora live via <code>/v1/anomaly/alerts</code>: cron daily 04:15 UTC + 3 KPI monitorati (cpa_7d, organic_pct, heritage_mature_cr).{' '}
+                Pannello <strong>Semantic Defense</strong> (sotto la griglia) wirato a <code>/v1/semantic-defense/dashboard</code>, cron daily 04:45 UTC con 4 metriche (Featured Snippets · Authority Backlinks · Topical Authority · Educational Engagement).
             </div>
         </div>
     );

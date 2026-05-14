@@ -257,6 +257,52 @@ class GSCIndexingScan(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+class SemanticDefenseSnapshot(Base):
+    """
+    Daily snapshot delle 4 metriche del pannello Semantic Defense (cluster C6).
+    Step GAP-F (2026-05-14). C6 è il "moat" competitivo Albeni: 25% budget +
+    36% contenuti pianificati. 3 cornerstone su MU (Cut&Sew, Super 120's, 17-Micron).
+
+    Aggrega:
+      1. Featured Snippets (pos 0) — keyword C6 in posizione zero SERP
+      2. Authority Backlinks — backlinks da domini DR > threshold
+      3. Topical Authority — distribuzione posizioni (top3 / top10 / top50)
+      4. Educational Engagement — engagement metrics su contenuti C6 di MU
+
+    UPSERT su (date, cluster) per allinearsi col pattern degli altri snapshot.
+    """
+    __tablename__ = "semantic_defense_snapshots"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    date = Column(Date, nullable=False, index=True)
+    cluster = Column(String(50), default="c6_semantic_defense", nullable=False, index=True)
+
+    # --- Metric 1: Featured Snippets ---
+    featured_snippets_count = Column(Integer, default=0)
+    featured_snippets_data = Column(JSONB, nullable=True)  # [{keyword, domain, url, position}]
+
+    # --- Metric 2: Authority Backlinks ---
+    authority_backlinks_count = Column(Integer, default=0)
+    authority_backlinks_top_domains = Column(JSONB, nullable=True)  # [{domain, dr, count}]
+
+    # --- Metric 3: Topical Authority ---
+    keywords_top3 = Column(Integer, default=0)
+    keywords_top10 = Column(Integer, default=0)
+    keywords_top50 = Column(Integer, default=0)
+    keywords_total_tracked = Column(Integer, default=0)
+    keywords_avg_position = Column(Numeric(6, 2), nullable=True)
+    keywords_data = Column(JSONB, nullable=True)  # top 20 with position+volume per domain
+
+    # --- Metric 4: Educational Engagement ---
+    edu_sessions_count = Column(Integer, default=0)
+    edu_avg_ids = Column(Numeric(6, 2), nullable=True)
+    edu_top_pages = Column(JSONB, nullable=True)  # [{url, sessions, avg_ids}]
+
+    # --- Audit ---
+    raw_data = Column(JSONB, nullable=True)  # debug payload completo
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 class CROSlot(Base):
     """
     CRO Engine — un "slot" è un punto di personalizzazione del testo nel frontend

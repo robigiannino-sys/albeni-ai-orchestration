@@ -125,13 +125,35 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.exception(f"Scheduled anomaly snapshot FAILED: {e}")
 
+    # Semantic Defense daily snapshot (GAP-F 2026-05-14). Gira alle 04:45 UTC
+    # — dopo l'anomaly daily (04:15), così se serve può riusare gli snapshot KPI freschi.
+    # Costoso (16 chiamate SEMrush) ma cache Redis 1h smorza repeat hits.
+    async def _scheduled_semantic_defense():
+        try:
+            db = next(get_db())
+            try:
+                metrics = await _persist_semantic_defense_snapshot(db)
+                logger.info(
+                    f"Scheduled semantic-defense snapshot OK: "
+                    f"FS={metrics['featured_snippets']['count']} "
+                    f"BL={metrics['authority_backlinks']['count']} "
+                    f"top10={metrics['topical_authority']['keywords_top10']} "
+                    f"edu_sessions={metrics['educational_engagement']['sessions_count']}"
+                )
+            finally:
+                db.close()
+        except Exception as e:
+            logger.exception(f"Scheduled semantic-defense snapshot FAILED: {e}")
+
     scheduler = AsyncIOScheduler()
     scheduler.add_job(_scheduled_recompute, "interval", minutes=15, id="pipeline_consumer",
                       coalesce=True, max_instances=1, misfire_grace_time=300)
     scheduler.add_job(_scheduled_anomaly, "cron", hour=4, minute=15, id="anomaly_daily",
                       coalesce=True, max_instances=1, misfire_grace_time=3600)
+    scheduler.add_job(_scheduled_semantic_defense, "cron", hour=4, minute=45, id="semantic_defense_daily",
+                      coalesce=True, max_instances=1, misfire_grace_time=3600)
     scheduler.start()
-    logger.info("Schedulers active: pipeline_consumer (15m) + anomaly_daily (04:15 UTC)")
+    logger.info("Schedulers active: pipeline_consumer (15m) + anomaly_daily (04:15 UTC) + semantic_defense_daily (04:45 UTC)")
 
     yield
 
@@ -1358,6 +1380,405 @@ async def adv_spend_summary(
             {"date": d.isoformat(), "spend_eur": float(s)}
             for d, s in by_day_q.all()
         ],
+    }
+
+
+# ===================================================================
+# SEMANTIC DEFENSE — GAP-F (2026-05-14)
+# Pannello dashboard per il cluster C6 (moat competitivo Albeni 1905).
+# Aggrega 4 metriche da SEMrush + GSC + behavioral_signals: featured snippets,
+# authority backlinks, topical authority, educational engagement.
+# ===================================================================
+
+# Keyword C6 Semantic Defense — override via env SEMANTIC_DEFENSE_KEYWORDS (CSV)
+_SEM_DEFENSE_KEYWORDS_DEFAULT = [
+    "merino wool t-shirt", "wool t-shirt men", "cut and sew t-shirt",
+    "17 micron merino", "super 120s merino", "reda 1865",
+    "italian merino fabric", "premium merino t-shirt",
+    "merino t-shirt herren", "merino wool shirt",
+    "t-shirt lana merino", "merino superfine",
+]
+# Domini Albeni target — override via env SEMANTIC_DEFENSE_DOMAINS (CSV)
+_SEM_DEFENSE_DOMAINS_DEFAULT = [
+    "merinouniversity.com", "worldofmerino.com",
+    "perfectmerinoshirt.com", "albeni1905.com"
+]
+# Soglia DR per backlinks "authority"
+_SEM_DEFENSE_DR_THRESHOLD = int(os.environ.get("SEMANTIC_DEFENSE_DR_THRESHOLD", "40"))
+
+
+def _get_semantic_defense_keywords() -> List[str]:
+    env_kws = os.environ.get("SEMANTIC_DEFENSE_KEYWORDS", "").strip()
+    if env_kws:
+        return [k.strip().lower() for k in env_kws.split(",") if k.strip()]
+    return [k.lower() for k in _SEM_DEFENSE_KEYWORDS_DEFAULT]
+
+
+def _get_semantic_defense_domains() -> List[str]:
+    env_doms = os.environ.get("SEMANTIC_DEFENSE_DOMAINS", "").strip()
+    if env_doms:
+        return [d.strip().lower() for d in env_doms.split(",") if d.strip()]
+    return [d.lower() for d in _SEM_DEFENSE_DOMAINS_DEFAULT]
+
+
+def _ensure_semantic_defense_table(db: DBSession):
+    """Auto-create semantic_defense_snapshots. Idempotente."""
+    from models.database import SemanticDefenseSnapshot, engine
+    try:
+        SemanticDefenseSnapshot.__table__.create(bind=engine, checkfirst=True)
+    except Exception as e:
+        logger.warning(f"semantic_defense_snapshots create check failed: {e}")
+
+
+async def _compute_semantic_defense_snapshot(db: DBSession,
+                                              target_date: Optional[date] = None) -> Dict:
+    """
+    Calcola le 4 metriche del cluster C6. Per ogni dominio Albeni:
+      1. Pulla organic keywords via SEMrush agent (con cache Redis 1h)
+      2. Filtra per le keyword nella lista C6
+      3. Aggrega position / volume / featured snippets
+    Backlinks: pull per dominio + filter DR>=threshold.
+    Educational engagement: query behavioral_signals JOIN sessions JOIN content_lake.
+    """
+    from datetime import datetime as dt
+    from sqlalchemy import text as sql_text
+
+    snap_date = target_date or dt.utcnow().date()
+    c6_kws = set(_get_semantic_defense_keywords())
+    domains = _get_semantic_defense_domains()
+
+    # ── Init aggregators ──
+    featured_snippets = []   # list of {keyword, domain, url, position}
+    keywords_data = []       # list of {keyword, domain, position, volume}
+    backlinks_top_domains = []
+    backlinks_count = 0
+
+    # ── 1+3. SEMrush organic — Topical Authority + Featured Snippets ──
+    # SemrushAgent ha già cache Redis 1h, va bene chiamare in loop
+    try:
+        from services.semrush_agent import SemrushAgent
+        agent = SemrushAgent()
+        for dom in domains:
+            try:
+                result = await agent.get_organic_keywords(dom, database="us", limit=100)
+                rows = (result or {}).get("keywords", []) or []
+                for row in rows:
+                    kw = (row.get("keyword") or row.get("Keyword") or "").strip().lower()
+                    if not kw or kw not in c6_kws:
+                        continue
+                    pos_raw = row.get("position") or row.get("Position") or row.get("Pos")
+                    try:
+                        pos = int(float(pos_raw)) if pos_raw is not None else None
+                    except (ValueError, TypeError):
+                        pos = None
+                    vol_raw = row.get("search_volume") or row.get("Search Volume") or row.get("Nq")
+                    try:
+                        vol = int(float(vol_raw)) if vol_raw is not None else None
+                    except (ValueError, TypeError):
+                        vol = None
+                    url = row.get("url") or row.get("URL") or ""
+                    if pos is not None:
+                        keywords_data.append({
+                            "keyword": kw, "domain": dom, "position": pos,
+                            "volume": vol, "url": url
+                        })
+                        if pos == 0:  # Featured snippet (alcune API mappano fs come pos 0)
+                            featured_snippets.append({
+                                "keyword": kw, "domain": dom, "url": url, "position": pos
+                            })
+            except Exception as e:
+                logger.warning(f"semrush organic failed for {dom}: {e}")
+    except ImportError:
+        logger.warning("SemrushAgent unavailable — semantic defense degraded mode")
+
+    # Topical authority aggregates
+    positions = [k["position"] for k in keywords_data if k["position"] is not None]
+    top3 = sum(1 for p in positions if 1 <= p <= 3)
+    top10 = sum(1 for p in positions if 1 <= p <= 10)
+    top50 = sum(1 for p in positions if 1 <= p <= 50)
+    avg_pos = (sum(positions) / len(positions)) if positions else None
+
+    # ── 2. SEMrush backlinks — Authority (DR >= threshold) ──
+    try:
+        from services.semrush_agent import SemrushAgent
+        agent = SemrushAgent()
+        domain_dr_counts: Dict[str, Dict] = {}
+        for dom in domains:
+            try:
+                bl_result = await agent.get_backlinks(dom)
+                bl_rows = (bl_result or {}).get("backlinks", []) or []
+                for bl in bl_rows:
+                    src_domain = (bl.get("source_url") or bl.get("source_domain") or "").lower()
+                    dr_raw = bl.get("domain_rating") or bl.get("source_authority") or bl.get("authority")
+                    try:
+                        dr = int(float(dr_raw)) if dr_raw is not None else 0
+                    except (ValueError, TypeError):
+                        dr = 0
+                    if dr >= _SEM_DEFENSE_DR_THRESHOLD:
+                        backlinks_count += 1
+                        domain_dr_counts.setdefault(src_domain, {"dr": dr, "count": 0})
+                        domain_dr_counts[src_domain]["count"] += 1
+            except Exception as e:
+                logger.warning(f"semrush backlinks failed for {dom}: {e}")
+        # Top 10 source domains per backlink count
+        backlinks_top_domains = sorted(
+            [{"domain": k, "dr": v["dr"], "count": v["count"]} for k, v in domain_dr_counts.items()],
+            key=lambda x: -x["count"]
+        )[:10]
+    except ImportError:
+        pass
+
+    # ── 4. Educational Engagement (behavioral_signals su contenuti C6 MU) ──
+    # Pattern: contenuti MU/MerinoUniversity sono educational per definizione.
+    # Filtriamo per domain='merinouniversity.com' e contiamo sessioni + IDS medio.
+    edu_sessions = 0
+    edu_avg_ids = None
+    edu_top_pages_data = []
+    try:
+        window_start = datetime.combine(snap_date - timedelta(days=7), datetime.min.time())
+        window_end = datetime.combine(snap_date + timedelta(days=1), datetime.min.time())
+
+        edu_stats = db.execute(sql_text("""
+            SELECT COUNT(DISTINCT s.id) AS sessions,
+                   AVG(s.ids_score_end) AS avg_ids
+            FROM sessions s
+            WHERE s.source_domain = 'merinouniversity.com'
+              AND s.started_at >= :s AND s.started_at < :e
+        """), {"s": window_start, "e": window_end}).fetchone()
+        edu_sessions = int(edu_stats[0] or 0)
+        edu_avg_ids = float(edu_stats[1]) if edu_stats[1] is not None else None
+
+        # Top pages by sessions (rolling 7d window)
+        top_pages_rows = db.execute(sql_text("""
+            SELECT s.entry_page, COUNT(*) AS n,
+                   AVG(s.ids_score_end) AS avg_ids
+            FROM sessions s
+            WHERE s.source_domain = 'merinouniversity.com'
+              AND s.started_at >= :s AND s.started_at < :e
+              AND s.entry_page IS NOT NULL
+            GROUP BY s.entry_page
+            ORDER BY n DESC
+            LIMIT 5
+        """), {"s": window_start, "e": window_end}).fetchall()
+        edu_top_pages_data = [
+            {"url": r[0], "sessions": int(r[1]), "avg_ids": float(r[2]) if r[2] is not None else None}
+            for r in top_pages_rows
+        ]
+    except Exception as e:
+        logger.warning(f"educational engagement query failed: {e}")
+
+    metrics = {
+        "date": snap_date.isoformat(),
+        "cluster": "c6_semantic_defense",
+        "featured_snippets": {
+            "count": len(featured_snippets),
+            "items": featured_snippets[:20],
+        },
+        "authority_backlinks": {
+            "count": backlinks_count,
+            "dr_threshold": _SEM_DEFENSE_DR_THRESHOLD,
+            "top_domains": backlinks_top_domains,
+        },
+        "topical_authority": {
+            "keywords_top3": top3,
+            "keywords_top10": top10,
+            "keywords_top50": top50,
+            "keywords_total_tracked": len(keywords_data),
+            "keywords_total_in_set": len(c6_kws),
+            "avg_position": round(avg_pos, 2) if avg_pos else None,
+            "top20": sorted(keywords_data, key=lambda x: x["position"])[:20],
+        },
+        "educational_engagement": {
+            "window_days": 7,
+            "sessions_count": edu_sessions,
+            "avg_ids": round(edu_avg_ids, 2) if edu_avg_ids else None,
+            "top_pages": edu_top_pages_data,
+        },
+    }
+    return metrics
+
+
+async def _persist_semantic_defense_snapshot(db: DBSession,
+                                               target_date: Optional[date] = None) -> Dict:
+    """Calcola + scrive UPSERT su semantic_defense_snapshots."""
+    from models.database import SemanticDefenseSnapshot
+    from decimal import Decimal
+
+    _ensure_semantic_defense_table(db)
+    metrics = await _compute_semantic_defense_snapshot(db, target_date=target_date)
+
+    from datetime import datetime as dt
+    snap_date = dt.fromisoformat(metrics["date"]).date()
+
+    # UPSERT delete-then-insert
+    db.query(SemanticDefenseSnapshot).filter(
+        SemanticDefenseSnapshot.date == snap_date,
+        SemanticDefenseSnapshot.cluster == metrics["cluster"]
+    ).delete()
+
+    fs = metrics["featured_snippets"]
+    bl = metrics["authority_backlinks"]
+    ta = metrics["topical_authority"]
+    ee = metrics["educational_engagement"]
+
+    snap = SemanticDefenseSnapshot(
+        date=snap_date,
+        cluster=metrics["cluster"],
+        featured_snippets_count=fs["count"],
+        featured_snippets_data=fs["items"],
+        authority_backlinks_count=bl["count"],
+        authority_backlinks_top_domains=bl["top_domains"],
+        keywords_top3=ta["keywords_top3"],
+        keywords_top10=ta["keywords_top10"],
+        keywords_top50=ta["keywords_top50"],
+        keywords_total_tracked=ta["keywords_total_tracked"],
+        keywords_avg_position=Decimal(str(ta["avg_position"])) if ta["avg_position"] is not None else None,
+        keywords_data=ta["top20"],
+        edu_sessions_count=ee["sessions_count"],
+        edu_avg_ids=Decimal(str(ee["avg_ids"])) if ee["avg_ids"] is not None else None,
+        edu_top_pages=ee["top_pages"],
+        raw_data=metrics,
+    )
+    db.add(snap)
+    db.commit()
+    return metrics
+
+
+@app.post("/v1/semantic-defense/snapshot")
+async def semantic_defense_snapshot(
+    request: Request,
+    backfill_date: Optional[str] = Query(default=None, description="YYYY-MM-DD, default oggi"),
+    db: DBSession = Depends(get_db)
+):
+    """
+    Trigger calcolo + persistenza snapshot Semantic Defense (cluster C6).
+    Auth API_KEY. Chiamato dal scheduler daily + manualmente per backfill.
+    Costoso: chiama SEMrush 4x4=16 volte (organic + backlinks per ognuno dei 4 domini).
+    Risparmio via Redis cache 1h già attiva su SemrushAgent.
+    """
+    api_key = (request.headers.get("x-api-key") or request.query_params.get("api_key") or "").strip()
+    expected = (os.environ.get("API_KEY") or "albeni-gsc-2026").strip()
+    if api_key != expected:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    from datetime import datetime as dt
+    target_date = None
+    if backfill_date:
+        try:
+            target_date = dt.fromisoformat(backfill_date).date()
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Invalid date '{backfill_date}'")
+
+    metrics = await _persist_semantic_defense_snapshot(db, target_date=target_date)
+    return {"status": "ok", "snapshot": metrics}
+
+
+@app.get("/v1/semantic-defense/dashboard")
+async def semantic_defense_dashboard(
+    days: int = Query(default=30, ge=1, le=365),
+    db: DBSession = Depends(get_db)
+):
+    """
+    Dashboard data per il pannello Semantic Defense.
+    Ritorna ultimo snapshot + serie temporale degli ultimi N giorni
+    per i 4 KPI principali (count metrics).
+    """
+    from models.database import SemanticDefenseSnapshot
+    from datetime import datetime as dt
+    from sqlalchemy import desc as sql_desc
+
+    _ensure_semantic_defense_table(db)
+
+    since = dt.utcnow().date() - timedelta(days=days)
+    snaps = (
+        db.query(SemanticDefenseSnapshot)
+        .filter(SemanticDefenseSnapshot.cluster == "c6_semantic_defense",
+                SemanticDefenseSnapshot.date >= since)
+        .order_by(sql_desc(SemanticDefenseSnapshot.date))
+        .all()
+    )
+
+    if not snaps:
+        return {
+            "cluster": "c6_semantic_defense",
+            "window_days": days,
+            "latest": None,
+            "trend": [],
+            "reason": "no_snapshots_yet",
+        }
+
+    latest = snaps[0]
+    latest_payload = {
+        "date": latest.date.isoformat(),
+        "featured_snippets_count": latest.featured_snippets_count,
+        "authority_backlinks_count": latest.authority_backlinks_count,
+        "keywords_top3": latest.keywords_top3,
+        "keywords_top10": latest.keywords_top10,
+        "keywords_top50": latest.keywords_top50,
+        "keywords_total_tracked": latest.keywords_total_tracked,
+        "keywords_avg_position": float(latest.keywords_avg_position) if latest.keywords_avg_position else None,
+        "edu_sessions_count": latest.edu_sessions_count,
+        "edu_avg_ids": float(latest.edu_avg_ids) if latest.edu_avg_ids else None,
+        "featured_snippets_data": latest.featured_snippets_data,
+        "authority_backlinks_top_domains": latest.authority_backlinks_top_domains,
+        "keywords_data": latest.keywords_data,
+        "edu_top_pages": latest.edu_top_pages,
+    }
+
+    # Trend: serie temporale ascendente per chart
+    trend = [
+        {
+            "date": s.date.isoformat(),
+            "featured_snippets_count": s.featured_snippets_count,
+            "authority_backlinks_count": s.authority_backlinks_count,
+            "keywords_top3": s.keywords_top3,
+            "keywords_top10": s.keywords_top10,
+            "edu_sessions_count": s.edu_sessions_count,
+        }
+        for s in reversed(snaps)
+    ]
+
+    return {
+        "cluster": "c6_semantic_defense",
+        "window_days": days,
+        "latest": latest_payload,
+        "trend": trend,
+        "snapshots_count": len(snaps),
+    }
+
+
+@app.get("/v1/semantic-defense/keywords")
+async def semantic_defense_keywords(db: DBSession = Depends(get_db)):
+    """
+    Lista delle keyword C6 monitorate + ultime posizioni rilevate.
+    Aiuto operativo: vedi quali keyword sono in target e quali ancora out-of-rank.
+    """
+    from models.database import SemanticDefenseSnapshot
+    from sqlalchemy import desc as sql_desc
+
+    _ensure_semantic_defense_table(db)
+    latest = (
+        db.query(SemanticDefenseSnapshot)
+        .filter(SemanticDefenseSnapshot.cluster == "c6_semantic_defense")
+        .order_by(sql_desc(SemanticDefenseSnapshot.date))
+        .first()
+    )
+
+    tracked_keywords = (latest.keywords_data or []) if latest else []
+    monitored_set = _get_semantic_defense_keywords()
+
+    # Quali keyword del set sono attualmente in rank?
+    in_rank_kws = set(k["keyword"] for k in tracked_keywords)
+    out_of_rank = [kw for kw in monitored_set if kw not in in_rank_kws]
+
+    return {
+        "cluster": "c6_semantic_defense",
+        "monitored_keywords_count": len(monitored_set),
+        "monitored_keywords": monitored_set,
+        "in_rank": tracked_keywords,
+        "out_of_rank_count": len(out_of_rank),
+        "out_of_rank": out_of_rank,
+        "latest_snapshot_date": latest.date.isoformat() if latest else None,
     }
 
 
