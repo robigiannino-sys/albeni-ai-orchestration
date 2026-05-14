@@ -132,18 +132,56 @@ const DOMAIN = {
 // CRAWL MAP LOADER
 // ============================================================
 
+/**
+ * Crawl Map Store — Step 5 fase 2 (2026-05-14, Task #14):
+ *   Sorgente primaria: GET /v1/crawl-map?site=...&limit=5000 su ml-worker (Postgres-backed)
+ *   Fallback: file JSON committato (legacy, mantenuto come safety net)
+ *
+ * Caching: TTL 5min in memoria (invariato). loadFromApi() non blocca getVerdict():
+ * il refresh è fire-and-forget, in caso di fail la map resta con i dati precedenti.
+ * loadFromFile() sync chiamato nel constructor garantisce non-empty al primo getVerdict.
+ */
+const axios = require('axios');
+const ML_WORKER_URL = process.env.ML_WORKER_URL || 'http://albeni-ai-orchestration.railway.internal:8080';
+
 class CrawlMapStore {
-  constructor(dashboardPath) {
+  constructor(dashboardPath, options = {}) {
     this.dashboardPath = dashboardPath;
+    this.apiBase = options.apiBase || ML_WORKER_URL;
     this.maps = { mu: {}, wom: {} };
     this.lastLoad = 0;
     this.TTL = 5 * 60 * 1000; // reload every 5 minutes
+    this.loadingPromise = null;
+
+    // Sync bootstrap dal file: garantisce map non-empty prima del primo getVerdict.
+    // Importante: questo viene fatto UNA VOLTA al boot. I refresh successivi provano l'API.
+    this.loadFromFile();
   }
 
-  load() {
-    const now = Date.now();
-    if (now - this.lastLoad < this.TTL) return;
+  async loadFromApi() {
+    try {
+      const fetchSite = async (site) => {
+        const url = `${this.apiBase}/v1/crawl-map?site=${site}&limit=5000`;
+        const r = await axios.get(url, { timeout: 8000 });
+        if (r.status !== 200) throw new Error(`HTTP ${r.status}`);
+        const map = {};
+        for (const e of (r.data.entries || [])) {
+          map[e.url_path] = e.verdict;
+        }
+        return map;
+      };
+      const [mu, wom] = await Promise.all([fetchSite('mu'), fetchSite('wom')]);
+      this.maps.mu = mu;
+      this.maps.wom = wom;
+      console.log(`[IndexRouter] Crawl maps loaded from API: MU ${Object.keys(mu).length}, WoM ${Object.keys(wom).length}`);
+      return true;
+    } catch (e) {
+      console.warn(`[IndexRouter] API load failed (${e.message}), keeping previous (JSON-based) cache`);
+      return false;
+    }
+  }
 
+  loadFromFile() {
     try {
       const muPath = path.join(this.dashboardPath, 'mu_crawl_map.json');
       const womPath = path.join(this.dashboardPath, 'wom_crawl_map.json');
@@ -154,11 +192,31 @@ class CrawlMapStore {
       if (fs.existsSync(womPath)) {
         this.maps.wom = JSON.parse(fs.readFileSync(womPath, 'utf8'));
       }
-      this.lastLoad = now;
-      console.log(`[IndexRouter] Crawl maps loaded: MU ${Object.keys(this.maps.mu).length} URLs, WoM ${Object.keys(this.maps.wom).length} URLs`);
+      console.log(`[IndexRouter] Crawl maps loaded from JSON: MU ${Object.keys(this.maps.mu).length} URLs, WoM ${Object.keys(this.maps.wom).length} URLs`);
     } catch (e) {
-      console.error('[IndexRouter] Failed to load crawl maps:', e.message);
+      console.error('[IndexRouter] Failed to load crawl maps from JSON:', e.message);
     }
+  }
+
+  /**
+   * Non-blocking refresh: trigger async API fetch se TTL scaduto.
+   * Il getVerdict che chiama questa funzione NON aspetta il risultato — usa la map in memoria.
+   * Pattern intenzionale: meglio servire un verdict leggermente stale che bloccare il request handler.
+   */
+  load() {
+    const now = Date.now();
+    if (now - this.lastLoad < this.TTL) return;
+    if (this.loadingPromise) return; // already refreshing
+
+    this.loadingPromise = (async () => {
+      const apiOk = await this.loadFromApi();
+      if (!apiOk) {
+        // API down: ricarica dal file (potrebbe avere update recenti via git commit)
+        this.loadFromFile();
+      }
+      this.lastLoad = Date.now();
+      this.loadingPromise = null;
+    })();
   }
 
   getVerdict(site, urlPath) {
@@ -465,7 +523,12 @@ function createRoutes(dashboardPath) {
 
   // --- Update crawl maps from external source ---
   // POST /v1/router/crawl-maps { mu: {...}, wom: {...} }
+  // ⚠ DEPRECATED 2026-05-14 (Step 5 / Task #14): scrive sul filesystem container
+  // (effimero — perdi le scritture ad ogni deploy Railway). Usare invece:
+  //   POST {ml-worker}/v1/crawl-map/batch  con body {site, entries:[...]}
+  // Lasciato in vita come backward-compat ma deprecato.
   router.post('/crawl-maps', (req, res) => {
+    console.warn('[IndexRouter] DEPRECATED: POST /v1/router/crawl-maps — use ml-worker /v1/crawl-map/batch instead. Writes to ephemeral fs.');
     const apiKey = req.headers['x-api-key'] || req.query.api_key;
     if (apiKey !== (process.env.API_KEY || 'albeni-gsc-2026')) {
       return res.status(401).json({ error: 'Unauthorized' });
@@ -493,7 +556,7 @@ function createRoutes(dashboardPath) {
       // Force reload on next request
       store.lastLoad = 0;
 
-      res.json({ status: 'ok', updated });
+      res.json({ status: 'ok', updated, deprecation_warning: 'use ml-worker /v1/crawl-map/batch — this endpoint writes to ephemeral fs' });
     } catch (e) {
       res.status(500).json({ error: e.message });
     }

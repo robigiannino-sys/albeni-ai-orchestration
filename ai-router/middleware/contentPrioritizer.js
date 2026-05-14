@@ -418,20 +418,51 @@ function getStrategyDetails(strategy) {
 }
 
 // ============================================================
-// CRAWL MAP STORE (reuses same pattern as indexAwareRouter)
+// CRAWL MAP STORE — Step 5 fase 2 (Task #14, 2026-05-14):
+//   Sorgente primaria: GET /v1/crawl-map?site=... su ml-worker (Postgres)
+//   Fallback: file JSON committato (mantenuto come safety net)
+// Pattern identico a indexAwareRouter.CrawlMapStore.
 // ============================================================
+const axios = require('axios');
+const ML_WORKER_URL = process.env.ML_WORKER_URL || 'http://albeni-ai-orchestration.railway.internal:8080';
 
 class CrawlMapStore {
-  constructor(dashboardPath) {
+  constructor(dashboardPath, options = {}) {
     this.dashboardPath = dashboardPath;
+    this.apiBase = options.apiBase || ML_WORKER_URL;
     this.maps = { mu: {}, wom: {} };
     this.lastLoad = 0;
     this.TTL = 5 * 60 * 1000;
+    this.loadingPromise = null;
+
+    // Sync bootstrap dal file — primo getVerdict/cluster analysis non sarà vuoto
+    this.loadFromFile();
   }
 
-  load() {
-    const now = Date.now();
-    if (now - this.lastLoad < this.TTL) return;
+  async loadFromApi() {
+    try {
+      const fetchSite = async (site) => {
+        const url = `${this.apiBase}/v1/crawl-map?site=${site}&limit=5000`;
+        const r = await axios.get(url, { timeout: 8000 });
+        if (r.status !== 200) throw new Error(`HTTP ${r.status}`);
+        const map = {};
+        for (const e of (r.data.entries || [])) {
+          map[e.url_path] = e.verdict;
+        }
+        return map;
+      };
+      const [mu, wom] = await Promise.all([fetchSite('mu'), fetchSite('wom')]);
+      this.maps.mu = mu;
+      this.maps.wom = wom;
+      console.log(`[ContentPrioritizer] Crawl maps loaded from API: MU ${Object.keys(mu).length}, WoM ${Object.keys(wom).length}`);
+      return true;
+    } catch (e) {
+      console.warn(`[ContentPrioritizer] API load failed (${e.message}), falling back to JSON cache`);
+      return false;
+    }
+  }
+
+  loadFromFile() {
     try {
       for (const site of ['mu', 'wom']) {
         const mapPath = path.join(this.dashboardPath, `${site}_crawl_map.json`);
@@ -439,10 +470,27 @@ class CrawlMapStore {
           this.maps[site] = JSON.parse(fs.readFileSync(mapPath, 'utf8'));
         }
       }
-      this.lastLoad = now;
+      console.log(`[ContentPrioritizer] Crawl maps loaded from JSON: MU ${Object.keys(this.maps.mu).length}, WoM ${Object.keys(this.maps.wom).length}`);
     } catch (e) {
-      console.error('[ContentPrioritizer] Failed to load crawl maps:', e.message);
+      console.error('[ContentPrioritizer] Failed to load crawl maps from JSON:', e.message);
     }
+  }
+
+  /**
+   * Non-blocking refresh (fire-and-forget). Le funzioni che chiamano load()
+   * leggono dalla cache in memoria, eventualmente leggermente stale.
+   */
+  load() {
+    const now = Date.now();
+    if (now - this.lastLoad < this.TTL) return;
+    if (this.loadingPromise) return;
+
+    this.loadingPromise = (async () => {
+      const apiOk = await this.loadFromApi();
+      if (!apiOk) this.loadFromFile();
+      this.lastLoad = Date.now();
+      this.loadingPromise = null;
+    })();
   }
 }
 
