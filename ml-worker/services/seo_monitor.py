@@ -224,11 +224,14 @@ class SEOMonitor:
             alert = "green"
 
         # 4) Topical authority: prima preferenza = SEMrush authority_score;
-        #    se 0/mancante, ripiega sul calcolo euristico.
+        #    se 0/mancante, ripiega sul calcolo euristico — ma NON marcare l'intera
+        #    misurazione come fallback solo per questo (l'authority è un dato
+        #    accessorio, le keyword in rank sono la fonte primaria).
         authority = my_data.get("authority_score", 0)
         if not authority:
             authority = self._estimate_topical_authority_heuristic(domain)
-            source = "fallback" if source == "live" else source
+        # source rimane quello determinato da _fetch_domain_data: 'live' se SEMrush
+        # ha risposto keyword o traffic, 'fallback' solo se TUTTE le call sono vuote.
 
         return SEOHealthCheck(
             domain=domain,
