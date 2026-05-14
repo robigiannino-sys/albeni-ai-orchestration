@@ -951,15 +951,58 @@ function SEOPage() {
                 <React.Fragment>
                     <div className="table-wrap">
                         <div className="table-header">
-                            <h3>Health Check per Dominio (Interno)</h3>
+                            <h3>Health Check per Dominio (Live SEMrush · cache 1h)</h3>
+                            {domains[0]?.fetched_at && (
+                                <span style={{fontSize:'12px',color:'#9ca3af',marginLeft:'12px'}}>
+                                    Aggiornato: {new Date(domains[0].fetched_at).toLocaleString('it-IT')}
+                                </span>
+                            )}
                         </div>
                         <table>
-                            <thead><tr><th>Dominio</th><th>Ruolo</th><th>Funnel</th><th>Cluster SEO %</th><th>Defense %</th><th>Cannibalization</th><th>Stato</th></tr></thead>
+                            <thead><tr>
+                                <th>Dominio</th>
+                                <th>Ruolo</th>
+                                <th>Funnel</th>
+                                <th>Cluster SEO %</th>
+                                <th>Defense %</th>
+                                <th>Cannibalization</th>
+                                <th>Authority</th>
+                                <th>KW in rank</th>
+                                <th>Mercato</th>
+                                <th>Fonte</th>
+                            </tr></thead>
                             <tbody>
-                                <tr><td style={{fontWeight:500}}>worldofmerino.com</td><td>Hub informativo</td><td><span className="badge badge-blue">TOFU</span></td><td>85%</td><td>15%</td><td>&lt; 6%</td><td><span className="badge badge-green">✓ AI attivo</span></td></tr>
-                                <tr><td style={{fontWeight:500}}>merinouniversity.com</td><td>Educational</td><td><span className="badge badge-yellow">MOFU</span></td><td>85%</td><td>15%</td><td>&lt; 6%</td><td><span className="badge badge-green">✓ AI attivo</span></td></tr>
-                                <tr><td style={{fontWeight:500}}>perfectmerinoshirt.com</td><td>BOFU Tecnico + Klaviyo IDS≥65</td><td><span className="badge badge-red">BOFU</span></td><td>85%</td><td>15%</td><td>&lt; 6%</td><td><span className="badge badge-green">✓ AI attivo</span></td></tr>
-                                <tr style={{opacity:0.5}}><td style={{fontWeight:500}}>albeni1905.com</td><td>Heritage/Commerce – Checkout</td><td><span className="badge badge-red">BOFU</span></td><td>—</td><td>—</td><td>—</td><td><span className="badge" style={{background:'#3f3f46',color:'#a1a1aa'}}>🔒 Frontend pending</span></td></tr>
+                                {loading && (
+                                    <tr><td colSpan="10" style={{textAlign:'center',padding:'20px',color:'#9ca3af'}}>
+                                        Caricamento dati SEMrush…
+                                    </td></tr>
+                                )}
+                                {!loading && domains.length === 0 && (
+                                    <tr><td colSpan="10" style={{textAlign:'center',padding:'20px',color:'#9ca3af'}}>
+                                        Nessun dato disponibile
+                                    </td></tr>
+                                )}
+                                {!loading && domains.map(d => {
+                                    const stage = d.funnel_stage || 'TOFU';
+                                    const stageBadge = stage === 'TOFU' ? 'badge-blue' : stage === 'MOFU' ? 'badge-yellow' : 'badge-red';
+                                    const alertColor = d.alert_level === 'red' ? '#ef4444' : d.alert_level === 'yellow' ? '#f59e0b' : '#10b981';
+                                    const sourceLabel = d.data_source === 'live' ? '🟢 live' : d.data_source === 'cached' ? '🔵 cached' : '🟡 fallback';
+                                    const sourceColor = d.data_source === 'live' ? '#10b981' : d.data_source === 'cached' ? '#3b82f6' : '#f59e0b';
+                                    return (
+                                        <tr key={d.domain}>
+                                            <td style={{fontWeight:500}}>{d.domain}</td>
+                                            <td style={{fontSize:'12px',color:'#d1d5db'}}>{d.role || '—'}</td>
+                                            <td><span className={`badge ${stageBadge}`}>{stage}</span></td>
+                                            <td>{d.behavioral_expansion_pct}%</td>
+                                            <td>{d.semantic_defense_pct}%</td>
+                                            <td style={{color:alertColor,fontWeight:500}}>{d.cannibalization_score}%</td>
+                                            <td>{d.authority_score || '—'}</td>
+                                            <td>{d.keywords_in_rank || 0}</td>
+                                            <td style={{textTransform:'uppercase',fontSize:'11px',color:'#9ca3af'}}>{d.semrush_database || '—'}</td>
+                                            <td style={{fontSize:'11px',color:sourceColor}}>{sourceLabel}</td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </table>
                     </div>
