@@ -2,29 +2,37 @@
   ╔══════════════════════════════════════════════════════╗
   ║  ALBENI 1905 — AI Tracking Snippet                   ║
   ║  Dominio: perfectmerinoshirt.com  (BOFU Tecnico)     ║
+  ║  Endpoint: Railway (creative-perfection)             ║
+  ║  Aggiornato: 2026-04-27                              ║
   ║                                                      ║
   ║  ★ DOMINIO CRITICO — Klaviyo sync attivo             ║
   ║  Quando IDS ≥ 65 il sistema invia automaticamente    ║
   ║  il profilo comportamentale al CRM Klaviyo           ║
   ║  tramite AI Router /v1/crm/sync-lead                 ║
+  ║                                                      ║
+  ║  NOTA: PMS è una Hostinger Horizons SPA (NON         ║
+  ║  WordPress). L'inserimento snippet va fatto via      ║
+  ║  Hostinger Horizons editor → "Custom Code" sezione   ║
+  ║  Header. Non c'è REST API per automation.            ║
   ╚══════════════════════════════════════════════════════╝
 -->
 
 <!-- ALBENI AI CONFIG -->
 <script>
 window.ALBENI_AI = {
-  endpoint:         'https://dependent-applicant-august-architect.trycloudflare.com',
-  klaviyoEndpoint:  'https://motivated-weight-harder-dropped.trycloudflare.com',
+  endpoint:         'https://creative-perfection-production-57b5.up.railway.app',
+  klaviyoEndpoint:  'https://creative-perfection-production-57b5.up.railway.app',
   domain_type:      'bofu_tech',
+  domain:           'perfectmerinoshirt.com',
   debug:            false
 };
 </script>
 
 <!-- ALBENI TRACKER (Layer 1) -->
-<script src="https://motivated-weight-harder-dropped.trycloudflare.com/albeni-ai-tracker.js" defer></script>
+<script src="https://creative-perfection-production-57b5.up.railway.app/static/albeni-ai-tracker.js" defer></script>
 
 <!-- ALBENI BEHAVIORAL ENGINE (Layer 2) -->
-<script src="https://motivated-weight-harder-dropped.trycloudflare.com/albeni-behavioral-engine.js" defer></script>
+<script src="https://creative-perfection-production-57b5.up.railway.app/static/albeni-behavioral-engine.js" defer></script>
 
 <!--
   ═══════════════════════════════════════════════════════
@@ -58,7 +66,7 @@ window.ALBENI_AI = {
   ═══════════════════════════════════════════════════════
 
   Il sync viene inviato automaticamente via:
-  POST https://motivated-weight-harder-dropped.trycloudflare.com/v1/crm/sync-lead
+  POST https://creative-perfection-production-57b5.up.railway.app/v1/crm/sync-lead
 
   Payload inviato:
   {

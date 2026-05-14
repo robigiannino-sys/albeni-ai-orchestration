@@ -2,37 +2,35 @@
   ╔══════════════════════════════════════════════════════╗
   ║  ALBENI 1905 — AI Tracking Snippet                   ║
   ║  Dominio: worldofmerino.com  (TOFU)                  ║
+  ║  Endpoint: Railway (creative-perfection)             ║
+  ║  Aggiornato: 2026-04-27                              ║
   ║                                                      ║
   ║  INSTALLAZIONE WORDPRESS:                            ║
-  ║  Appearance → Theme File Editor → header.php         ║
-  ║  oppure: plugin "Insert Headers and Footers"         ║
-  ║  Sezione: "Scripts in Header"                        ║
+  ║  Plugin "WPCode" → Code Snippets → New Snippet       ║
+  ║  Type: HTML Snippet                                  ║
+  ║  Insert: Site Wide Header                            ║
   ║                                                      ║
+  ║  OPPURE: Appearance → Theme Editor → header.php      ║
   ║  OPPURE: Elementor / Divi → Custom Code → <head>     ║
-  ║                                                      ║
-  ║  SOSTITUISCI prima di pubblicare:                    ║
-  ║  → YOUR_ML_WORKER_URL con l'URL pubblico             ║
-  ║    del container ml-worker (es. su Railway/Render)   ║
-  ║  → YOUR_AI_ROUTER_URL con l'URL del container        ║
-  ║    ai-router (porta 3000)                            ║
   ╚══════════════════════════════════════════════════════╝
 -->
 
 <!-- ALBENI AI CONFIG -->
 <script>
 window.ALBENI_AI = {
-  endpoint:         'https://dependent-applicant-august-architect.trycloudflare.com',
-  klaviyoEndpoint:  'https://motivated-weight-harder-dropped.trycloudflare.com',
+  endpoint:         'https://creative-perfection-production-57b5.up.railway.app',
+  klaviyoEndpoint:  'https://creative-perfection-production-57b5.up.railway.app',
   domain_type:      'tofu',
+  domain:           'worldofmerino.com',
   debug:            false
 };
 </script>
 
 <!-- ALBENI TRACKER (Layer 1: UTM + signals + bot shield) -->
-<script src="https://motivated-weight-harder-dropped.trycloudflare.com/albeni-ai-tracker.js" defer></script>
+<script src="https://creative-perfection-production-57b5.up.railway.app/static/albeni-ai-tracker.js" defer></script>
 
 <!-- ALBENI BEHAVIORAL ENGINE (Layer 2: IDS + cluster + personalization) -->
-<script src="https://motivated-weight-harder-dropped.trycloudflare.com/albeni-behavioral-engine.js" defer></script>
+<script src="https://creative-perfection-production-57b5.up.railway.app/static/albeni-behavioral-engine.js" defer></script>
 
 <!-- ═══════════════════════════════════════════════════════
      HERO BLOCK PERSONALIZZABILE

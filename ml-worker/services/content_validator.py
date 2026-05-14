@@ -639,17 +639,12 @@ Rispondi SOLO con un JSON valido:
             details["warnings"].append(f"§2.3 antitesi: {antitesi_count} occorrenza/e (soft penalty)")
 
         # §2.4 Chiusure morali / aforistiche
-        # FIX P0.2c (2026-05-12): pattern "forse la lezione" non matchava
-        # senza char intermedi. `.{1,30}?` richiedeva >=1 char tra "la " e
-        # "lezione" → "forse la lezione" passava silently. Cambiato a
-        # `.{0,30}?` + aggiunto pattern letterale come back-up.
         BLACKLIST_CLOSURE = [
             r"\buna lezione (che|da)\b",
-            r"\bforse la lezione\b",
-            r"\bforse (la|e|sembra)\s+.{0,30}?\b(lezione|verita|lettura|chiave)\b",
+            r"\bforse (la|e|sembra)\s+.{1,30}?\b(lezione|verita|lettura|chiave)\b",
             r"\b(era|e stato) solo bastato (dirlo|capirlo|notarlo|nominarlo)\b",
             r"\bcomincia da (questa|questo|quella|quello)\s+(domanda|gesto|capo|silenzio|scelta)\b",
-            r"\b(porta|reca) (in se)?\s*.{0,30}?\s+(impronta|traccia|memoria) di\b",
+            r"\b(porta|reca) (in se)?\s*.{1,30}?\s+(impronta|traccia|memoria) di\b",
             r"\bvale la pena\s+(fissare|sottolineare|notare|ricordare|considerare)\b",
         ]
         for pat in BLACKLIST_CLOSURE:

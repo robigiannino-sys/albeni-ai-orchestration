@@ -32,3 +32,13 @@ build/
 
 # Docker local
 docker-compose.override.yml
+
+# Backup automatici locali — mai committare
+*.backup-*
+*backup-prevoice-*
+*backup-v10-*
+*.bak
+*.bak2
+*.bak3
+skills-data.backup-*/
+commit_msg_*.txt
