@@ -895,6 +895,177 @@ async def get_notion_stats():
     return stats
 
 
+# ===================================================================
+# DASHBOARD EXECUTIVE — Aggregates (T1 CPA · T2 Org/Paid · T6 CR Cluster)
+# Spec: Spec_Dashboard_Executive_2026-05-14.docx
+# ===================================================================
+
+# Medium classification: tweak qui se cambiano le convenzioni UTM
+_ORGANIC_MEDIUMS = {"organic", "referral", "none", "(none)", "email", "direct"}
+_PAID_MEDIUMS    = {"cpc", "ppc", "paid_social", "sponsored", "dpa", "display", "story"}
+
+
+@app.get("/v1/executive/aggregates")
+async def executive_aggregates(
+    window_days: int = Query(default=7, ge=1, le=90, description="Window in days"),
+    min_sample: int = Query(default=10, description="If 7d sample < this, fall back to all-time"),
+    db: DBSession = Depends(get_db)
+):
+    """
+    Aggregations for Dashboard Executive tiles T1, T2, T6.
+
+    Returns structured JSON with explicit `value` or `null + reason`
+    to allow the UI to render "no data yet" honestly.
+
+    Tile T1 (CPA vs Target): currently null - no adv_spend tracking table.
+        We expose paid_attributions count + converted_count as proxy.
+    Tile T2 (Org/Paid Mix): organic_pct, paid_pct from marketing_attributions.
+    Tile T6 (CR per Cluster): JOIN marketing_attributions + users.assigned_cluster.
+    """
+    from sqlalchemy import text
+    from datetime import datetime, timedelta, timezone
+
+    now = datetime.now(timezone.utc)
+    window_start = now - timedelta(days=window_days)
+
+    # Helper: classify medium into 'organic' / 'paid' / 'unknown'
+    organic_list = "(" + ",".join(f"'{m}'" for m in _ORGANIC_MEDIUMS) + ")"
+    paid_list    = "(" + ",".join(f"'{m}'" for m in _PAID_MEDIUMS) + ")"
+
+    # ── T2 Org/Paid Mix ──
+    # Try 7d window first; if total < min_sample, fall back to all_time.
+    sql_mix = f"""
+        WITH cls AS (
+            SELECT
+                CASE
+                    WHEN LOWER(medium) IN {organic_list} THEN 'organic'
+                    WHEN LOWER(medium) IN {paid_list}    THEN 'paid'
+                    ELSE 'unknown'
+                END AS bucket,
+                converted
+            FROM marketing_attributions
+            WHERE created_at >= :since
+        )
+        SELECT bucket,
+               COUNT(*) AS attributions,
+               COUNT(*) FILTER (WHERE converted=true) AS conversions
+        FROM cls
+        GROUP BY bucket
+        ORDER BY bucket;
+    """
+    sql_mix_all = sql_mix.replace("WHERE created_at >= :since", "")
+
+    rows = db.execute(text(sql_mix), {"since": window_start}).fetchall()
+    total_7d = sum(r[1] for r in rows)
+    used_window = f"{window_days}d"
+    if total_7d < min_sample:
+        rows = db.execute(text(sql_mix_all)).fetchall()
+        used_window = "all_time"
+
+    mix = {"organic": 0, "paid": 0, "unknown": 0}
+    conv_by_bucket = {"organic": 0, "paid": 0, "unknown": 0}
+    for bucket, attr, conv in rows:
+        mix[bucket] = attr
+        conv_by_bucket[bucket] = conv
+    total = sum(mix.values())
+
+    org_paid_payload = {
+        "window": used_window,
+        "computed_at": now.isoformat(),
+        "value": None if total == 0 else {
+            "organic_pct": round(mix["organic"]   / total * 100, 1) if total else 0,
+            "paid_pct":    round(mix["paid"]      / total * 100, 1) if total else 0,
+            "unknown_pct": round(mix["unknown"]   / total * 100, 1) if total else 0,
+            "organic_count": mix["organic"],
+            "paid_count":    mix["paid"],
+            "unknown_count": mix["unknown"],
+            "total":         total,
+            "conversions_organic": conv_by_bucket["organic"],
+            "conversions_paid":    conv_by_bucket["paid"],
+        },
+        "reason": "no_attributions_in_window" if total == 0 else None,
+    }
+
+    # ── T1 CPA vs Target ──
+    # We don't have an adv_spend table → return null with explicit reason.
+    # Expose proxies (paid attributions, paid conversions) so UI can show context.
+    cpa_payload = {
+        "window": used_window,
+        "computed_at": now.isoformat(),
+        "value": None,
+        "reason": "no_adv_spend_table",
+        "target_sustainable_eur": 17.92,
+        "target_max_eur": 19.39,
+        "proxy": {
+            "paid_attributions": mix["paid"],
+            "paid_conversions": conv_by_bucket["paid"],
+            "implied_paid_conversion_rate_pct": (
+                round(conv_by_bucket["paid"] / mix["paid"] * 100, 2)
+                if mix["paid"] > 0 else None
+            ),
+        },
+    }
+
+    # ── T6 CR per Cluster ──
+    # JOIN marketing_attributions ↔ users.assigned_cluster.
+    # Order by CR (conversions / attributions). Min 3 attributions to avoid noise.
+    sql_cr = """
+        SELECT
+            u.assigned_cluster AS cluster,
+            COUNT(*) AS attributions,
+            COUNT(*) FILTER (WHERE ma.converted=true) AS conversions
+        FROM marketing_attributions ma
+        JOIN users u ON u.id = ma.user_id
+        WHERE u.assigned_cluster IS NOT NULL
+          AND ma.created_at >= :since
+        GROUP BY u.assigned_cluster
+        ORDER BY 2 DESC
+        LIMIT 5;
+    """
+    sql_cr_all = sql_cr.replace("AND ma.created_at >= :since\n", "")
+
+    cr_rows = db.execute(text(sql_cr), {"since": window_start}).fetchall()
+    if sum(r[1] for r in cr_rows) < min_sample:
+        cr_rows = db.execute(text(sql_cr_all)).fetchall()
+
+    cr_by_cluster = []
+    for cluster, attr, conv in cr_rows:
+        cr_by_cluster.append({
+            "cluster": cluster,
+            "attributions": attr,
+            "conversions": conv,
+            "cr_pct": round(conv / attr * 100, 2) if attr > 0 else 0.0,
+        })
+
+    # ── Totals & meta ──
+    total_attr_all = db.execute(text(
+        "SELECT COUNT(*) AS t, COUNT(*) FILTER (WHERE converted=true) AS c "
+        "FROM marketing_attributions;"
+    )).fetchone()
+
+    return {
+        "cpa_7d": cpa_payload,
+        "org_paid_mix_7d": org_paid_payload,
+        "cr_by_cluster_7d": {
+            "window": used_window,
+            "computed_at": now.isoformat(),
+            "value": cr_by_cluster if cr_by_cluster else None,
+            "reason": "no_attributions_with_cluster" if not cr_by_cluster else None,
+            "targets": {"heritage_mature": 4.8, "business_professional": 3.8},
+        },
+        "totals": {
+            "marketing_attributions_total": total_attr_all[0] if total_attr_all else 0,
+            "marketing_attributions_converted": total_attr_all[1] if total_attr_all else 0,
+        },
+        "meta": {
+            "window_days_requested": window_days,
+            "window_actually_used": used_window,
+            "min_sample_threshold": min_sample,
+            "endpoint_version": "v1.0",
+        },
+    }
+
+
 @app.post("/v1/notion/generate-from-pipeline")
 async def generate_from_notion(
     limit: int = Query(default=1, ge=1, le=10, description="Max tasks to process"),

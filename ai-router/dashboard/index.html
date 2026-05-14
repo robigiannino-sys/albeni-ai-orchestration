@@ -4203,17 +4203,19 @@ function ExecutivePage() {
     const [lake, setLake] = useState(null);
     const [seoHealth, setSeoHealth] = useState(null);
     const [routing, setRouting] = useState(null);
+    const [aggregates, setAggregates] = useState(null);
     const [loading, setLoading] = useState(true);
 
     const fetchAll = useCallback(async () => {
-        const [m, p, l, s, r] = await Promise.all([
+        const [m, p, l, s, r, a] = await Promise.all([
             api('/v1/dashboard/metrics'),
             api('/v1/notion/pipeline/stats'),
             api('/v1/content/lake/stats/summary'),
             api('/v1/seo/health'),
             api('/v1/router/assign?visitor_id=executive_dashboard_probe&lang=it'),
+            api('/v1/executive/aggregates?window_days=7'),
         ]);
-        setMetrics(m); setPipeline(p); setLake(l); setSeoHealth(s); setRouting(r);
+        setMetrics(m); setPipeline(p); setLake(l); setSeoHealth(s); setRouting(r); setAggregates(a);
         setLoading(false);
     }, []);
 
@@ -4270,41 +4272,77 @@ function ExecutivePage() {
 
             <div className="exec-grid">
 
-                {/* TILE 1 — CPA vs Target */}
+                {/* TILE 1 — CPA vs Target (PARZIALE: no adv_spend yet) */}
                 <div className="exec-tile sy">
                     <div className="exec-thead">
                         <p className="exec-ttitle">CPA vs Target</p>
                         <span className="exec-tnum">01</span>
                     </div>
                     <span className="exec-sbadge y">● Parziale</span>
-                    <div className="exec-metric"><span className="exec-mval exec-skel">—</span></div>
-                    <div className="exec-msub">Sostenibile <strong>€17.92</strong> · target <strong>€19.39</strong> · join GA4 in arrivo</div>
+                    <div className="exec-metric"><span className="exec-mval exec-skel">n/d</span></div>
+                    <div className="exec-msub">
+                        {aggregates?.cpa_7d?.proxy ? (
+                            <>Paid attr <strong>{aggregates.cpa_7d.proxy.paid_attributions}</strong> · conv paid <strong>{aggregates.cpa_7d.proxy.paid_conversions}</strong>{' '}
+                            {aggregates.cpa_7d.proxy.implied_paid_conversion_rate_pct !== null && (
+                                <>· CR paid <strong>{aggregates.cpa_7d.proxy.implied_paid_conversion_rate_pct}%</strong></>
+                            )}</>
+                        ) : <span className="exec-skel">In caricamento…</span>}
+                    </div>
+                    <div style={{marginTop:'6px',fontSize:'10px',color:'#71717a'}}>
+                        Target sostenibile <strong style={{color:'#a1a1aa'}}>€17.92</strong> · max <strong style={{color:'#a1a1aa'}}>€19.39</strong> · serve tabella adv_spend
+                    </div>
                     <div className="exec-threshold">
                         <div className="exec-tlabel">Soglie</div>
                         <div className="exec-tbar"><div className="sg"></div><div className="sy"></div><div className="sr"></div><div className="sk"></div></div>
                         <div className="exec-tmeta"><span>≤€9</span><span>€10-15</span><span>€16-34</span><span>≥€35</span></div>
                     </div>
-                    <div className="exec-tfoot"><span className="src">/v1/adv/stats + GA4</span><span>↻ 6h</span></div>
+                    <div className="exec-tfoot"><span className="src">/v1/executive/aggregates</span><span>↻ 60s</span></div>
                 </div>
 
-                {/* TILE 2 — Org/Paid Mix */}
-                <div className="exec-tile sy">
-                    <div className="exec-thead">
-                        <p className="exec-ttitle">Org / Paid Mix</p>
-                        <span className="exec-tnum">02</span>
-                    </div>
-                    <span className="exec-sbadge y">● Parziale</span>
-                    <div className="exec-metric"><span className="exec-mval exec-skel">—</span></div>
-                    <div className="exec-msub">Aggregazione cross-channel 7gg in arrivo</div>
-                    <div className="exec-stack"><div className="sa" style={{flex:60}}></div><div className="sb" style={{flex:40}}></div></div>
-                    <div className="exec-smeta"><span>Organic ≈</span><span>Paid ≈</span></div>
-                    <div className="exec-threshold">
-                        <div className="exec-tlabel">Soglie</div>
-                        <div className="exec-tbar"><div className="sr"></div><div className="sy"></div><div className="sg"></div></div>
-                        <div className="exec-tmeta"><span>&lt;50%</span><span>50-70%</span><span>≥70%</span></div>
-                    </div>
-                    <div className="exec-tfoot"><span className="src">/v1/gsc/history + /v1/adv/stats</span><span>↻ 12h</span></div>
-                </div>
+                {/* TILE 2 — Org/Paid Mix (LIVE da marketing_attributions) */}
+                {(() => {
+                    const mix = aggregates?.org_paid_mix_7d?.value;
+                    const orgPct = mix?.organic_pct ?? null;
+                    const paidPct = mix?.paid_pct ?? null;
+                    const state = orgPct === null ? 'sy' : orgPct >= 70 ? 'sg' : orgPct >= 50 ? 'sy' : 'sr';
+                    const badge = orgPct === null ? 'y' : state === 'sg' ? 'g' : state === 'sy' ? 'y' : 'r';
+                    const window = aggregates?.org_paid_mix_7d?.window || '7d';
+                    return (
+                        <div className={`exec-tile ${state}`}>
+                            <div className="exec-thead">
+                                <p className="exec-ttitle">Org / Paid Mix</p>
+                                <span className="exec-tnum">02</span>
+                            </div>
+                            <span className={`exec-sbadge ${badge}`}>● {orgPct === null ? 'Parziale' : 'Live'}</span>
+                            <div className="exec-metric">
+                                <span className="exec-mval">{orgPct !== null ? `${orgPct}%` : '—'}</span>
+                                <span className="exec-munit">organico</span>
+                            </div>
+                            <div className="exec-msub">
+                                {mix ? <>{paidPct}% paid · <strong>{mix.organic_count}</strong> org / <strong>{mix.paid_count}</strong> paid attribuzioni</> : <span className="exec-skel">In caricamento…</span>}
+                            </div>
+                            {mix && (
+                                <>
+                                    <div className="exec-stack">
+                                        <div className="sa" style={{flex: mix.organic_pct}}></div>
+                                        <div className="sb" style={{flex: mix.paid_pct}}></div>
+                                    </div>
+                                    <div className="exec-smeta">
+                                        <span>Organic {mix.organic_pct}%</span>
+                                        <span>Paid {mix.paid_pct}%</span>
+                                    </div>
+                                </>
+                            )}
+                            <div style={{fontSize:'9px',color:'#71717a',marginTop:'2px'}}>window: {window}</div>
+                            <div className="exec-threshold">
+                                <div className="exec-tlabel">Soglie</div>
+                                <div className="exec-tbar"><div className="sr"></div><div className="sy"></div><div className="sg"></div></div>
+                                <div className="exec-tmeta"><span>&lt;50%</span><span>50-70%</span><span>≥70%</span></div>
+                            </div>
+                            <div className="exec-tfoot"><span className="src">/v1/executive/aggregates</span><span>↻ 60s</span></div>
+                        </div>
+                    );
+                })()}
 
                 {/* TILE 3 — IDS Medio & Live (LIVE) */}
                 <div className={`exec-tile ${idsState === 'sg' ? 'sg' : idsState === 'sy' ? 'sy' : 'sr'}`}>
@@ -4382,33 +4420,45 @@ function ExecutivePage() {
                     <div className="exec-tfoot"><span className="src">/v1/notion + /v1/content/lake</span><span>↻ 6h</span></div>
                 </div>
 
-                {/* TILE 6 — CR per Cluster (PARZIALE) */}
-                <div className="exec-tile sy">
-                    <div className="exec-thead">
-                        <p className="exec-ttitle">CR per Cluster (top 3)</p>
-                        <span className="exec-tnum">06</span>
-                    </div>
-                    <span className="exec-sbadge y">● Parziale</span>
-                    <div className="exec-msub" style={{marginBottom:'6px'}}>Distribuzione live · CR da join transactions</div>
-                    {metrics?.cluster_distribution && Object.entries(metrics.cluster_distribution).slice(0, 3).map(([name, count]) => {
-                        const total = Object.values(metrics.cluster_distribution).reduce((a, b) => a + b, 0) || 1;
-                        const pct = Math.round(count / total * 100);
-                        return (
-                            <div className="exec-cluster" key={name}>
-                                <span className="name">{name.replace(/_/g, ' ').slice(0, 14)}</span>
-                                <div className="barwrap"><div className="bar" style={{width:`${pct}%`}}></div></div>
-                                <span className="pct">{pct}%</span>
+                {/* TILE 6 — CR per Cluster (LIVE da marketing_attributions ↔ users) */}
+                {(() => {
+                    const cr = aggregates?.cr_by_cluster_7d?.value || [];
+                    const maxCr = cr.length ? Math.max(...cr.map(c => c.cr_pct)) : 0;
+                    const targets = aggregates?.cr_by_cluster_7d?.targets || { heritage_mature: 4.8, business_professional: 3.8 };
+                    const state = !cr.length ? 'sy' : maxCr >= 3.0 ? 'sg' : maxCr >= 1.5 ? 'sy' : 'sr';
+                    const badge = !cr.length ? 'y' : state === 'sg' ? 'g' : state === 'sy' ? 'y' : 'r';
+                    const window = aggregates?.cr_by_cluster_7d?.window || '7d';
+                    return (
+                        <div className={`exec-tile ${state}`}>
+                            <div className="exec-thead">
+                                <p className="exec-ttitle">CR per Cluster (top 5)</p>
+                                <span className="exec-tnum">06</span>
                             </div>
-                        );
-                    })}
-                    <div className="exec-threshold">
-                        <div className="exec-tlabel">CR target (doc 19)</div>
-                        <div className="exec-tmeta" style={{fontSize:'10px'}}>
-                            <span>Heritage 4.8%</span><span>Business 3.8%</span>
+                            <span className={`exec-sbadge ${badge}`}>● {!cr.length ? 'Parziale' : 'Live'}</span>
+                            <div className="exec-msub" style={{marginBottom:'6px'}}>
+                                {cr.length ? <>CR conversioni / attribuzioni per cluster</> : <span className="exec-skel">In caricamento…</span>}
+                            </div>
+                            {cr.map(c => {
+                                const widthPct = maxCr > 0 ? Math.max(c.cr_pct / maxCr * 100, 3) : 0;
+                                return (
+                                    <div className="exec-cluster" key={c.cluster}>
+                                        <span className="name">{c.cluster.replace(/_/g, ' ').slice(0, 14)}</span>
+                                        <div className="barwrap"><div className="bar" style={{width: `${widthPct}%`}}></div></div>
+                                        <span className="pct">{c.cr_pct}%</span>
+                                    </div>
+                                );
+                            })}
+                            <div style={{fontSize:'9px',color:'#71717a',marginTop:'4px'}}>window: {window}</div>
+                            <div className="exec-threshold">
+                                <div className="exec-tlabel">CR target (doc 19)</div>
+                                <div className="exec-tmeta" style={{fontSize:'10px'}}>
+                                    <span>Heritage {targets.heritage_mature}%</span><span>Business {targets.business_professional}%</span>
+                                </div>
+                            </div>
+                            <div className="exec-tfoot"><span className="src">/v1/executive/aggregates</span><span>↻ 60s</span></div>
                         </div>
-                    </div>
-                    <div className="exec-tfoot"><span className="src">/v1/dashboard/metrics + GA4</span><span>↻ 12h</span></div>
-                </div>
+                    );
+                })()}
 
                 {/* TILE 7 — SEO Health Multidominio (LIVE) */}
                 <div className={`exec-tile ${seoState === 'sg' ? 'sg' : seoState === 'sy' ? 'sy' : 'sr'}`}>
