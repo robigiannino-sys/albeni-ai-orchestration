@@ -117,10 +117,79 @@ class SemrushAgent:
 
             return self._parse_csv(response.text)
 
+    # SEMrush response header → request column-code mapping.
+    # SEMrush API uses friendly English headers in the response (e.g. "Search Volume")
+    # but the rest of the codebase reads by request-code (e.g. "Nq"). This map
+    # normalizes the parsed CSV back to the request codes so downstream readers work.
+    # Source: https://developer.semrush.com/api/v3/analytics/basic-docs/#columns
+    HEADER_CODE_MAP = {
+        # Phrase / keyword reports
+        "Keyword": "Ph",
+        "Search Volume": "Nq",
+        "CPC": "Cp",
+        "Competition": "Co",
+        "Number of Results": "Nr",
+        "Trend": "Td",
+        # Domain reports
+        "Domain": "Dn",
+        "Database": "Db",
+        "Rank": "Rk",
+        "Organic Keywords": "Or",
+        "Organic Traffic": "Ot",
+        "Organic Cost": "Oc",
+        "Adwords Keywords": "Ad",
+        "Adwords Traffic": "At",
+        "Adwords Cost": "Ac",
+        # Competitor / domain_organic_organic
+        "Competitor Relevance": "Cr",
+        "Common Keywords": "Np",
+        # Position tracking
+        "Position": "Po",
+        "Previous Position": "Pp",
+        "Position Difference": "Pd",
+        "Traffic (%)": "Tr",
+        "Traffic Cost (%)": "Tc",
+        "Url": "Ur",
+        # Position fields in domain_domains (keyword gap)
+        "Domain 1": "P0",
+        "Domain 2": "P1",
+        "Domain 3": "P2",
+        "Domain 4": "P3",
+        "Domain 5": "P4",
+        # Backlinks analytics
+        "Authority Score": "ascore",
+        "Total Backlinks": "total",
+        "Referring Domains": "domains_num",
+        "Referring URLs": "urls_num",
+        "Referring IPs": "ips_num",
+        "Follow Links": "follows_num",
+        "Nofollow Links": "nofollows_num",
+        "Text Links": "texts_num",
+        "Image Links": "images_num",
+        # Keyword difficulty
+        "Keyword Difficulty Index": "Kd",
+    }
+
     def _parse_csv(self, text: str) -> List[Dict[str, str]]:
-        """Parse Semrush semicolon-separated CSV response."""
-        reader = csv.DictReader(io.StringIO(text.strip()), delimiter=";")
-        return [dict(row) for row in reader]
+        """Parse Semrush semicolon-separated CSV response.
+
+        SEMrush returns response headers as English labels (e.g. "Search Volume")
+        regardless of the request's `export_columns` codes (e.g. "Nq").
+        We normalize back to codes so downstream readers using row.get("Nq")
+        find the value. Detect upstream API errors (responses starting with
+        "ERROR ::") and surface them instead of silently returning empty rows.
+        """
+        text = text.strip()
+        # SEMrush error response (no CSV header, just "ERROR XX :: MESSAGE")
+        if text.upper().startswith("ERROR "):
+            logger.error(f"Semrush API error response: {text[:200]}")
+            return []
+        reader = csv.DictReader(io.StringIO(text), delimiter=";")
+        rows = []
+        for row in reader:
+            # Rename headers using HEADER_CODE_MAP; unknown headers pass through.
+            rows.append({self.HEADER_CODE_MAP.get(k, k): v for k, v in row.items()})
+        return rows
 
     # =================================================================
     # DOMAIN ANALYTICS
