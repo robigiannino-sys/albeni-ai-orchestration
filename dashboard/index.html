@@ -4204,18 +4204,20 @@ function ExecutivePage() {
     const [seoHealth, setSeoHealth] = useState(null);
     const [routing, setRouting] = useState(null);
     const [aggregates, setAggregates] = useState(null);
+    const [anomalies, setAnomalies] = useState(null);
     const [loading, setLoading] = useState(true);
 
     const fetchAll = useCallback(async () => {
-        const [m, p, l, s, r, a] = await Promise.all([
+        const [m, p, l, s, r, a, an] = await Promise.all([
             api('/v1/dashboard/metrics'),
             api('/v1/notion/pipeline/stats'),
             api('/v1/content/lake/stats/summary'),
             api('/v1/seo/health'),
             api('/v1/router/assign?visitor_id=executive_dashboard_probe&lang=it'),
             api('/v1/executive/aggregates?window_days=7'),
+            api('/v1/anomaly/alerts?days=7'),
         ]);
-        setMetrics(m); setPipeline(p); setLake(l); setSeoHealth(s); setRouting(r); setAggregates(a);
+        setMetrics(m); setPipeline(p); setLake(l); setSeoHealth(s); setRouting(r); setAggregates(a); setAnomalies(an);
         setLoading(false);
     }, []);
 
@@ -4272,32 +4274,63 @@ function ExecutivePage() {
 
             <div className="exec-grid">
 
-                {/* TILE 1 — CPA vs Target (PARZIALE: no adv_spend yet) */}
-                <div className="exec-tile sy">
-                    <div className="exec-thead">
-                        <p className="exec-ttitle">CPA vs Target</p>
-                        <span className="exec-tnum">01</span>
-                    </div>
-                    <span className="exec-sbadge y">● Parziale</span>
-                    <div className="exec-metric"><span className="exec-mval exec-skel">n/d</span></div>
-                    <div className="exec-msub">
-                        {aggregates?.cpa_7d?.proxy ? (
-                            <>Paid attr <strong>{aggregates.cpa_7d.proxy.paid_attributions}</strong> · conv paid <strong>{aggregates.cpa_7d.proxy.paid_conversions}</strong>{' '}
-                            {aggregates.cpa_7d.proxy.implied_paid_conversion_rate_pct !== null && (
-                                <>· CR paid <strong>{aggregates.cpa_7d.proxy.implied_paid_conversion_rate_pct}%</strong></>
-                            )}</>
-                        ) : <span className="exec-skel">In caricamento…</span>}
-                    </div>
-                    <div style={{marginTop:'6px',fontSize:'10px',color:'#71717a'}}>
-                        Target sostenibile <strong style={{color:'#a1a1aa'}}>€17.92</strong> · max <strong style={{color:'#a1a1aa'}}>€19.39</strong> · serve tabella adv_spend
-                    </div>
-                    <div className="exec-threshold">
-                        <div className="exec-tlabel">Soglie</div>
-                        <div className="exec-tbar"><div className="sg"></div><div className="sy"></div><div className="sr"></div><div className="sk"></div></div>
-                        <div className="exec-tmeta"><span>≤€9</span><span>€10-15</span><span>€16-34</span><span>≥€35</span></div>
-                    </div>
-                    <div className="exec-tfoot"><span className="src">/v1/executive/aggregates</span><span>↻ 60s</span></div>
-                </div>
+                {/* TILE 1 — CPA vs Target (LIVE quando adv_spend ha dati + paid conversions > 0) */}
+                {(() => {
+                    const cpa = aggregates?.cpa_7d;
+                    const value = cpa?.value;
+                    const band = cpa?.band;
+                    const reason = cpa?.reason;
+                    const window = cpa?.window || '7d';
+                    const totalSpend = cpa?.total_spend_eur;
+                    const paidConv = cpa?.paid_conversions;
+                    // band → tile/badge style. NERO mappato visivamente su rosso fino ad aggiunta classe 'sk' dedicata.
+                    const state = band === 'VERDE' ? 'sg' : band === 'GIALLO' ? 'sy'
+                                : (band === 'ROSSO' || band === 'NERO') ? 'sr' : 'sy';
+                    const badge = band === 'VERDE' ? 'g' : band === 'GIALLO' ? 'y'
+                                : (band === 'ROSSO' || band === 'NERO') ? 'r' : 'y';
+                    const badgeText = value == null
+                        ? 'Parziale'
+                        : band === 'NERO' ? '● Allarme NERO' : `● Live · ${band}`;
+                    const reasonText = {
+                        'no_spend_in_window': 'Nessuno spend caricato nella finestra (sync da attivare)',
+                        'no_adv_spend_data': 'Tabella adv_spend vuota (attiva il sync Google Ads)',
+                        'no_paid_conversions_in_window': 'Nessuna conversione paid nella finestra',
+                    }[reason] || (reason || '');
+                    return (
+                        <div className={`exec-tile ${state}`}>
+                            <div className="exec-thead">
+                                <p className="exec-ttitle">CPA vs Target</p>
+                                <span className="exec-tnum">01</span>
+                            </div>
+                            <span className={`exec-sbadge ${badge}`}>{badgeText.startsWith('●') ? badgeText : `● ${badgeText}`}</span>
+                            <div className="exec-metric">
+                                {value != null
+                                    ? <span className="exec-mval">€{Number(value).toFixed(2)}</span>
+                                    : <span className="exec-mval exec-skel">n/d</span>}
+                            </div>
+                            <div className="exec-msub">
+                                {value != null ? (
+                                    <>Spend <strong>€{(totalSpend ?? 0).toFixed(2)}</strong> · conv paid <strong>{paidConv ?? 0}</strong> · finestra <strong>{window}</strong></>
+                                ) : cpa?.proxy ? (
+                                    <>Paid attr <strong>{cpa.proxy.paid_attributions}</strong> · conv paid <strong>{cpa.proxy.paid_conversions}</strong>{' '}
+                                    {cpa.proxy.implied_paid_conversion_rate_pct !== null && (
+                                        <>· CR paid <strong>{cpa.proxy.implied_paid_conversion_rate_pct}%</strong></>
+                                    )}</>
+                                ) : <span className="exec-skel">In caricamento…</span>}
+                            </div>
+                            <div style={{marginTop:'6px',fontSize:'10px',color:'#71717a'}}>
+                                Target sostenibile <strong style={{color:'#a1a1aa'}}>€17.92</strong> · max <strong style={{color:'#a1a1aa'}}>€19.39</strong>
+                                {value == null && reasonText && <><br/><span style={{color:'#a1a1aa'}}>{reasonText}</span></>}
+                            </div>
+                            <div className="exec-threshold">
+                                <div className="exec-tlabel">Soglie</div>
+                                <div className="exec-tbar"><div className="sg"></div><div className="sy"></div><div className="sr"></div><div className="sk"></div></div>
+                                <div className="exec-tmeta"><span>≤€9</span><span>€10-15</span><span>€16-34</span><span>≥€35</span></div>
+                            </div>
+                            <div className="exec-tfoot"><span className="src">/v1/executive/aggregates</span><span>↻ 60s</span></div>
+                        </div>
+                    );
+                })()}
 
                 {/* TILE 2 — Org/Paid Mix (LIVE da marketing_attributions) */}
                 {(() => {
@@ -4488,29 +4521,54 @@ function ExecutivePage() {
                     <div className="exec-tfoot"><span className="src">/v1/seo/health</span><span>↻ 24h</span></div>
                 </div>
 
-                {/* TILE 8 — Anomalie & Alert (BLOCCO v0) */}
-                <div className="exec-tile sr">
-                    <div className="exec-thead">
-                        <p className="exec-ttitle">Anomalie &amp; Alert 7gg</p>
-                        <span className="exec-tnum">08</span>
-                    </div>
-                    <span className="exec-sbadge r">● v0 statico</span>
-                    <div className="exec-metric">
-                        <span className="exec-mval" style={{color:'#fca5a5'}}>2</span>
-                        <span className="exec-munit">bug aperti</span>
-                    </div>
-                    <div className="exec-msub">post-fix 14 mag: <strong>BUG-02</strong> backlinks, <strong>BUG-07</strong> schema strict</div>
-                    <div className="exec-buglist">
-                        <div className="row">BUG-02 SEMrush /backlinks domain ignored (P1)</div>
-                        <div className="row">BUG-07 content/validate schema strict (P3)</div>
-                    </div>
-                    <div className="exec-threshold">
-                        <div className="exec-tlabel">Soglie</div>
-                        <div className="exec-tbar"><div className="sg"></div><div className="sy"></div><div className="sr"></div></div>
-                        <div className="exec-tmeta"><span>0</span><span>1-3</span><span>&gt;3</span></div>
-                    </div>
-                    <div className="exec-tfoot"><span className="src">v0: bug-list · v1: cron daily</span><span>↻ 1h</span></div>
-                </div>
+                {/* TILE 8 — Anomalie & Alert (LIVE via /v1/anomaly/alerts, Step 3b 14 mag) */}
+                {(() => {
+                    const an = anomalies;
+                    const counts = an?.counts || {INFO: 0, WARNING: 0, CRITICAL: 0};
+                    const total = an?.total ?? 0;
+                    const recent = (an?.alerts || []).slice(0, 3);
+                    // Stato basato sulla severity più alta presente
+                    const state = counts.CRITICAL > 0 ? 'sr'
+                                : counts.WARNING > 0 ? 'sy'
+                                : (total > 0 ? 'sg' : 'sg');  // INFO o vuoto → verde
+                    const badgeClass = counts.CRITICAL > 0 ? 'r'
+                                     : counts.WARNING > 0 ? 'y'
+                                     : 'g';
+                    const badgeText = an === null
+                        ? '● In caricamento'
+                        : total === 0 ? '● Live · Nessuno'
+                        : counts.CRITICAL > 0 ? `● ${counts.CRITICAL} CRITICAL`
+                        : counts.WARNING > 0 ? `● ${counts.WARNING} WARNING`
+                        : `● ${counts.INFO} INFO`;
+                    const mainVal = total;
+                    return (
+                        <div className={`exec-tile ${state}`}>
+                            <div className="exec-thead">
+                                <p className="exec-ttitle">Anomalie &amp; Alert 7gg</p>
+                                <span className="exec-tnum">08</span>
+                            </div>
+                            <span className={`exec-sbadge ${badgeClass}`}>{badgeText}</span>
+                            <div className="exec-metric">
+                                <span className="exec-mval" style={{color: counts.CRITICAL > 0 ? '#fca5a5' : counts.WARNING > 0 ? '#fbbf24' : '#4ade80'}}>{mainVal}</span>
+                                <span className="exec-munit">alert aperti</span>
+                            </div>
+                            <div className="exec-msub">
+                                CRITICAL <strong>{counts.CRITICAL}</strong> · WARNING <strong>{counts.WARNING}</strong> · INFO <strong>{counts.INFO}</strong>
+                            </div>
+                            <div className="exec-buglist">
+                                {recent.length > 0 ? recent.map(a => (
+                                    <div className="row" key={a.id}>{a.severity} · {a.metric_name}: {a.message.length > 70 ? a.message.slice(0, 70) + '…' : a.message}</div>
+                                )) : <div className="row" style={{color:'#52525b'}}>Nessun alert in 7gg · sistema sano</div>}
+                            </div>
+                            <div className="exec-threshold">
+                                <div className="exec-tlabel">Severity</div>
+                                <div className="exec-tbar"><div className="sg"></div><div className="sy"></div><div className="sr"></div></div>
+                                <div className="exec-tmeta"><span>INFO ≥10%</span><span>WARN ≥25%</span><span>CRIT ≥50%</span></div>
+                            </div>
+                            <div className="exec-tfoot"><span className="src">/v1/anomaly/alerts · cron 04:15 UTC</span><span>↻ 60s</span></div>
+                        </div>
+                    );
+                })()}
 
             </div>
 
@@ -4518,7 +4576,7 @@ function ExecutivePage() {
                 <strong>Dashboard Executive v1 · Step 1 wiring live.</strong>{' '}
                 Tile <span style={{color:'#4ade80'}}><strong>VERDE</strong></span> (3, 4, 5, 7) connessi agli endpoint reali con refresh 60s.{' '}
                 Tile <span style={{color:'#fbbf24'}}><strong>GIALLO</strong></span> (1, 2, 6) attendono aggregazione GA4 cross-channel.{' '}
-                Tile <span style={{color:'#fca5a5'}}><strong>ROSSO</strong></span> (8) è in modalità v0 statico — engine Anomaly Detection in roadmap P2.
+                Tile <strong>8</strong> ora live via <code>/v1/anomaly/alerts</code>: cron daily 04:15 UTC + 3 KPI monitorati (cpa_7d, organic_pct, heritage_mature_cr).
             </div>
         </div>
     );
