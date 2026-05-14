@@ -13,13 +13,14 @@ import asyncio
 import logging
 import time
 import json
+import os
 from datetime import datetime, timedelta
 from contextlib import asynccontextmanager
 from typing import Optional, Dict, List
 
 import redis.asyncio as aioredis
 from pathlib import Path
-from fastapi import FastAPI, HTTPException, Depends, Header, Query, Body, File, UploadFile, Form
+from fastapi import FastAPI, HTTPException, Depends, Header, Query, Body, File, UploadFile, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
@@ -882,6 +883,163 @@ async def get_notion_pending():
     notion = NotionSync()
     tasks = await notion.get_pending_tasks()
     return {"pending_tasks": tasks, "total": len(tasks)}
+
+
+# ===================================================================
+# GSC INDEXING MONITOR — migrated from filesystem JSON to Postgres
+# Old version: ai-router/server.js wrote to gsc_data.json (ephemeral).
+# Bug fix 2026-05-14: data persisted in DB to survive container redeploys.
+# ===================================================================
+
+def _ensure_gsc_table_and_seed(db: DBSession):
+    """
+    Auto-create table if missing and seed from gsc_data.json (one-time bootstrap).
+    Idempotent: subsequent calls do nothing once table is populated.
+    """
+    from sqlalchemy import text
+    from models.database import GSCIndexingScan, Base, engine
+    import json, os
+    from datetime import datetime as dt
+    # Create table if missing (safe on every call - PG checks IF NOT EXISTS)
+    try:
+        GSCIndexingScan.__table__.create(bind=engine, checkfirst=True)
+    except Exception as e:
+        logger.warning(f"GSC table create check failed (probably already exists): {e}")
+    # Seed from JSON only if table is empty
+    count = db.query(GSCIndexingScan).count()
+    if count > 0:
+        return False
+    # Try multiple candidate paths for the legacy JSON baseline
+    candidates = [
+        "/app/dashboard/gsc_data.json",          # ai-router build path
+        "/app/ai-router/dashboard/gsc_data.json",
+        os.path.join(os.path.dirname(__file__), "..", "ai-router", "dashboard", "gsc_data.json"),
+        os.path.join(os.path.dirname(__file__), "..", "dashboard", "gsc_data.json"),
+    ]
+    raw = None
+    for p in candidates:
+        try:
+            with open(p, "r", encoding="utf-8") as f:
+                raw = json.load(f)
+                logger.info(f"GSC seed: imported baseline from {p}")
+                break
+        except FileNotFoundError:
+            continue
+        except Exception as e:
+            logger.warning(f"GSC seed: error reading {p}: {e}")
+    if not raw:
+        logger.info("GSC seed: no baseline JSON found - starting empty")
+        return False
+    inserted = 0
+    for s in raw.get("scans", []):
+        try:
+            row = GSCIndexingScan(
+                scan_id=s.get("id"),
+                site=s.get("site"),
+                property=s.get("property"),
+                date=dt.fromisoformat(s["date"]).date() if "date" in s else None,
+                total_urls=s.get("total_urls", 0),
+                indexed=s.get("indexed", 0),
+                crawled_not_indexed=s.get("crawled_not_indexed", 0),
+                not_crawled=s.get("not_crawled", 0),
+                errors=s.get("errors", 0),
+                neutral=s.get("neutral", 0),
+                duration_minutes=s.get("duration_minutes"),
+                source=s.get("source", "manual"),
+            )
+            db.add(row)
+            inserted += 1
+        except Exception as e:
+            logger.warning(f"GSC seed: skip row {s.get('id')}: {e}")
+    db.commit()
+    logger.info(f"GSC seed: inserted {inserted} scans from JSON baseline")
+    return True
+
+
+@app.get("/v1/gsc/history")
+async def gsc_history(
+    site: Optional[str] = Query(None, description="Filter by site (worldofmerino.com, merinouniversity.com)"),
+    db: DBSession = Depends(get_db)
+):
+    """
+    Return GSC indexing scan history. Persisted in Postgres (table gsc_indexing_scans).
+    Bootstraps from legacy gsc_data.json on first call if table is empty.
+    Maintains backward-compatible response shape: {scans: [...], total: N}.
+    """
+    from models.database import GSCIndexingScan
+    _ensure_gsc_table_and_seed(db)
+    q = db.query(GSCIndexingScan)
+    if site:
+        q = q.filter(GSCIndexingScan.site == site)
+    rows = q.order_by(GSCIndexingScan.date.desc()).all()
+    scans = []
+    for r in rows:
+        scans.append({
+            "id": r.scan_id,
+            "site": r.site,
+            "property": r.property,
+            "date": r.date.isoformat() if r.date else None,
+            "total_urls": r.total_urls,
+            "indexed": r.indexed,
+            "crawled_not_indexed": r.crawled_not_indexed,
+            "not_crawled": r.not_crawled,
+            "errors": r.errors,
+            "neutral": r.neutral,
+            "duration_minutes": r.duration_minutes,
+            "source": r.source,
+        })
+    return {"scans": scans, "total": len(scans)}
+
+
+@app.post("/v1/gsc/report")
+async def gsc_report(
+    request: Request,
+    payload: Dict = Body(...),
+    db: DBSession = Depends(get_db)
+):
+    """
+    Record a new GSC scan. Idempotent on scan_id (UPSERT semantics: re-scan same day overwrites).
+    API key check kept for compatibility with existing gsc_index_monitor.py script.
+    Body: {site, date, total_urls, indexed, crawled_not_indexed, not_crawled, errors, neutral, source?, duration_minutes?}
+    """
+    from models.database import GSCIndexingScan
+    from datetime import datetime as dt
+
+    api_key = request.headers.get("x-api-key") or request.query_params.get("api_key")
+    expected = os.environ.get("API_KEY", "albeni-gsc-2026")
+    if api_key != expected:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    if not payload.get("site") or not payload.get("date") or payload.get("total_urls") is None:
+        raise HTTPException(status_code=400, detail="Missing required fields: site, date, total_urls")
+
+    _ensure_gsc_table_and_seed(db)
+
+    # Generate scan_id (compat with Node implementation pattern)
+    site_short = "mu" if "merinouniversity" in payload["site"] else "wom"
+    scan_id = f"{site_short}-{payload['date']}"
+
+    # UPSERT - delete existing same-day scan, insert new one
+    db.query(GSCIndexingScan).filter(GSCIndexingScan.scan_id == scan_id).delete()
+    row = GSCIndexingScan(
+        scan_id=scan_id,
+        site=payload["site"],
+        property=payload.get("property"),
+        date=dt.fromisoformat(payload["date"]).date(),
+        total_urls=payload.get("total_urls", 0),
+        indexed=payload.get("indexed", 0),
+        crawled_not_indexed=payload.get("crawled_not_indexed", 0),
+        not_crawled=payload.get("not_crawled", 0),
+        errors=payload.get("errors", 0),
+        neutral=payload.get("neutral", 0),
+        duration_minutes=payload.get("duration_minutes"),
+        source=payload.get("source", "manual"),
+    )
+    db.add(row)
+    db.commit()
+
+    total = db.query(GSCIndexingScan).count()
+    return {"status": "ok", "id": scan_id, "total_scans": total}
 
 
 @app.get("/v1/notion/pipeline/stats")

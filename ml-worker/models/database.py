@@ -231,3 +231,27 @@ class BotShieldExclusion(Base):
     excluded_at = Column(DateTime, default=datetime.utcnow)
     expires_at = Column(DateTime)
     active = Column(Boolean, default=True)
+
+
+class GSCIndexingScan(Base):
+    """
+    GSC Indexing Monitor scan results - persistence for Tower GSC widget.
+    Migrated from filesystem JSON (ai-router/dashboard/gsc_data.json) on
+    2026-05-14 because container fs is ephemeral - scans were lost every deploy.
+    """
+    __tablename__ = "gsc_indexing_scans"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    scan_id = Column(String(100), unique=True, nullable=False, index=True)  # e.g. "mu-2026-05-13"
+    site = Column(String(100), nullable=False, index=True)
+    property = Column(Text)
+    date = Column(Date, nullable=False, index=True)
+    total_urls = Column(Integer, default=0)
+    indexed = Column(Integer, default=0)
+    crawled_not_indexed = Column(Integer, default=0)
+    not_crawled = Column(Integer, default=0)
+    errors = Column(Integer, default=0)
+    neutral = Column(Integer, default=0)
+    duration_minutes = Column(Integer, nullable=True)
+    source = Column(String(50), default="manual")
+    created_at = Column(DateTime, default=datetime.utcnow)
