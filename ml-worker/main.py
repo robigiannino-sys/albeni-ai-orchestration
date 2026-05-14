@@ -1457,19 +1457,50 @@ def _select_variant(db: DBSession, slot_key: str, cluster: Optional[str] = None,
     return sorted_variants[0], slot
 
 
+def _coerce_user_uuid(raw_user_id) -> Optional[object]:
+    """
+    Parse user_id (string) come UUID. Se invalid o se l'user non esiste nella
+    tabella users, ritorna None (downgrade a "anonymous exposure"). Pattern
+    "loose attribution": un visitor pure cookie-only è OK senza FK strict.
+
+    Bug fix 2026-05-14: lo smoke test (e widget JS lato WP con cookie esterni)
+    passa user_id che non sempre corrisponde a un utente del DB. La FK
+    cro_exposures.user_id → users.id provocava Internal Server Error.
+    """
+    from uuid import UUID
+    if raw_user_id is None:
+        return None
+    try:
+        return UUID(str(raw_user_id))
+    except (ValueError, AttributeError, TypeError):
+        return None
+
+
 def _record_exposure(db: DBSession, variant_id: int, user_id: Optional[str] = None,
                       session_id: Optional[str] = None):
     """
     Log un'esposizione. Increment exposure_count atomicamente.
     Ritorna CROExposure persisted (con id valido per future conversion linking).
+
+    user_id parsing: accetta string (es. da query param), prova UUID parse;
+    se invalid o user non esistente in `users`, downgrade a None.
     """
-    from models.database import CROVariant, CROExposure
+    from models.database import CROVariant, CROExposure, User
     from datetime import datetime as dt
+
+    # Coerce + verifica FK
+    user_uuid = _coerce_user_uuid(user_id)
+    if user_uuid is not None:
+        # FK check: se l'user_id non esiste in users, downgrade a None
+        # (evita IntegrityError; pattern "loose attribution" per visitor esterni)
+        exists = db.query(User.id).filter(User.id == user_uuid).first()
+        if not exists:
+            user_uuid = None
 
     exposure = CROExposure(
         variant_id=variant_id,
-        user_id=user_id,
-        session_id=session_id,
+        user_id=user_uuid,
+        session_id=(session_id[:100] if session_id else None),
         served_at=dt.utcnow(),
     )
     db.add(exposure)
