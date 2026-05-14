@@ -43,10 +43,14 @@ const TECH_CLUSTERS = ['business_professional', 'modern_minimalist'];
  */
 router.get('/assign', async (req, res) => {
     const startTime = Date.now();
-    const { user_id, lang } = req.query;
+    // Schema-tolerant param mapping (post Bug 1bis pattern):
+    // accept both user_id (legacy) and visitor_id (current snippet convention),
+    // both lang and language.
+    const user_id = req.query.user_id || req.query.visitor_id;
+    const lang = req.query.lang || req.query.language;
 
     if (!user_id) {
-        return res.status(400).json({ error: 'user_id is required' });
+        return res.status(400).json({ error: 'user_id or visitor_id is required' });
     }
 
     try {
@@ -155,10 +159,11 @@ router.get('/assign', async (req, res) => {
  * Get current routing status for a user (without triggering redirect).
  */
 router.get('/status', async (req, res) => {
-    const { user_id } = req.query;
+    // Schema-tolerant (vedi /assign)
+    const user_id = req.query.user_id || req.query.visitor_id;
 
     if (!user_id) {
-        return res.status(400).json({ error: 'user_id is required' });
+        return res.status(400).json({ error: 'user_id or visitor_id is required' });
     }
 
     try {

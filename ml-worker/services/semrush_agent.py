@@ -701,25 +701,28 @@ class SemrushAgent:
     # =================================================================
 
     async def keyword_gap(
-        self, database: str = "it", competitor: str = "smartwool.com"
+        self,
+        database: str = "it",
+        competitor: str = "smartwool.com",
+        albeni_domain: str = "albeni1905.com",
     ) -> Dict[str, Any]:
         """
-        Find keywords where a competitor ranks but Albeni doesn't.
-        Uses domain_domains comparison for the main Albeni domain.
+        Find keywords where a competitor ranks but the given Albeni domain doesn't.
+        Uses domain_domains comparison. Default Albeni side = albeni1905.com but any
+        domain in the ecosystem can be passed (worldofmerino, merinouniversity, pms).
         """
         if not self._is_configured():
             return {"error": "Semrush API key not configured"}
 
         try:
-            # Use albeni1905.com as primary comparison domain
             data = await self._request({
                 "type": "domain_domains",
-                "domains": f"albeni1905.com|or|{competitor}|or",
+                "domains": f"{albeni_domain}|or|{competitor}|or",
                 "database": database,
                 "display_limit": "50",
                 "export_columns": "Ph,Nq,Cp,Co,Kd,P0,P1",
                 "display_sort": "nq_desc",
-                "display_filter": "+|Po0|Eq|0",  # Where Albeni has no ranking
+                "display_filter": "+|Po0|Eq|0",  # Where Albeni domain has no ranking
             })
 
             gaps = []
@@ -735,7 +738,7 @@ class SemrushAgent:
                 })
 
             return {
-                "albeni_domain": "albeni1905.com",
+                "albeni_domain": albeni_domain,
                 "competitor": competitor,
                 "database": database,
                 "total_gaps": len(gaps),
@@ -743,7 +746,7 @@ class SemrushAgent:
             }
         except Exception as e:
             logger.error(f"Keyword gap failed vs {competitor}: {e}")
-            return {"competitor": competitor, "error": str(e)}
+            return {"competitor": competitor, "albeni_domain": albeni_domain, "error": str(e)}
 
     # =================================================================
     # POSITION TRACKING HELPERS

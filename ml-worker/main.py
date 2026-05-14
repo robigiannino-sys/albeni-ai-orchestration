@@ -327,8 +327,10 @@ async def predict_cluster(payload: Dict = Body(...), db: DBSession = Depends(get
 
 @app.get("/v1/router/assign", response_model=RoutingResponse)
 async def assign_route(
-    user_id: str = Query(...),
-    lang: str = Query("it"),
+    user_id: Optional[str] = Query(None),
+    visitor_id: Optional[str] = Query(None),
+    lang: Optional[str] = Query(None),
+    language: Optional[str] = Query(None),
     db: DBSession = Depends(get_db)
 ):
     """
@@ -336,7 +338,16 @@ async def assign_route(
     TOFU (0-30) -> worldofmerino.com
     MOFU (31-65) -> merinouniversity.com
     BOFU (>65) -> perfectmerinoshirt.com or albeni1905.com (by cluster)
+
+    Accepts either user_id (legacy) or visitor_id (current snippet convention),
+    and either `lang` or `language` (sibling-endpoint convention).
     """
+    # Schema-tolerant param mapping (post Bug 1bis pattern)
+    user_id = user_id or visitor_id
+    if not user_id:
+        raise HTTPException(status_code=400, detail="user_id or visitor_id required")
+    lang = lang or language or "it"
+
     start_time = time.time()
 
     # Try Redis cache first for ultra-fast response (<120ms)
@@ -1239,14 +1250,20 @@ async def semrush_paid_intelligence(
 @app.get("/v1/semrush/keyword-gap")
 async def semrush_keyword_gap(
     competitor: str = Query(default="smartwool.com"),
-    database: str = Query(default="it")
+    database: str = Query(default="it"),
+    domain: Optional[str] = Query(None, description="Albeni domain to compare (default: albeni1905.com)"),
+    albeni_domain: Optional[str] = Query(None),
 ):
     """
     Find keyword gaps: keywords where a competitor ranks but Albeni doesn't.
     Identifies content opportunities.
+
+    Accepts `domain` or `albeni_domain` to pick which Albeni satellite to compare
+    (worldofmerino, merinouniversity, perfectmerinoshirt, albeni1905).
     """
+    side = domain or albeni_domain or "albeni1905.com"
     agent = SemrushAgent()
-    return await agent.keyword_gap(database, competitor)
+    return await agent.keyword_gap(database, competitor, side)
 
 
 @app.get("/v1/semrush/audit")
@@ -1257,9 +1274,21 @@ async def semrush_full_audit(
     Run a comprehensive SEO audit across the entire Albeni ecosystem.
     Combines domain data, keywords, competitors, backlinks, and 85/15 balance.
     WARNING: Uses many API units. Run sparingly.
+
+    Timeout protection (Bug 4 — 2026-05-14): audit is sync-multi-call and can
+    exceed Railway's gateway timeout. Cap at 25s with graceful partial response.
     """
     agent = SemrushAgent()
-    return await agent.full_seo_audit(database)
+    try:
+        return await asyncio.wait_for(agent.full_seo_audit(database), timeout=25.0)
+    except asyncio.TimeoutError:
+        return {
+            "error": "timeout",
+            "type": "TimeoutError",
+            "message": "Full SEO audit exceeded 25s — try narrowing scope or running individual endpoints",
+            "database": database,
+            "partial": False,
+        }
 
 
 @app.post("/v1/semrush/check-positions")
@@ -1635,7 +1664,9 @@ async def serve_widget_js():
 
 @app.get("/v1/chat/debug-gemini")
 async def debug_gemini(message: str = "hai suggerimenti per il viaggio?", language: str = "it"):
-    """Debug endpoint: raw Gemini response metadata for troubleshooting truncation."""
+    """Debug endpoint: raw Gemini response metadata for troubleshooting truncation.
+    Wrapped in asyncio.wait_for to prevent the request from hanging the worker
+    if the Gemini API is slow or unreachable (see Bug 4/5 — 2026-05-14)."""
     settings = get_settings()
     try:
         import google.generativeai as genai
@@ -1644,10 +1675,23 @@ async def debug_gemini(message: str = "hai suggerimenti per il viaggio?", langua
 
         prompt = f"Sei l'assistente di World of Merino. Rispondi in italiano.\n\nCliente: {message}\n\nAssistente:"
 
-        response = model.generate_content(
-            prompt,
-            generation_config={"temperature": 0.5, "max_output_tokens": 8192},
-        )
+        # Run the sync call in a thread + cap total time to 8s to avoid 12s+ hangs
+        try:
+            response = await asyncio.wait_for(
+                asyncio.to_thread(
+                    model.generate_content,
+                    prompt,
+                    generation_config={"temperature": 0.5, "max_output_tokens": 8192},
+                ),
+                timeout=8.0,
+            )
+        except asyncio.TimeoutError:
+            return {
+                "error": "timeout",
+                "type": "TimeoutError",
+                "message": "Gemini API did not respond within 8s — likely upstream slowness or wrong API key",
+                "model": settings.GEMINI_MODEL,
+            }
 
         # Extract all metadata
         result = {
@@ -1713,22 +1757,31 @@ async def chat_stats():
 
 
 @app.post("/v1/chat/sizing")
-async def chat_sizing(
-    chest_cm: float,
-    language: str = "it",
-):
+async def chat_sizing(payload: Dict = Body(...)):
     """
     Interactive Size & Fit Finder.
     Given the user's chest circumference (cm), returns personalized
     size recommendations for both Slim Fit and Regular Fit.
     Mirrors the Shopify widget logic on albeni1905.com.
+
+    Body-tolerant: accepts {chest_cm} (required) and optional {language|lang}.
+    Aligns with sibling endpoint convention (post Bug 1bis pattern).
     """
+    chest_raw = payload.get("chest_cm")
+    if chest_raw is None:
+        raise HTTPException(status_code=400, detail="chest_cm required in body")
+    try:
+        chest_cm = float(chest_raw)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="chest_cm must be a number")
+
     if chest_cm < 70 or chest_cm > 150:
         raise HTTPException(
             status_code=400,
             detail="Chest measurement must be between 70 and 150 cm"
         )
 
+    language = payload.get("language") or payload.get("lang") or "it"
     care = get_customer_care()
     return care.calculate_size(chest_cm, language)
 
