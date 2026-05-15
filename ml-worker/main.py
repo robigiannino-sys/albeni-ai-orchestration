@@ -931,6 +931,7 @@ async def get_user_journey_funnel(
     cluster: str = Query("all", description="Behavioral cluster filter or 'all'"),
     domain: str = Query("all", description="Domain filter or 'all'"),
     device: str = Query("all", description="Device filter: desktop, mobile, tablet or 'all'"),
+    include_test: bool = Query(False, description="Include synthetic test events (is_test=TRUE). Default FALSE."),
     db: DBSession = Depends(get_db),
 ):
     """
@@ -941,6 +942,8 @@ async def get_user_journey_funnel(
     qualifying event in the time window, with optional cluster/domain/device filters.
 
     Drop-off is computed app-side from consecutive stage counts.
+
+    Test events (is_test=TRUE) are excluded by default — use ?include_test=true to include them.
     """
     from sqlalchemy import text
 
@@ -951,6 +954,9 @@ async def get_user_journey_funnel(
 
     where_clauses = ["bs.created_at >= NOW() - INTERVAL :interval"]
     params: Dict = {"interval": interval}
+
+    if not include_test:
+        where_clauses.append("bs.is_test = FALSE")
 
     if cluster != "all":
         if cluster not in VALID_CLUSTERS:
@@ -1085,7 +1091,7 @@ async def get_user_journey_funnel(
 
     return {
         "period": period,
-        "filters": {"cluster": cluster, "domain": domain, "device": device},
+        "filters": {"cluster": cluster, "domain": domain, "device": device, "include_test": include_test},
         "stages": stages,
         "overall_conversion_pct": overall_conv,
         "total_events_in_window": int(events_row.total_events or 0),
@@ -1102,11 +1108,13 @@ async def get_user_journey_funnel(
 async def get_funnel_by_cluster(
     period: str = Query("30d"),
     domain: str = Query("all"),
+    include_test: bool = Query(False),
     db: DBSession = Depends(get_db),
 ):
     """
     Aggregate funnel sliced by behavioral cluster — for side-by-side comparison.
     Returns conversion rate per cluster (5 clusters + unassigned bucket).
+    Synthetic test events excluded by default — pass include_test=true to include.
     """
     from sqlalchemy import text
 
@@ -1116,6 +1124,8 @@ async def get_funnel_by_cluster(
 
     where_clauses = ["bs.created_at >= NOW() - INTERVAL :interval"]
     params: Dict = {"interval": interval}
+    if not include_test:
+        where_clauses.append("bs.is_test = FALSE")
     if domain != "all":
         if domain not in VALID_DOMAINS:
             raise HTTPException(status_code=400, detail="invalid domain")
@@ -1197,10 +1207,12 @@ async def get_funnel_by_cluster(
 @app.get("/v1/funnel/journey/by-domain")
 async def get_funnel_by_domain(
     period: str = Query("30d"),
+    include_test: bool = Query(False),
     db: DBSession = Depends(get_db),
 ):
     """
     Aggregate funnel sliced by domain (WoM / MU / PMS / Albeni) — verifica copertura tracker per dominio.
+    Synthetic test events excluded by default — pass include_test=true to include.
     """
     from sqlalchemy import text
 
@@ -1208,7 +1220,9 @@ async def get_funnel_by_domain(
         raise HTTPException(status_code=400, detail=f"period must be one of {sorted(VALID_PERIODS)}")
     interval = VALID_PERIODS[period]
 
-    sql = text("""
+    is_test_clause = "" if include_test else "AND bs.is_test = FALSE"
+
+    sql = text(f"""
         WITH user_journey AS (
             SELECT
                 bs.user_id,
@@ -1233,6 +1247,7 @@ async def get_funnel_by_domain(
                 BOOL_OR(bs.event_type = 'checkout_complete') AS conv
             FROM behavioral_signals bs
             WHERE bs.created_at >= NOW() - INTERVAL :interval AND bs.user_id IS NOT NULL
+              {is_test_clause}
             GROUP BY bs.user_id, bs.domain
         )
         SELECT

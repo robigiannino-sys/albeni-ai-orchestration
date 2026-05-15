@@ -3587,6 +3587,7 @@ function FunnelPage() {
     const [cluster, setCluster] = useState('all');
     const [domain, setDomain] = useState('all');
     const [device, setDevice] = useState('all');
+    const [includeTest, setIncludeTest] = useState(false);
     const [data, setData] = useState(null);
     const [byCluster, setByCluster] = useState(null);
     const [byDomain, setByDomain] = useState(null);
@@ -3596,11 +3597,12 @@ function FunnelPage() {
     const loadFunnel = () => {
         setLoading(true);
         setError(null);
-        const qs = `?period=${period}&cluster=${cluster}&domain=${domain}&device=${device}`;
+        const testParam = includeTest ? '&include_test=true' : '';
+        const qs = `?period=${period}&cluster=${cluster}&domain=${domain}&device=${device}${testParam}`;
         Promise.all([
             api('/v1/funnel/journey' + qs),
-            api(`/v1/funnel/journey/by-cluster?period=${period}&domain=${domain}`),
-            api(`/v1/funnel/journey/by-domain?period=${period}`),
+            api(`/v1/funnel/journey/by-cluster?period=${period}&domain=${domain}${testParam}`),
+            api(`/v1/funnel/journey/by-domain?period=${period}${testParam}`),
         ]).then(([main, cl, dm]) => {
             setData(main);
             setByCluster(cl);
@@ -3612,7 +3614,7 @@ function FunnelPage() {
         });
     };
 
-    useEffect(() => { loadFunnel(); }, [period, cluster, domain, device]);
+    useEffect(() => { loadFunnel(); }, [period, cluster, domain, device, includeTest]);
 
     const clusterLabels = {
         business_professional: 'Business Professional',
@@ -3682,7 +3684,14 @@ function FunnelPage() {
                         <option value="tablet">Tablet</option>
                     </select>
                 </div>
-                <button onClick={loadFunnel} style={{padding:'6px 14px',borderRadius:'6px',border:'none',cursor:'pointer',background:'#3f3f46',color:'#e4e4e7',fontSize:'12px',marginLeft:'auto'}}>
+                <label style={{display:'flex',alignItems:'center',gap:'6px',marginLeft:'auto',cursor:'pointer',padding:'6px 10px',borderRadius:'6px',background: includeTest ? '#7c2d12' : '#27272a',transition:'background 0.2s'}}>
+                    <input type="checkbox" checked={includeTest} onChange={e=>setIncludeTest(e.target.checked)}
+                        style={{cursor:'pointer'}} />
+                    <span style={{fontSize:'11px',color: includeTest ? '#fed7aa' : '#a1a1aa',fontWeight: includeTest?'600':'400'}}>
+                        Mostra test events {includeTest && '⚠'}
+                    </span>
+                </label>
+                <button onClick={loadFunnel} style={{padding:'6px 14px',borderRadius:'6px',border:'none',cursor:'pointer',background:'#3f3f46',color:'#e4e4e7',fontSize:'12px'}}>
                     ↻ Reload
                 </button>
             </div>

@@ -100,6 +100,7 @@ class BehavioralSignal(Base):
     page_url = Column(Text)
     referrer_url = Column(Text)
     ids_points_awarded = Column(Numeric(5, 2), default=0)
+    is_test = Column(Boolean, default=False, nullable=False, server_default="false")
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="signals")
