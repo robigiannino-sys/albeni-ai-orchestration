@@ -270,6 +270,7 @@ function App() {
                 {page === 'agents' && <AgentsPage health={health} />}
                 {page === 'terminal' && <TerminalPage />}
                 {page === 'gsc' && <GSCPage />}
+                {page === 'funnel' && <FunnelPage />}
                 {page === 'adv-budget' && <ADVBudgetPage />}
                 {page === 'logs' && <LogsPage health={health} />}
             </div>
@@ -339,6 +340,9 @@ function Sidebar({ page, setPage, health, pendingCount }) {
                     <div className="nav-section-label">Monitoraggio</div>
                     <div className={`nav-item ${page==='gsc'?'active':''}`} onClick={()=>setPage('gsc')}>
                         <span className="icon">📊</span> GSC Indexing
+                    </div>
+                    <div className={`nav-item ${page==='funnel'?'active':''}`} onClick={()=>setPage('funnel')}>
+                        <span className="icon">🎯</span> User Journey Funnel
                     </div>
                 </div>
                 <div className="nav-section">
@@ -3574,6 +3578,252 @@ function ContentLibraryPage() {
 }
 
 // ============================================================
+// USER JOURNEY FUNNEL PAGE (FASE 7.4 — 2026-05-15)
+// 6-stage event-driven funnel: visit → engaged → interest → lead → pre_conv → conversion
+// Aggregates behavioral_signals via /v1/funnel/journey endpoint
+// ============================================================
+function FunnelPage() {
+    const [period, setPeriod] = useState('30d');
+    const [cluster, setCluster] = useState('all');
+    const [domain, setDomain] = useState('all');
+    const [device, setDevice] = useState('all');
+    const [data, setData] = useState(null);
+    const [byCluster, setByCluster] = useState(null);
+    const [byDomain, setByDomain] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    const loadFunnel = () => {
+        setLoading(true);
+        setError(null);
+        const qs = `?period=${period}&cluster=${cluster}&domain=${domain}&device=${device}`;
+        Promise.all([
+            api('/v1/funnel/journey' + qs),
+            api(`/v1/funnel/journey/by-cluster?period=${period}&domain=${domain}`),
+            api(`/v1/funnel/journey/by-domain?period=${period}`),
+        ]).then(([main, cl, dm]) => {
+            setData(main);
+            setByCluster(cl);
+            setByDomain(dm);
+            setLoading(false);
+        }).catch(e => {
+            setError(e.message || 'Errore nel caricamento funnel');
+            setLoading(false);
+        });
+    };
+
+    useEffect(() => { loadFunnel(); }, [period, cluster, domain, device]);
+
+    const clusterLabels = {
+        business_professional: 'Business Professional',
+        heritage_mature: 'Heritage Mature',
+        italian_authentic: 'Italian Authentic',
+        modern_minimalist: 'Modern Minimalist',
+        conscious_premium: 'Conscious Premium',
+        unassigned: 'Non Classificati',
+    };
+    const clusterColors = {
+        business_professional: '#3b82f6',
+        heritage_mature: '#8b5cf6',
+        italian_authentic: '#22c55e',
+        modern_minimalist: '#f97316',
+        conscious_premium: '#eab308',
+        unassigned: '#6b7280',
+    };
+    const stageColors = ['#3b82f6', '#22c55e', '#eab308', '#f97316', '#ef4444', '#8b5cf6'];
+
+    return (
+        <div className="page">
+            <h2>🎯 User Journey Funnel</h2>
+            <p style={{color:'#a1a1aa',marginBottom:'16px',fontSize:'14px'}}>
+                Conversion funnel a 6 stage aggregato da <code style={{background:'#1f1f23',padding:'2px 6px',borderRadius:'3px'}}>behavioral_signals</code>.
+                User-level (DISTINCT user_id per stage). Drop-off calcolato fra stage consecutivi.
+            </p>
+
+            {/* Filter bar */}
+            <div style={{display:'flex',gap:'12px',flexWrap:'wrap',marginBottom:'20px',padding:'14px',background:'#1f1f23',borderRadius:'8px'}}>
+                <div style={{display:'flex',gap:'4px',alignItems:'center'}}>
+                    <label style={{fontSize:'12px',color:'#a1a1aa',marginRight:'4px'}}>Periodo:</label>
+                    {['7d','30d','90d'].map(p => (
+                        <button key={p} onClick={()=>setPeriod(p)}
+                            style={{padding:'6px 12px',borderRadius:'6px',border:'none',cursor:'pointer',
+                                background: period===p ? '#ff8c42' : '#27272a',
+                                color: period===p ? '#fff' : '#a1a1aa',fontSize:'12px',fontWeight: period===p?'600':'400'}}>
+                            {p}
+                        </button>
+                    ))}
+                </div>
+                <div style={{display:'flex',gap:'4px',alignItems:'center'}}>
+                    <label style={{fontSize:'12px',color:'#a1a1aa',marginRight:'4px'}}>Cluster:</label>
+                    <select value={cluster} onChange={e=>setCluster(e.target.value)}
+                        style={{padding:'6px 10px',borderRadius:'6px',border:'1px solid #3f3f46',background:'#27272a',color:'#e4e4e7',fontSize:'12px'}}>
+                        <option value="all">Tutti</option>
+                        {Object.entries(clusterLabels).filter(([k])=>k!=='unassigned').map(([k,v])=> <option key={k} value={k}>{v}</option>)}
+                    </select>
+                </div>
+                <div style={{display:'flex',gap:'4px',alignItems:'center'}}>
+                    <label style={{fontSize:'12px',color:'#a1a1aa',marginRight:'4px'}}>Dominio:</label>
+                    <select value={domain} onChange={e=>setDomain(e.target.value)}
+                        style={{padding:'6px 10px',borderRadius:'6px',border:'1px solid #3f3f46',background:'#27272a',color:'#e4e4e7',fontSize:'12px'}}>
+                        <option value="all">Tutti</option>
+                        <option value="worldofmerino.com">worldofmerino.com</option>
+                        <option value="merinouniversity.com">merinouniversity.com</option>
+                        <option value="perfectmerinoshirt.com">perfectmerinoshirt.com</option>
+                        <option value="albeni1905.com">albeni1905.com</option>
+                    </select>
+                </div>
+                <div style={{display:'flex',gap:'4px',alignItems:'center'}}>
+                    <label style={{fontSize:'12px',color:'#a1a1aa',marginRight:'4px'}}>Device:</label>
+                    <select value={device} onChange={e=>setDevice(e.target.value)}
+                        style={{padding:'6px 10px',borderRadius:'6px',border:'1px solid #3f3f46',background:'#27272a',color:'#e4e4e7',fontSize:'12px'}}>
+                        <option value="all">Tutti</option>
+                        <option value="desktop">Desktop</option>
+                        <option value="mobile">Mobile</option>
+                        <option value="tablet">Tablet</option>
+                    </select>
+                </div>
+                <button onClick={loadFunnel} style={{padding:'6px 14px',borderRadius:'6px',border:'none',cursor:'pointer',background:'#3f3f46',color:'#e4e4e7',fontSize:'12px',marginLeft:'auto'}}>
+                    ↻ Reload
+                </button>
+            </div>
+
+            {loading && <div style={{padding:'40px',textAlign:'center',color:'#a1a1aa'}}>Caricamento funnel...</div>}
+            {error && <div style={{padding:'20px',background:'#7f1d1d',color:'#fca5a5',borderRadius:'8px',marginBottom:'16px'}}>⚠ {error}</div>}
+
+            {data && !loading && (
+                <>
+                    {/* Top KPI cards */}
+                    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:'12px',marginBottom:'20px'}}>
+                        <div style={{padding:'16px',background:'#1f1f23',borderRadius:'8px'}}>
+                            <div style={{fontSize:'11px',color:'#a1a1aa',textTransform:'uppercase',letterSpacing:'0.5px'}}>Total Users</div>
+                            <div style={{fontSize:'28px',fontWeight:'700',marginTop:'4px'}}>{data.total_users_in_window}</div>
+                            <div style={{fontSize:'11px',color:'#6b7280',marginTop:'2px'}}>nel periodo {period}</div>
+                        </div>
+                        <div style={{padding:'16px',background:'#1f1f23',borderRadius:'8px'}}>
+                            <div style={{fontSize:'11px',color:'#a1a1aa',textTransform:'uppercase',letterSpacing:'0.5px'}}>Total Events</div>
+                            <div style={{fontSize:'28px',fontWeight:'700',marginTop:'4px'}}>{data.total_events_in_window}</div>
+                            <div style={{fontSize:'11px',color:'#6b7280',marginTop:'2px'}}>signals raccolti</div>
+                        </div>
+                        <div style={{padding:'16px',background:'#1f1f23',borderRadius:'8px'}}>
+                            <div style={{fontSize:'11px',color:'#a1a1aa',textTransform:'uppercase',letterSpacing:'0.5px'}}>Conversion Rate</div>
+                            <div style={{fontSize:'28px',fontWeight:'700',marginTop:'4px',color: data.overall_conversion_pct >= 1 ? '#22c55e' : '#f97316'}}>
+                                {data.overall_conversion_pct}%
+                            </div>
+                            <div style={{fontSize:'11px',color:'#6b7280',marginTop:'2px'}}>checkout_complete / page_view</div>
+                        </div>
+                        <div style={{padding:'16px',background:'#1f1f23',borderRadius:'8px'}}>
+                            <div style={{fontSize:'11px',color:'#a1a1aa',textTransform:'uppercase',letterSpacing:'0.5px'}}>Stage attivi</div>
+                            <div style={{fontSize:'28px',fontWeight:'700',marginTop:'4px'}}>{data.stages.filter(s=>s.users>0).length}/6</div>
+                            <div style={{fontSize:'11px',color:'#6b7280',marginTop:'2px'}}>su 6 fasi journey</div>
+                        </div>
+                    </div>
+
+                    {/* Main funnel chart */}
+                    <div style={{padding:'20px',background:'#1f1f23',borderRadius:'8px',marginBottom:'20px'}}>
+                        <h3 style={{marginTop:0,marginBottom:'16px',fontSize:'16px'}}>Funnel Stages</h3>
+                        {data.stages.map((s, idx) => {
+                            const baselineUsers = data.stages[0].users || 1;
+                            const widthPct = Math.max(2, (s.users / baselineUsers) * 100);
+                            return (
+                                <div key={s.key} style={{marginBottom:'12px'}}>
+                                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:'4px'}}>
+                                        <span style={{fontSize:'13px',fontWeight:'600'}}>
+                                            {idx+1}. {s.label}
+                                            <span style={{color:'#6b7280',fontSize:'11px',fontWeight:'400',marginLeft:'8px'}}>{s.description}</span>
+                                        </span>
+                                        <span style={{fontSize:'13px',color:'#e4e4e7'}}>
+                                            <strong>{s.users}</strong> users
+                                            <span style={{color:'#6b7280',fontSize:'11px',marginLeft:'8px'}}>({s.share_of_baseline_pct}% baseline)</span>
+                                        </span>
+                                    </div>
+                                    <div style={{height:'24px',background:'#0a0a0a',borderRadius:'4px',position:'relative',overflow:'hidden'}}>
+                                        <div style={{height:'100%',width: widthPct+'%',background: stageColors[idx],transition:'width 0.4s ease'}}></div>
+                                    </div>
+                                    {idx > 0 && s.drop_off_pct > 0 && (
+                                        <div style={{fontSize:'11px',color: s.drop_off_pct > 60 ? '#ef4444' : s.drop_off_pct > 30 ? '#f97316' : '#a1a1aa',marginTop:'2px',marginLeft:'8px'}}>
+                                            ↓ drop-off −{s.drop_off_pct}%
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    {/* By Cluster + By Domain side-by-side */}
+                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'16px',marginBottom:'20px'}}>
+                        {byCluster && byCluster.by_cluster && byCluster.by_cluster.length > 0 && (
+                            <div style={{padding:'16px',background:'#1f1f23',borderRadius:'8px'}}>
+                                <h3 style={{marginTop:0,marginBottom:'12px',fontSize:'14px'}}>Conversion Rate per Cluster</h3>
+                                {byCluster.by_cluster.map(c => (
+                                    <div key={c.cluster} style={{marginBottom:'10px'}}>
+                                        <div style={{display:'flex',justifyContent:'space-between',marginBottom:'2px'}}>
+                                            <span style={{fontSize:'12px'}}>{clusterLabels[c.cluster] || c.cluster}</span>
+                                            <span style={{fontSize:'12px',color:'#a1a1aa'}}>{c.conversion}/{c.visit} ({c.conversion_rate_pct}%)</span>
+                                        </div>
+                                        <div style={{height:'8px',background:'#0a0a0a',borderRadius:'3px',overflow:'hidden'}}>
+                                            <div style={{height:'100%',width: Math.min(100, c.conversion_rate_pct * 10)+'%',background: clusterColors[c.cluster] || '#6b7280'}}></div>
+                                        </div>
+                                    </div>
+                                ))}
+                                <div style={{fontSize:'10px',color:'#6b7280',marginTop:'8px'}}>Scale: 100% bar = 10% conversion rate</div>
+                            </div>
+                        )}
+                        {byDomain && byDomain.by_domain && byDomain.by_domain.length > 0 && (
+                            <div style={{padding:'16px',background:'#1f1f23',borderRadius:'8px'}}>
+                                <h3 style={{marginTop:0,marginBottom:'12px',fontSize:'14px'}}>Funnel per Dominio</h3>
+                                <table style={{width:'100%',fontSize:'11px',borderCollapse:'collapse'}}>
+                                    <thead>
+                                        <tr style={{borderBottom:'1px solid #3f3f46',color:'#a1a1aa'}}>
+                                            <th style={{textAlign:'left',padding:'6px 4px'}}>Domain</th>
+                                            <th style={{textAlign:'right',padding:'6px 4px'}}>Visit</th>
+                                            <th style={{textAlign:'right',padding:'6px 4px'}}>Lead</th>
+                                            <th style={{textAlign:'right',padding:'6px 4px'}}>Conv</th>
+                                            <th style={{textAlign:'right',padding:'6px 4px'}}>CR%</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {byDomain.by_domain.map(d => (
+                                            <tr key={d.domain} style={{borderBottom:'1px solid #27272a'}}>
+                                                <td style={{padding:'6px 4px',fontSize:'11px'}}>{d.domain}</td>
+                                                <td style={{textAlign:'right',padding:'6px 4px'}}>{d.visit}</td>
+                                                <td style={{textAlign:'right',padding:'6px 4px'}}>{d.lead}</td>
+                                                <td style={{textAlign:'right',padding:'6px 4px'}}>{d.conversion}</td>
+                                                <td style={{textAlign:'right',padding:'6px 4px',color: d.conversion_rate_pct >= 1 ? '#22c55e' : '#a1a1aa'}}>{d.conversion_rate_pct}%</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Event type breakdown */}
+                    {data.event_type_breakdown && data.event_type_breakdown.length > 0 && (
+                        <div style={{padding:'16px',background:'#1f1f23',borderRadius:'8px'}}>
+                            <h3 style={{marginTop:0,marginBottom:'12px',fontSize:'14px'}}>Event Type Breakdown ({period})</h3>
+                            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))',gap:'6px'}}>
+                                {data.event_type_breakdown.map(e => (
+                                    <div key={e.event_type} style={{padding:'8px 10px',background:'#27272a',borderRadius:'4px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                                        <span style={{fontSize:'11px',color:'#e4e4e7',fontFamily:'monospace'}}>{e.event_type}</span>
+                                        <span style={{fontSize:'11px'}}>
+                                            <strong>{e.events}</strong> <span style={{color:'#6b7280'}}>({e.users}u)</span>
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    <div style={{textAlign:'right',marginTop:'12px',fontSize:'11px',color:'#6b7280'}}>
+                        Aggiornato: {new Date(data.timestamp).toLocaleString('it-IT')}
+                    </div>
+                </>
+            )}
+        </div>
+    );
+}
+
+// ============================================================
 // GSC INDEXING MONITOR PAGE
 // ============================================================
 function GSCPage() {
@@ -4615,7 +4865,6 @@ function ExecutivePage() {
                         </div>
 
                         <div className="sd-grid">
-                            {/* Card 1: Featured Snippets */}
                             <div className="sd-card">
                                 <div className="sd-card-label">Featured Snippets</div>
                                 <div>
@@ -4629,7 +4878,6 @@ function ExecutivePage() {
                                 </div>
                             </div>
 
-                            {/* Card 2: Authority Backlinks */}
                             <div className="sd-card">
                                 <div className="sd-card-label">Authority Backlinks</div>
                                 <div>
@@ -4643,7 +4891,6 @@ function ExecutivePage() {
                                 </div>
                             </div>
 
-                            {/* Card 3: Topical Authority */}
                             <div className="sd-card">
                                 <div className="sd-card-label">Topical Authority</div>
                                 <div>
@@ -4657,7 +4904,6 @@ function ExecutivePage() {
                                 </div>
                             </div>
 
-                            {/* Card 4: Educational Engagement */}
                             <div className="sd-card">
                                 <div className="sd-card-label">Educational Engagement</div>
                                 <div>
@@ -4672,7 +4918,6 @@ function ExecutivePage() {
                             </div>
                         </div>
 
-                        {/* Top 5 keyword in rank (se ci sono) */}
                         {hasData && latest.keywords_data && latest.keywords_data.length > 0 && (
                             <div className="sd-kw-list">
                                 <div className="sd-card-label" style={{marginBottom: 8}}>Top keyword in rank (snapshot più recente)</div>

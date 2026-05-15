@@ -900,6 +900,383 @@ async def get_dashboard_metrics(db: DBSession = Depends(get_db)):
 
 
 # ===================================================================
+# USER JOURNEY FUNNEL — event-driven 6-stage conversion funnel
+# Built on behavioral_signals aggregation (FASE 7.4, 2026-05-15)
+# ===================================================================
+
+# Stage event_type mapping — keep aligned with frontend labels in dashboard
+FUNNEL_STAGE_EVENTS = {
+    "engaged": ["scroll_depth", "dwell_time_reached"],
+    "interest": [
+        "technical_interaction", "click_comparison", "nav_menu_open",
+        "click_internal_link", "language_switch", "calculator_use",
+        "download_pdf", "video_play", "product_view", "size_guide_open",
+    ],
+    "lead": ["chatbot_open", "chatbot_message", "email_open", "newsletter_signup"],
+    "pre_conversion": ["add_to_cart", "checkout_start", "cart_abandon"],
+    "conversion": ["checkout_complete"],
+}
+
+VALID_PERIODS = {"7d": "7 days", "30d": "30 days", "90d": "90 days"}
+VALID_DOMAINS = {"worldofmerino.com", "merinouniversity.com", "perfectmerinoshirt.com", "albeni1905.com"}
+VALID_CLUSTERS = {
+    "business_professional", "heritage_mature", "italian_authentic",
+    "modern_minimalist", "conscious_premium",
+}
+
+
+@app.get("/v1/funnel/journey")
+async def get_user_journey_funnel(
+    period: str = Query("30d", description="Time window: 7d, 30d, 90d"),
+    cluster: str = Query("all", description="Behavioral cluster filter or 'all'"),
+    domain: str = Query("all", description="Domain filter or 'all'"),
+    device: str = Query("all", description="Device filter: desktop, mobile, tablet or 'all'"),
+    db: DBSession = Depends(get_db),
+):
+    """
+    User-level conversion funnel aggregated from behavioral_signals.
+
+    6 stages: visit → engaged → interest → lead → pre_conversion → conversion.
+    Each stage is COUNT(DISTINCT user_id) of users who fired AT LEAST ONE
+    qualifying event in the time window, with optional cluster/domain/device filters.
+
+    Drop-off is computed app-side from consecutive stage counts.
+    """
+    from sqlalchemy import text
+
+    # Validate & normalize inputs
+    if period not in VALID_PERIODS:
+        raise HTTPException(status_code=400, detail=f"period must be one of {sorted(VALID_PERIODS)}")
+    interval = VALID_PERIODS[period]
+
+    where_clauses = ["bs.created_at >= NOW() - INTERVAL :interval"]
+    params: Dict = {"interval": interval}
+
+    if cluster != "all":
+        if cluster not in VALID_CLUSTERS:
+            raise HTTPException(status_code=400, detail=f"cluster must be 'all' or one of {sorted(VALID_CLUSTERS)}")
+        where_clauses.append("u.assigned_cluster = :cluster")
+        params["cluster"] = cluster
+
+    if domain != "all":
+        if domain not in VALID_DOMAINS:
+            raise HTTPException(status_code=400, detail=f"domain must be 'all' or one of {sorted(VALID_DOMAINS)}")
+        where_clauses.append("bs.domain = :domain")
+        params["domain"] = domain
+
+    if device != "all":
+        if device not in {"desktop", "mobile", "tablet"}:
+            raise HTTPException(status_code=400, detail="device must be 'all', 'desktop', 'mobile' or 'tablet'")
+        # Device is in event_value JSONB (top-level key 'device') — see Bug 1 patch (commit d8ded3d)
+        where_clauses.append("bs.event_value->>'device' = :device")
+        params["device"] = device
+
+    where_sql = " AND ".join(where_clauses)
+    cluster_join = "LEFT JOIN users u ON u.id = bs.user_id"
+
+    # User-level funnel via CTE — single scan with conditional aggregates
+    funnel_sql = text(f"""
+        WITH user_journey AS (
+            SELECT
+                bs.user_id,
+                BOOL_OR(bs.event_type = 'page_view') AS s1_visit,
+                BOOL_OR(
+                    bs.scroll_depth >= 50
+                    OR bs.dwell_time_seconds >= 30
+                    OR bs.event_type IN ('scroll_depth', 'dwell_time_reached')
+                ) AS s2_engaged,
+                BOOL_OR(bs.event_type IN (
+                    'technical_interaction','click_comparison','nav_menu_open',
+                    'click_internal_link','language_switch','calculator_use',
+                    'download_pdf','video_play','product_view','size_guide_open'
+                )) AS s3_interest,
+                BOOL_OR(bs.event_type IN (
+                    'chatbot_open','chatbot_message','email_open','newsletter_signup'
+                )) AS s4_lead,
+                BOOL_OR(bs.event_type IN (
+                    'add_to_cart','checkout_start','cart_abandon'
+                )) AS s5_pre_conversion,
+                BOOL_OR(bs.event_type = 'checkout_complete') AS s6_conversion
+            FROM behavioral_signals bs
+            {cluster_join}
+            WHERE {where_sql}
+              AND bs.user_id IS NOT NULL
+            GROUP BY bs.user_id
+        )
+        SELECT
+            COUNT(*) FILTER (WHERE s1_visit)         AS s1_visit,
+            COUNT(*) FILTER (WHERE s2_engaged)       AS s2_engaged,
+            COUNT(*) FILTER (WHERE s3_interest)      AS s3_interest,
+            COUNT(*) FILTER (WHERE s4_lead)          AS s4_lead,
+            COUNT(*) FILTER (WHERE s5_pre_conversion) AS s5_pre_conversion,
+            COUNT(*) FILTER (WHERE s6_conversion)    AS s6_conversion,
+            COUNT(*)                                 AS total_users
+        FROM user_journey;
+    """)
+
+    # Total events in window (denominator info — useful sidebar metric)
+    events_sql = text(f"""
+        SELECT COUNT(*) AS total_events
+        FROM behavioral_signals bs
+        {cluster_join}
+        WHERE {where_sql};
+    """)
+
+    # Top event_type breakdown (descriptive, for trust)
+    breakdown_sql = text(f"""
+        SELECT bs.event_type, COUNT(*) AS event_count, COUNT(DISTINCT bs.user_id) AS users
+        FROM behavioral_signals bs
+        {cluster_join}
+        WHERE {where_sql}
+        GROUP BY bs.event_type
+        ORDER BY event_count DESC
+        LIMIT 25;
+    """)
+
+    try:
+        row = db.execute(funnel_sql, params).fetchone()
+        events_row = db.execute(events_sql, params).fetchone()
+        breakdown_rows = db.execute(breakdown_sql, params).fetchall()
+    except Exception as e:
+        logger.error(f"Funnel journey query failed: {e}")
+        raise HTTPException(status_code=500, detail="Failed to aggregate funnel")
+
+    stage_defs = [
+        ("visit", "Visita", "Page View"),
+        ("engaged", "Engaged", "Scroll ≥50% OR dwell ≥30s"),
+        ("interest", "Interesse Attivo", "CTA / video / calculator / internal link"),
+        ("lead", "Lead", "Chatbot / newsletter signup / email open"),
+        ("pre_conversion", "Pre-Conversione", "Add-to-cart / checkout start"),
+        ("conversion", "Conversione", "Checkout complete"),
+    ]
+
+    raw_counts = {
+        "visit": int(row.s1_visit or 0),
+        "engaged": int(row.s2_engaged or 0),
+        "interest": int(row.s3_interest or 0),
+        "lead": int(row.s4_lead or 0),
+        "pre_conversion": int(row.s5_pre_conversion or 0),
+        "conversion": int(row.s6_conversion or 0),
+    }
+
+    stages = []
+    prev_count = raw_counts["visit"]
+    for i, (key, label_it, label_desc) in enumerate(stage_defs):
+        n = raw_counts[key]
+        drop_off_pct = 0.0
+        if i > 0 and prev_count > 0:
+            drop_off_pct = round((1 - n / prev_count) * 100, 1)
+        from_baseline_pct = 0.0
+        if raw_counts["visit"] > 0:
+            from_baseline_pct = round(n / raw_counts["visit"] * 100, 1)
+        stages.append({
+            "key": key,
+            "label": label_it,
+            "description": label_desc,
+            "users": n,
+            "drop_off_pct": drop_off_pct,
+            "share_of_baseline_pct": from_baseline_pct,
+        })
+        prev_count = n
+
+    overall_conv = 0.0
+    if raw_counts["visit"] > 0:
+        overall_conv = round(raw_counts["conversion"] / raw_counts["visit"] * 100, 2)
+
+    return {
+        "period": period,
+        "filters": {"cluster": cluster, "domain": domain, "device": device},
+        "stages": stages,
+        "overall_conversion_pct": overall_conv,
+        "total_events_in_window": int(events_row.total_events or 0),
+        "total_users_in_window": int(row.total_users or 0),
+        "event_type_breakdown": [
+            {"event_type": r.event_type, "events": int(r.event_count), "users": int(r.users)}
+            for r in breakdown_rows
+        ],
+        "timestamp": datetime.utcnow().isoformat(),
+    }
+
+
+@app.get("/v1/funnel/journey/by-cluster")
+async def get_funnel_by_cluster(
+    period: str = Query("30d"),
+    domain: str = Query("all"),
+    db: DBSession = Depends(get_db),
+):
+    """
+    Aggregate funnel sliced by behavioral cluster — for side-by-side comparison.
+    Returns conversion rate per cluster (5 clusters + unassigned bucket).
+    """
+    from sqlalchemy import text
+
+    if period not in VALID_PERIODS:
+        raise HTTPException(status_code=400, detail=f"period must be one of {sorted(VALID_PERIODS)}")
+    interval = VALID_PERIODS[period]
+
+    where_clauses = ["bs.created_at >= NOW() - INTERVAL :interval"]
+    params: Dict = {"interval": interval}
+    if domain != "all":
+        if domain not in VALID_DOMAINS:
+            raise HTTPException(status_code=400, detail="invalid domain")
+        where_clauses.append("bs.domain = :domain")
+        params["domain"] = domain
+
+    where_sql = " AND ".join(where_clauses)
+
+    sql = text(f"""
+        WITH user_journey AS (
+            SELECT
+                bs.user_id,
+                COALESCE(u.assigned_cluster, 'unassigned') AS cluster,
+                BOOL_OR(bs.event_type = 'page_view') AS visit,
+                BOOL_OR(
+                    bs.scroll_depth >= 50
+                    OR bs.dwell_time_seconds >= 30
+                    OR bs.event_type IN ('scroll_depth','dwell_time_reached')
+                ) AS engaged,
+                BOOL_OR(bs.event_type IN (
+                    'technical_interaction','click_comparison','nav_menu_open',
+                    'click_internal_link','language_switch','calculator_use',
+                    'download_pdf','video_play','product_view','size_guide_open'
+                )) AS interest,
+                BOOL_OR(bs.event_type IN (
+                    'chatbot_open','chatbot_message','email_open','newsletter_signup'
+                )) AS lead,
+                BOOL_OR(bs.event_type IN (
+                    'add_to_cart','checkout_start','cart_abandon'
+                )) AS pre_conv,
+                BOOL_OR(bs.event_type = 'checkout_complete') AS conv
+            FROM behavioral_signals bs
+            LEFT JOIN users u ON u.id = bs.user_id
+            WHERE {where_sql} AND bs.user_id IS NOT NULL
+            GROUP BY bs.user_id, COALESCE(u.assigned_cluster, 'unassigned')
+        )
+        SELECT
+            cluster,
+            COUNT(*) FILTER (WHERE visit)    AS visit,
+            COUNT(*) FILTER (WHERE engaged)  AS engaged,
+            COUNT(*) FILTER (WHERE interest) AS interest,
+            COUNT(*) FILTER (WHERE lead)     AS lead,
+            COUNT(*) FILTER (WHERE pre_conv) AS pre_conversion,
+            COUNT(*) FILTER (WHERE conv)     AS conversion
+        FROM user_journey
+        GROUP BY cluster
+        ORDER BY visit DESC;
+    """)
+
+    try:
+        rows = db.execute(sql, params).fetchall()
+    except Exception as e:
+        logger.error(f"Funnel by-cluster query failed: {e}")
+        raise HTTPException(status_code=500, detail="Failed to aggregate funnel by cluster")
+
+    by_cluster = []
+    for r in rows:
+        v = int(r.visit or 0)
+        cv = int(r.conversion or 0)
+        cr = round(cv / v * 100, 2) if v > 0 else 0.0
+        by_cluster.append({
+            "cluster": r.cluster,
+            "visit": v,
+            "engaged": int(r.engaged or 0),
+            "interest": int(r.interest or 0),
+            "lead": int(r.lead or 0),
+            "pre_conversion": int(r.pre_conversion or 0),
+            "conversion": cv,
+            "conversion_rate_pct": cr,
+        })
+    return {
+        "period": period,
+        "domain": domain,
+        "by_cluster": by_cluster,
+        "timestamp": datetime.utcnow().isoformat(),
+    }
+
+
+@app.get("/v1/funnel/journey/by-domain")
+async def get_funnel_by_domain(
+    period: str = Query("30d"),
+    db: DBSession = Depends(get_db),
+):
+    """
+    Aggregate funnel sliced by domain (WoM / MU / PMS / Albeni) — verifica copertura tracker per dominio.
+    """
+    from sqlalchemy import text
+
+    if period not in VALID_PERIODS:
+        raise HTTPException(status_code=400, detail=f"period must be one of {sorted(VALID_PERIODS)}")
+    interval = VALID_PERIODS[period]
+
+    sql = text("""
+        WITH user_journey AS (
+            SELECT
+                bs.user_id,
+                bs.domain,
+                BOOL_OR(bs.event_type = 'page_view') AS visit,
+                BOOL_OR(
+                    bs.scroll_depth >= 50
+                    OR bs.dwell_time_seconds >= 30
+                    OR bs.event_type IN ('scroll_depth','dwell_time_reached')
+                ) AS engaged,
+                BOOL_OR(bs.event_type IN (
+                    'technical_interaction','click_comparison','nav_menu_open',
+                    'click_internal_link','language_switch','calculator_use',
+                    'download_pdf','video_play','product_view','size_guide_open'
+                )) AS interest,
+                BOOL_OR(bs.event_type IN (
+                    'chatbot_open','chatbot_message','email_open','newsletter_signup'
+                )) AS lead,
+                BOOL_OR(bs.event_type IN (
+                    'add_to_cart','checkout_start','cart_abandon'
+                )) AS pre_conv,
+                BOOL_OR(bs.event_type = 'checkout_complete') AS conv
+            FROM behavioral_signals bs
+            WHERE bs.created_at >= NOW() - INTERVAL :interval AND bs.user_id IS NOT NULL
+            GROUP BY bs.user_id, bs.domain
+        )
+        SELECT
+            domain,
+            COUNT(*) FILTER (WHERE visit)    AS visit,
+            COUNT(*) FILTER (WHERE engaged)  AS engaged,
+            COUNT(*) FILTER (WHERE interest) AS interest,
+            COUNT(*) FILTER (WHERE lead)     AS lead,
+            COUNT(*) FILTER (WHERE pre_conv) AS pre_conversion,
+            COUNT(*) FILTER (WHERE conv)     AS conversion
+        FROM user_journey
+        GROUP BY domain
+        ORDER BY visit DESC;
+    """)
+
+    try:
+        rows = db.execute(sql, {"interval": interval}).fetchall()
+    except Exception as e:
+        logger.error(f"Funnel by-domain query failed: {e}")
+        raise HTTPException(status_code=500, detail="Failed to aggregate funnel by domain")
+
+    by_domain = []
+    for r in rows:
+        v = int(r.visit or 0)
+        cv = int(r.conversion or 0)
+        cr = round(cv / v * 100, 2) if v > 0 else 0.0
+        by_domain.append({
+            "domain": r.domain or "(unknown)",
+            "visit": v,
+            "engaged": int(r.engaged or 0),
+            "interest": int(r.interest or 0),
+            "lead": int(r.lead or 0),
+            "pre_conversion": int(r.pre_conversion or 0),
+            "conversion": cv,
+            "conversion_rate_pct": cr,
+        })
+    return {
+        "period": period,
+        "by_domain": by_domain,
+        "timestamp": datetime.utcnow().isoformat(),
+    }
+
+
+# ===================================================================
 # NOTION INTEGRATION (Editorial Calendar & Content Pipeline)
 # ===================================================================
 
