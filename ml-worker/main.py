@@ -353,11 +353,99 @@ async def calculate_ids(payload: Dict = Body(...), db: DBSession = Depends(get_d
     Schema-tolerant: accepts both modern {user_id, force_recalculate}
     and legacy widget payloads {visitor_id, dwell_time_ms, scroll_depth_pct, ...}.
     Bug 1bis fix (2026-05-05).
+
+    W1-T1 fix (2026-05-19): persist dwell_time_ms + scroll_depth_pct from
+    behavioral-engine payload into behavioral_signals before calculating IDS.
+    Previously these values were ignored → IDS always returned 0 on MU because
+    IDSCalculator queries for event_type='dwell_time_reached'/'scroll_depth' which
+    the tracker never writes. The behavioral engine sends the correct values in the
+    POST body at 15s and 45s — we now persist them with upsert semantics (10-min
+    window dedup) so the calculator finds real data.
     """
     user_id = payload.get("user_id") or payload.get("visitor_id")
     if not user_id:
         raise HTTPException(status_code=400, detail="user_id or visitor_id required")
+
     force_recalculate = bool(payload.get("force_recalculate", False))
+
+    # W1-T1 fix: extract behavioral signals from payload and persist to DB
+    dwell_time_ms = payload.get("dwell_time_ms")
+    scroll_depth_pct = payload.get("scroll_depth_pct")
+
+    if dwell_time_ms is not None or scroll_depth_pct is not None:
+        domain = (
+            payload.get("domain") or
+            payload.get("source_domain") or
+            "merinouniversity.com"
+        )
+        language = payload.get("language") or payload.get("lang") or "it"
+        page_url = payload.get("page_url") or payload.get("url")
+
+        # Ensure user exists (auto-create if first-ever call for this visitor)
+        user = db.query(User).filter(User.external_id == user_id).first()
+        if not user:
+            user = User(
+                external_id=user_id,
+                preferred_language=language
+            )
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+
+        # Dedup window: if a signal was written in the last 10 min, update it
+        # rather than inserting a new row. This prevents double-counting when
+        # the behavioral engine fires at both 15s and 45s checkpoints.
+        recent_cutoff = datetime.utcnow() - timedelta(minutes=10)
+
+        if dwell_time_ms is not None:
+            dwell_seconds = int(dwell_time_ms / 1000)
+            existing_dwell = db.query(BehavioralSignal).filter(
+                and_(
+                    BehavioralSignal.user_id == user.id,
+                    BehavioralSignal.event_type == "dwell_time_reached",
+                    BehavioralSignal.created_at >= recent_cutoff
+                )
+            ).first()
+            if existing_dwell:
+                existing_dwell.dwell_time_seconds = dwell_seconds
+            else:
+                db.add(BehavioralSignal(
+                    user_id=user.id,
+                    domain=domain,
+                    language=language,
+                    event_type="dwell_time_reached",
+                    dwell_time_seconds=dwell_seconds,
+                    page_url=page_url,
+                    ids_points_awarded=5.0
+                ))
+
+        if scroll_depth_pct is not None:
+            scroll_int = int(scroll_depth_pct)
+            existing_scroll = db.query(BehavioralSignal).filter(
+                and_(
+                    BehavioralSignal.user_id == user.id,
+                    BehavioralSignal.event_type == "scroll_depth",
+                    BehavioralSignal.created_at >= recent_cutoff
+                )
+            ).first()
+            if existing_scroll:
+                existing_scroll.scroll_depth = scroll_int
+            else:
+                db.add(BehavioralSignal(
+                    user_id=user.id,
+                    domain=domain,
+                    language=language,
+                    event_type="scroll_depth",
+                    scroll_depth=scroll_int,
+                    page_url=page_url,
+                    ids_points_awarded=IDSCalculator.get_event_points(
+                        "scroll_depth", {"depth": scroll_int}
+                    )
+                ))
+
+        db.commit()
+        force_recalculate = True  # bypass Redis cache — new signals just landed
+
     calculator = IDSCalculator(redis_client, db)
     result = await calculator.calculate(user_id, force_recalculate)
     return result
