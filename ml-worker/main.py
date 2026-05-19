@@ -145,6 +145,25 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.exception(f"Scheduled semantic-defense snapshot FAILED: {e}")
 
+    # Klaviyo Index-Aware Sync (S1.3, 2026-05-19). Settimanale ogni lunedì 06:00 UTC.
+    # Legge crawl_map_entries da Postgres, ricalcola 22 link per 4 lingue con catena
+    # 6-step (WoM[lang] indexed → WoM[it] → MU[lang] → MU[it] → UX fallback → assoluto),
+    # e fa PATCH su tutti i profili Klaviyo via httpx (MCP non persiste le scritture).
+    async def _scheduled_klaviyo_index_sync():
+        try:
+            db = next(get_db())
+            try:
+                result = await _run_klaviyo_index_sync(db)
+                logger.info(
+                    f"Scheduled Klaviyo index sync OK: "
+                    f"updated={result.get('updated')} failed={result.get('failed')} "
+                    f"coverage={result.get('coverage')}"
+                )
+            finally:
+                db.close()
+        except Exception as e:
+            logger.exception(f"Scheduled Klaviyo index sync FAILED: {e}")
+
     scheduler = AsyncIOScheduler()
     scheduler.add_job(_scheduled_recompute, "interval", minutes=15, id="pipeline_consumer",
                       coalesce=True, max_instances=1, misfire_grace_time=300)
@@ -152,8 +171,12 @@ async def lifespan(app: FastAPI):
                       coalesce=True, max_instances=1, misfire_grace_time=3600)
     scheduler.add_job(_scheduled_semantic_defense, "cron", hour=4, minute=45, id="semantic_defense_daily",
                       coalesce=True, max_instances=1, misfire_grace_time=3600)
+    scheduler.add_job(_scheduled_klaviyo_index_sync, "cron", day_of_week="mon", hour=6, minute=0,
+                      id="klaviyo_index_sync_weekly",
+                      coalesce=True, max_instances=1, misfire_grace_time=7200)
     scheduler.start()
-    logger.info("Schedulers active: pipeline_consumer (15m) + anomaly_daily (04:15 UTC) + semantic_defense_daily (04:45 UTC)")
+    logger.info("Schedulers active: pipeline_consumer (15m) + anomaly_daily (04:15 UTC) + "
+                "semantic_defense_daily (04:45 UTC) + klaviyo_index_sync_weekly (Mon 06:00 UTC)")
 
     yield
 
@@ -5253,3 +5276,249 @@ async def visual_dry_run(req: VisualDryRunRequest):
     generator = VisualGenerator(api_key=gemini_key)
     results = generator.dry_run(req.brief_text, max_facts=req.max_facts)
     return {"status": "dry_run", "visuals": results, "count": len(results)}
+
+
+# ===================================================================
+# KLAVIYO INDEX-AWARE SYNC — S1.3 (2026-05-19)
+# Cron settimanale lunedì 06:00 UTC + endpoint manuale POST /v1/klaviyo/index-sync
+# Legge crawl_map_entries Postgres → 6-step resolution chain → PATCH profili Klaviyo
+# ===================================================================
+
+# Base domains
+_WOM_BASE = "https://worldofmerino.com"
+_MU_BASE  = "https://merinouniversity.com"
+
+# ROUTE_MAP: 22 content keys × {wom, mu} × {it, en, de, fr}
+# Paths relativi senza trailing slash per matchare crawl_map_entries._normalize_url_path()
+_KLAVIYO_ROUTE_MAP: Dict[str, Dict[str, Dict[str, str]]] = {
+    "wom-home":               {"wom": {"it": "/", "en": "/en-us", "de": "/de", "fr": "/fr"}, "mu": {}},
+    "mu-home":                {"wom": {"it": "/", "en": "/en-us", "de": "/de", "fr": "/fr"}, "mu": {}},
+    "heritage-archive":       {"wom": {"it": "/heritage-archive", "en": "/en-us/en-heritage-archive", "de": "/de/de-heritage-archive", "fr": "/fr/fr-heritage-archive"}, "mu": {}},
+    "professionisti":         {"wom": {"it": "/professionisti-in-movimento", "en": "/en-us/en-professionals-on-the-move", "de": "/de/de-professionisti-in-bewegung", "fr": "/fr/fr-professionnels-en-mouvement"}, "mu": {}},
+    "sostenibilita":          {"wom": {"it": "/sostenibilita-oltre-le-promesse", "en": "/en-us/en-sustainability-beyond-promises", "de": "/de/de-nachhaltigkeit-jenseits-der-versprechen", "fr": "/fr/fr-durabilite-au-dela-des-promesses"}, "mu": {}},
+    "lm-guardaroba":          {"wom": {"it": "/lead-magnet", "en": "/en-us/en-lead-magnet", "de": "/de/de-lead-magnet", "fr": "/fr/fr-lead-magnet"}, "mu": {}},
+    "lm-travel-capsule":      {"wom": {"it": "/lead-magnet-travel-capsule", "en": "/en-us/en-lead-magnet-travel-capsule", "de": "/de/de-lead-magnet-travel-capsule", "fr": "/fr/fr-lead-magnet-travel-capsule"}, "mu": {}},
+    "lm-sustainability":      {"wom": {"it": "/lead-magnet-sustainability-score", "en": "/en-us/en-lead-magnet-sustainability-score", "de": "/de/de-lead-magnet-sustainability-score", "fr": "/fr/fr-lead-magnet-sustainability-score"}, "mu": {}},
+    "lm-sensory-test":        {"wom": {"it": "/lead-magnet-sensory-test", "en": "/en-us/en-lead-magnet-sensory-test", "de": "/de/de-lead-magnet-sensory-test", "fr": "/fr/fr-lead-magnet-sensory-test"}, "mu": {}},
+    "lm-care-guide":          {"wom": {"it": "/lead-magnet-care-guide", "en": "/en-us/en-lead-magnet-care-guide", "de": "/de/de-lead-magnet-care-guide", "fr": "/fr/fr-lead-magnet-care-guide"}, "mu": {}},
+    "pillar-merino-wool":     {"wom": {"it": "/heritage-archive/lana-merino-guida-completa", "en": "/en-us/en-heritage-archive/en-merino-wool-complete-guide", "de": "/de/de-heritage-archive/de-merinowolle-leitfaden", "fr": "/fr/fr-heritage-archive/fr-laine-merinos-guide-complet"}, "mu": {"it": "/struttura-cheratina-2", "en": "/en/en-struttura-cheratina-2", "de": "/de/de-struttura-cheratina-2", "fr": "/fr/fr-struttura-cheratina-2"}},
+    "pillar-capsule-wardrobe":{"wom": {"it": "/professionisti-in-movimento/il-guardaroba-capsula-funziona-davvero", "en": "/en-us/en-professionals-on-the-move/en-capsule-wardrobe-actually-work", "de": "/de/de-professionisti-in-bewegung/de-kapselgarderobe-funktioniert-wirklich", "fr": "/fr/fr-professionnels-en-mouvement/fr-garde-robe-capsule-fonctionne-vraiment"}, "mu": {}},
+    "pillar-base-layer":      {"wom": {"it": "/heritage-archive/il-primo-strato-tocca-la-pelle", "en": "/en-us/en-heritage-archive/en-the-first-layer", "de": "/de/de-heritage-archive/de-die-erste-schicht", "fr": "/fr/fr-heritage-archive/fr-la-premiere-couche"}, "mu": {}},
+    "comfort-asset":          {"wom": {"it": "/heritage-archive/il-comfort-come-asset", "en": "/en-us/en-heritage-archive/en-comfort-as-asset", "de": "/de/de-heritage-archive/de-komfort-als-asset", "fr": "/fr/fr-heritage-archive/fr-le-confort-comme-atout"}, "mu": {}},
+    "eleganza-maschile":      {"wom": {"it": "/heritage-archive/le-5-regole-delleleganza-maschile", "en": "/en-us/en-heritage-archive/en-5-rules-of-mens-elegance", "de": "/de/de-heritage-archive/de-5-regeln-der-herreneleganz", "fr": "/fr/fr-heritage-archive/fr-5-regles-de-lelegance-masculine"}, "mu": {}},
+    "smart-layering":         {"wom": {"it": "/professionisti-in-movimento/layering-intelligente-2-strati-invece-di-4", "en": "/en-us/en-professionals-on-the-move/en-smart-layering-2-layers", "de": "/de/de-professionisti-in-bewegung/de-intelligentes-layering-2-schichten-statt-4", "fr": "/fr/fr-professionnels-en-mouvement/fr-layering-intelligent-2-couches"}, "mu": {}},
+    "cost-per-wear":          {"wom": {"it": "/sostenibilita-oltre-le-promesse/cost-per-wear-calculator", "en": "/en-us/en-sustainability-beyond-promises/en-cost-per-wear-calculator", "de": "/de/de-nachhaltigkeit-jenseits-der-versprechen/de-cost-per-wear-rechner", "fr": "/fr/fr-durabilite-au-dela-des-promesses/fr-calculateur-cout-par-port"}, "mu": {}},
+    "manutenzione":           {"wom": {"it": "/sostenibilita-oltre-le-promesse/manutenzione-no-stiro", "en": "/en-us/en-sustainability-beyond-promises/en-no-iron-guide", "de": "/de/de-nachhaltigkeit-jenseits-der-versprechen/de-kein-buegeln-guide", "fr": "/fr/fr-durabilite-au-dela-des-promesses/fr-guide-sans-repassage"}, "mu": {}},
+    "tshirt-premium":         {"wom": {"it": "/sostenibilita-oltre-le-promesse/scegliere-tshirt-premium-6-segnali-qualita", "en": "/en-us/en-sustainability-beyond-promises/en-choose-premium-tshirt-7-quality-signals", "de": "/de/de-nachhaltigkeit-jenseits-der-versprechen/de-premium-tshirt-auswaehlen-7-qualitaetsmerkmale", "fr": "/fr/fr-durabilite-au-dela-des-promesses/fr-choisir-tshirt-premium-7-signaux-qualite"}, "mu": {}},
+    "meno-capi":              {"wom": {"it": "/sostenibilita-oltre-le-promesse/meno-capi-zero-sensi-di-colpa", "en": "/en-us/en-sustainability-beyond-promises/en-fewer-pieces-zero-guilt", "de": "/de/de-nachhaltigkeit-jenseits-der-versprechen/de-weniger-teile-null-schuldgefuehle", "fr": "/fr/fr-durabilite-au-dela-des-promesses/fr-garde-robe-qui-fonctionne"}, "mu": {}},
+    "armadio-funziona":       {"wom": {"it": "/sostenibilita-oltre-le-promesse/armadio-che-funziona", "en": "/en-us/en-sustainability-beyond-promises/en-wardrobe-that-works", "de": "/de/de-nachhaltigkeit-jenseits-der-versprechen/de-kleiderschrank-der-funktioniert", "fr": "/fr/fr-durabilite-au-dela-des-promesses/fr-garde-robe-qui-fonctionne"}, "mu": {}},
+    "manifattura-italiana":   {"wom": {"it": "/manifattura-italiana-t-shirt-eccellenza-invisibile", "en": "/en-us/en-italian-t-shirt-manufacturing-invisible-heritage", "de": "/de/de-italienische-t-shirt-manufaktur", "fr": "/fr/fr-fabrication-italienne-t-shirt-heritage-invisible"}, "mu": {}},
+}
+
+_KLAVIYO_LANGS = ["it", "en", "de", "fr"]
+
+
+def _load_pass_paths(db: DBSession) -> Dict[str, set]:
+    """Carica tutti i path PASS da crawl_map_entries per sito. Ritorna {"wom": set(), "mu": set()}."""
+    from models.database import CrawlMapEntry
+    _ensure_crawl_map_table(db)
+    result: Dict[str, set] = {"wom": set(), "mu": set()}
+    rows = db.query(CrawlMapEntry.site, CrawlMapEntry.url_path).filter(
+        CrawlMapEntry.verdict == "PASS"
+    ).all()
+    for row in rows:
+        result[row.site].add(row.url_path)
+    return result
+
+
+def _resolve_link(key: str, lang: str, pass_paths: Dict[str, set]) -> str:
+    """
+    6-step resolution chain per content key + lingua.
+    Ritorna l'URL assoluto migliore disponibile.
+    """
+    routes = _KLAVIYO_ROUTE_MAP.get(key, {})
+    wom_paths = routes.get("wom", {})
+    mu_paths  = routes.get("mu", {})
+
+    wom_pass = pass_paths["wom"]
+    mu_pass  = pass_paths["mu"]
+
+    def wom_url(l: str) -> Optional[str]:
+        p = wom_paths.get(l)
+        return (_WOM_BASE + p) if p else None
+
+    def mu_url(l: str) -> Optional[str]:
+        p = mu_paths.get(l)
+        return (_MU_BASE + p) if p else None
+
+    # Step 1: WoM[lang] indexed
+    p = wom_paths.get(lang)
+    if p and p in wom_pass:
+        return _WOM_BASE + p
+
+    # Step 2: WoM[it] indexed (IT fallback)
+    p_it = wom_paths.get("it")
+    if p_it and p_it in wom_pass:
+        return _WOM_BASE + p_it
+
+    # Step 3: MU[lang] indexed
+    p_mu = mu_paths.get(lang)
+    if p_mu and p_mu in mu_pass:
+        return _MU_BASE + p_mu
+
+    # Step 4: MU[it] indexed
+    p_mu_it = mu_paths.get("it")
+    if p_mu_it and p_mu_it in mu_pass:
+        return _MU_BASE + p_mu_it
+
+    # Step 5: WoM[lang] UX fallback (page exists but not indexed)
+    if p := wom_paths.get(lang):
+        return _WOM_BASE + p
+
+    # Step 6: WoM[it] absolute fallback
+    if p_it:
+        return _WOM_BASE + p_it
+
+    return _WOM_BASE + "/"
+
+
+def _compute_index_aware_links(pass_paths: Dict[str, set]) -> Dict[str, Dict[str, str]]:
+    """Calcola le 4 link-map (IT/EN/DE/FR) applicando la resolution chain su tutti i 22 key."""
+    maps: Dict[str, Dict[str, str]] = {}
+    coverage: Dict[str, int] = {}
+    for lang in _KLAVIYO_LANGS:
+        lang_map: Dict[str, str] = {}
+        indexed_count = 0
+        for key in _KLAVIYO_ROUTE_MAP:
+            url = _resolve_link(key, lang, pass_paths)
+            lang_map[key] = url
+            # Conta come "indexed" se l'URL finale è nella lingua giusta su WoM/MU
+            wom_p = _KLAVIYO_ROUTE_MAP[key].get("wom", {}).get(lang, "")
+            mu_p  = _KLAVIYO_ROUTE_MAP[key].get("mu", {}).get(lang, "")
+            if (wom_p and wom_p in pass_paths["wom"]) or (mu_p and mu_p in pass_paths["mu"]):
+                indexed_count += 1
+        maps[lang] = lang_map
+        coverage[lang] = indexed_count
+    return maps, coverage
+
+
+def _detect_language_from_props(props: Dict) -> str:
+    """Identifica la lingua del profilo dai custom properties Klaviyo."""
+    for val in [props.get("Language", ""), props.get("preferred_language", "")]:
+        v = str(val).lower()
+        if v.startswith("de"): return "de"
+        if v.startswith("fr"): return "fr"
+        if v.startswith("en"): return "en"
+        if v.startswith("it"): return "it"
+    sp = str(props.get("Source Page", "")).lower()
+    if " de" in sp or sp.endswith(" de"): return "de"
+    if " fr" in sp or sp.endswith(" fr"): return "fr"
+    if " en" in sp or sp.endswith(" en"): return "en"
+    locale = str(props.get("locale", "")).lower()
+    if locale.startswith("de"): return "de"
+    if locale.startswith("fr"): return "fr"
+    if locale.startswith("en"): return "en"
+    return "it"
+
+
+async def _run_klaviyo_index_sync(db: DBSession) -> Dict[str, Any]:
+    """
+    Core del sync: legge crawl_map_entries Postgres, calcola link maps, PATCH profili Klaviyo.
+    Ritorna: {"updated": int, "failed": int, "coverage": str, "timestamp": str}
+    """
+    import httpx as _httpx
+    import json as _json
+
+    api_key  = os.environ.get("KLAVIYO_API_KEY", "")
+    revision = os.environ.get("KLAVIYO_REVISION", "2024-10-15")
+    base     = "https://a.klaviyo.com/api"
+    now_ts   = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    if not api_key:
+        logger.warning("Klaviyo index sync: KLAVIYO_API_KEY not set, aborting")
+        return {"updated": 0, "failed": 0, "coverage": "n/a", "timestamp": now_ts, "error": "no api key"}
+
+    headers = {
+        "Authorization": f"Klaviyo-API-Key {api_key}",
+        "revision": revision,
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+
+    # 1. Carica verdetti PASS
+    pass_paths = _load_pass_paths(db)
+    logger.info(f"Klaviyo index sync: WoM PASS={len(pass_paths['wom'])}, MU PASS={len(pass_paths['mu'])}")
+
+    # 2. Calcola link maps per lingua
+    link_maps, coverage = _compute_index_aware_links(pass_paths)
+    n_keys = len(_KLAVIYO_ROUTE_MAP)
+    coverage_str = " | ".join(f"{l.upper()}={coverage[l]}/{n_keys}" for l in _KLAVIYO_LANGS)
+    logger.info(f"Klaviyo index sync coverage: {coverage_str}")
+
+    # 3. Fetch tutti i profili (paginato)
+    profiles = []
+    url = base + "/profiles/?fields[profile]=email,properties&page[size]=100"
+    async with _httpx.AsyncClient(timeout=30) as client:
+        while url:
+            r = await client.get(url, headers=headers)
+            if r.status_code != 200:
+                logger.error(f"Klaviyo profiles fetch failed: {r.status_code} {r.text[:200]}")
+                break
+            data = r.json()
+            profiles.extend(data.get("data", []))
+            url = data.get("links", {}).get("next")
+
+    logger.info(f"Klaviyo index sync: {len(profiles)} profiles to update")
+
+    # 4. PATCH ogni profilo
+    updated = 0
+    failed  = 0
+    async with _httpx.AsyncClient(timeout=30) as client:
+        for p in profiles:
+            pid   = p["id"]
+            props = p["attributes"].get("properties", {})
+            lang  = _detect_language_from_props(props)
+            links_json = _json.dumps(link_maps[lang])
+            payload = {"data": {"type": "profile", "id": pid, "attributes": {
+                "properties": {
+                    "index_aware_links":   links_json,
+                    "index_aware_updated": now_ts,
+                }
+            }}}
+            r = await client.patch(f"{base}/profiles/{pid}/", headers=headers, json=payload)
+            if r.status_code == 200:
+                updated += 1
+            else:
+                failed += 1
+                logger.warning(f"Klaviyo profile PATCH failed: pid={pid} status={r.status_code}")
+            await asyncio.sleep(0.15)  # rate limit safety
+
+    logger.info(f"Klaviyo index sync done: updated={updated} failed={failed} coverage={coverage_str}")
+    return {
+        "updated":   updated,
+        "failed":    failed,
+        "coverage":  coverage_str,
+        "timestamp": now_ts,
+        "wom_pass":  len(pass_paths["wom"]),
+        "mu_pass":   len(pass_paths["mu"]),
+    }
+
+
+@app.post("/v1/klaviyo/index-sync")
+async def klaviyo_index_sync_trigger(
+    request: Request,
+    db: DBSession = Depends(get_db)
+):
+    """
+    Trigger manuale del Klaviyo index-aware sync.
+    Stesso job del cron settimanale lunedì 06:00 UTC.
+    Auth: x-api-key header.
+    Response: {"updated": N, "failed": N, "coverage": "IT=15/22 | ...", "timestamp": "..."}
+    """
+    api_key = (request.headers.get("x-api-key") or request.query_params.get("api_key") or "").strip()
+    expected = (os.environ.get("API_KEY") or "albeni1905-internal-api-v1").strip()
+    if api_key != expected:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    result = await _run_klaviyo_index_sync(db)
+    return {"status": "ok", **result}
