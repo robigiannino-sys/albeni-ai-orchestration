@@ -88,7 +88,12 @@ async def lifespan(app: FastAPI):
     # Initial refresh of the bot_shield Redis SET that ai-router consults as a
     # gate before persisting tracking events. Without this the SET would be
     # whatever was left from previous deploys; we want a fresh truth on boot.
-    await refresh_bot_shield_cache(redis_client)
+    # Wrapped in wait_for to prevent a slow/unavailable Redis from blocking
+    # startup for 5+ minutes (TCP default timeout) and causing Railway healthcheck failure.
+    try:
+        await asyncio.wait_for(refresh_bot_shield_cache(redis_client), timeout=5.0)
+    except asyncio.TimeoutError:
+        logger.warning("bot_shield startup refresh timed out (>5s) — will retry via periodic task")
 
     # Spawn the periodic refresh task so newly added exclusions in Postgres
     # propagate to the gate within 5 minutes without manual intervention.
