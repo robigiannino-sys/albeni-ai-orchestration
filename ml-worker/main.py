@@ -232,13 +232,16 @@ async def health_check():
     except Exception:
         services_status["redis"] = "unhealthy"
 
-    # Check DB
+    # Check DB — use context manager to guarantee connection is returned to pool
     try:
         from sqlalchemy import text
-        db = next(get_db())
-        db.execute(text("SELECT 1"))
-        services_status["database"] = "healthy"
-        db.close()
+        from models.database import SessionLocal
+        db = SessionLocal()
+        try:
+            db.execute(text("SELECT 1"))
+            services_status["database"] = "healthy"
+        finally:
+            db.close()
     except Exception as e:
         services_status["database"] = "unhealthy"
         logger.warning(f"DB health check failed: {e}")

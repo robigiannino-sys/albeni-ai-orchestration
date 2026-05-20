@@ -14,7 +14,14 @@ import uuid
 from config import get_settings
 
 settings = get_settings()
-engine = create_engine(settings.effective_database_url, pool_size=20, max_overflow=10)
+engine = create_engine(
+    settings.effective_database_url,
+    pool_size=5,
+    max_overflow=5,
+    pool_pre_ping=True,
+    pool_recycle=1800,
+    pool_timeout=20,
+)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
