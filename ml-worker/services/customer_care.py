@@ -241,6 +241,48 @@ FAQ_KNOWLEDGE = {
         "de": "Merinofaser ist natürlich, erneuerbar und biologisch abbaubar. Die ZQ-Zertifizierung garantiert Tierwohl und nachhaltige Praktiken. Der CompACT®-Prozess von Reda reduziert den Wasserverbrauch um 50%.",
         "fr": "La fibre Mérinos est naturelle, renouvelable et biodégradable. La certification ZQ garantit le bien-être animal. Le procédé CompACT® de Reda réduit la consommation d'eau de 50%.",
     },
+    "regulation": {
+        "it": (
+            "REACH Annex XVII e ESPR 2026 sono due normative UE convergenti nel 2026.\n\n"
+            "**31 maggio 2026 — ECHA Reporting microplastiche**: i produttori di tessuti sintetici devono "
+            "comunicare all'ECHA stime e dati sulle microplastiche rilasciate. Il poliestere rilascia circa "
+            "700.000 microfibre per ogni lavaggio.\n\n"
+            "**19 luglio 2026 — ESPR (Ecodesign for Sustainable Products Regulation)**: entra in vigore il "
+            "divieto UE di distruzione dell'invenduto tessile. Si stima che nell'UE vengano distrutte tra "
+            "264.000 e 594.000 tonnellate di invenduti ogni anno.\n\n"
+            "**La lana merino non è soggetta a nessuno dei due obblighi**: è una fibra naturale biodegradabile, "
+            "non rilascia microplastiche sintetiche ed è strutturalmente conforme agli obiettivi dell'economia "
+            "circolare — prima ancora che diventino obblighi di legge."
+        ),
+        "en": (
+            "REACH Annex XVII and ESPR 2026 are two EU regulations converging in 2026.\n\n"
+            "**May 31, 2026 — ECHA Microplastics Reporting**: synthetic textile producers must report microplastics "
+            "data to ECHA. Polyester releases ~700,000 microfibers per wash.\n\n"
+            "**July 19, 2026 — ESPR (Ecodesign for Sustainable Products Regulation)**: EU ban on destruction of "
+            "unsold textile inventory comes into force. The EU estimates 264,000–594,000 tonnes destroyed annually.\n\n"
+            "**Merino wool is not subject to either obligation**: it's a natural, biodegradable fiber that releases "
+            "no synthetic microplastics — structurally compliant with circular economy goals before they become law."
+        ),
+        "de": (
+            "REACH Anhang XVII und ESPR 2026 sind zwei konvergierende EU-Vorschriften im Jahr 2026.\n\n"
+            "**31. Mai 2026 — ECHA Mikroplastik-Meldepflicht**: Hersteller von Synthetiktextilien müssen der ECHA "
+            "Daten zu freigesetzten Mikroplastiken melden. Polyester setzt ~700.000 Mikrofasern pro Waschgang frei.\n\n"
+            "**19. Juli 2026 — ESPR (Ökodesign-Verordnung)**: EU-Verbot der Vernichtung unverkaufter Textilien tritt "
+            "in Kraft. Schätzungsweise 264.000–594.000 Tonnen Unverkauftes werden jährlich in der EU vernichtet.\n\n"
+            "**Merinowolle unterliegt keiner der beiden Pflichten**: natürliche, biologisch abbaubare Faser, "
+            "setzt keine synthetischen Mikroplastiken frei — strukturell konform mit Kreislaufwirtschaftszielen."
+        ),
+        "fr": (
+            "REACH Annexe XVII et ESPR 2026 sont deux réglementations UE convergentes en 2026.\n\n"
+            "**31 mai 2026 — Déclaration ECHA microplastiques**: les fabricants de textiles synthétiques doivent "
+            "déclarer à l'ECHA les données sur les microplastiques libérés. Le polyester libère ~700 000 "
+            "microfibres par lavage.\n\n"
+            "**19 juillet 2026 — ESPR (Règlement écoconception)**: interdiction UE de destruction des invendus "
+            "textiles. L'UE estime que 264 000–594 000 tonnes d'invendus sont détruites chaque année.\n\n"
+            "**La laine mérinos n'est soumise à aucune de ces obligations**: fibre naturelle biodégradable, "
+            "ne libère pas de microplastiques synthétiques — conforme aux objectifs d'économie circulaire."
+        ),
+    },
 }
 
 # Frasi che indicano insoddisfazione → trigger escalation HITL
@@ -275,6 +317,10 @@ TOPIC_KEYWORDS = {
                 "rücksendung", "rückerstattung", "retour", "remboursement"],
     "sustainability": ["sostenibil", "sustainab", "ambiente", "environment", "eco", "biodegradab",
                        "zq", "tracciabilità", "traceability", "nachhaltig", "umwelt", "durable"],
+    "regulation": ["espr", "reach", "normativa ue", "regulation", "compliance", "microplastich",
+                   "microplastic", "microfibre", "microfiber", "invendut", "unsold", "echa",
+                   "ecodesign", "divieto invenduto", "destruction textile", "vernichtung unverkauft",
+                   "annex xvii", "anhang xvii", "annexe xvii", "regolamento tessile", "textile regulation"],
 }
 
 # Keywords that indicate the user is asking about the site/brand identity itself
@@ -387,6 +433,7 @@ CHI È MERINO UNIVERSITY:
   la certificazione ZQ e il benessere animale, il processo CompACT® di Reda che riduce il consumo d'acqua del 50%,
   le proprietà termoregolatrici della fibra Merino, il confronto Merino vs cotone vs sintetico
 - Ogni articolo è strutturato come una "lezione" accessibile ma rigorosa
+- Pubblica l'**Osservatorio Merino**: analisi normative e trend regolatori del settore tessile (es. REACH Annex XVII, ESPR 2026, divieto invenduti UE, reporting microplastiche ECHA)
 - NON è un e-commerce: insegna, non vende
 - Fa parte dell'ecosistema: per storie lifestyle → worldofmerino.com,
   per trovare taglia e vestibilità → perfectmerinoshirt.com, per acquistare → albeni1905.com
@@ -450,6 +497,7 @@ EDUCATIONAL_LINKS = {
     "material": {"url": "https://merinouniversity.com/super-120s-merino", "label": "Super 120's Merino"},
     "sustainability": {"url": "https://merinouniversity.com/merino-vs-cotton", "label": "Merino vs Cotton"},
     "care": {"url": "https://merinouniversity.com/merino-care-guide", "label": "Guida alla Cura del Merino"},
+    "regulation": {"url": "https://merinouniversity.com/reach-annex-xvii-espr-compliance-tessile-microplastiche", "label": "REACH Annex XVII & ESPR 2026"},
 }
 
 
@@ -1097,7 +1145,7 @@ Tu però ti presenti come {brand_name}, parte dell'ecosistema Invisible Luxury."
         """
         DOMAIN_ALLOWED_TOPICS = {
             "tofu": {"sustainability"},
-            "mofu": {"construction", "material", "sustainability", "care"},
+            "mofu": {"construction", "material", "sustainability", "care", "regulation"},
             "bofu_tech": {"sizing", "care", "construction", "material"},
             "bofu_heritage": {"sizing", "care", "construction", "material",
                               "shipping", "returns", "sustainability"},
@@ -1122,6 +1170,7 @@ Tu però ti presenti come {brand_name}, parte dell'ecosistema Invisible Luxury."
             "construction": {"ids_delta": 5, "stage_hint": "MOFU", "reason": "Technical curiosity"},
             "material": {"ids_delta": 5, "stage_hint": "MOFU", "reason": "Material interest"},
             "sustainability": {"ids_delta": 3, "stage_hint": "TOFU", "reason": "Values alignment check"},
+            "regulation": {"ids_delta": 4, "stage_hint": "MOFU", "reason": "Regulatory curiosity = environmental values, MU Osservatorio content"},
         }
 
         if topic and topic in TOPIC_IDS_MAP:
