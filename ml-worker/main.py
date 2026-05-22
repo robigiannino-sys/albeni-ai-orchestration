@@ -237,16 +237,30 @@ async def health_check():
     except Exception:
         services_status["redis"] = "unhealthy"
 
-    # Check DB — use context manager to guarantee connection is returned to pool
+    # Check DB — run in thread to avoid blocking the async event loop
+    # (SQLAlchemy sync execute + pool_pre_ping would block FastAPI's event loop
+    # causing Railway healthcheck probes to hang → healthcheck failure)
     try:
         from sqlalchemy import text
         from models.database import SessionLocal
-        db = SessionLocal()
-        try:
-            db.execute(text("SELECT 1"))
-            services_status["database"] = "healthy"
-        finally:
-            db.close()
+        import asyncio
+
+        def _db_ping():
+            db = SessionLocal()
+            try:
+                db.execute(text("SELECT 1"))
+                return "healthy"
+            finally:
+                db.close()
+
+        db_status = await asyncio.wait_for(
+            asyncio.to_thread(_db_ping),
+            timeout=10.0
+        )
+        services_status["database"] = db_status
+    except asyncio.TimeoutError:
+        services_status["database"] = "unhealthy"
+        logger.warning("DB health check timed out (>10s)")
     except Exception as e:
         services_status["database"] = "unhealthy"
         logger.warning(f"DB health check failed: {e}")
