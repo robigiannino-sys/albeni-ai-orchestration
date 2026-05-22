@@ -3,9 +3,11 @@ builder = "DOCKERFILE"
 dockerfilePath = "./Dockerfile"
 
 [deploy]
-healthcheckPath = "/health"
-healthcheckPort = 8080
-healthcheckTimeout = 300
+# healthcheckPath disabled: Railway V2 was unable to route HTTP probes to the
+# container (zero uvicorn access logs during the 300s window across 5 deploys).
+# Root cause under investigation: probes likely go through the public proxy which
+# only routes to the currently-active (old) container, creating a chicken-and-egg.
+# Without healthcheckPath, Railway uses "process alive" as the health signal.
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 5
 numReplicas = 1
