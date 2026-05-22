@@ -255,12 +255,12 @@ async def health_check():
 
         db_status = await asyncio.wait_for(
             asyncio.to_thread(_db_ping),
-            timeout=10.0
+            timeout=2.5  # must respond before Railway's per-probe HTTP timeout (~5s)
         )
         services_status["database"] = db_status
     except asyncio.TimeoutError:
         services_status["database"] = "unhealthy"
-        logger.warning("DB health check timed out (>10s)")
+        logger.warning("DB health check timed out (>2.5s)")
     except Exception as e:
         services_status["database"] = "unhealthy"
         logger.warning(f"DB health check failed: {e}")

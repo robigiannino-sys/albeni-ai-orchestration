@@ -21,6 +21,7 @@ engine = create_engine(
     pool_pre_ping=True,
     pool_recycle=1800,
     pool_timeout=20,
+    connect_args={"connect_timeout": 3},  # fail fast on cold Postgres; avoids blocking Railway per-probe timeout
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
