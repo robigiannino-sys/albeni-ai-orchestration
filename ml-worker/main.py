@@ -1612,6 +1612,252 @@ async def gsc_report(
     return {"status": "ok", "id": scan_id, "total_scans": total}
 
 
+# ===================================================================
+# GA4 DAILY METRICS — espone i dati del cron albeni-ga4-sync al Tower
+# Sorgente: microservice albeni-ga4-sync (cron 03:00 UTC) → tabelle ga4_daily,
+# ga4_geo_daily, ga4_sync_log. Prima di AOC-036 (Step 4, 2026-05-22) i dati
+# erano scritti dal cron ma non leggibili da nessun endpoint pubblico.
+# ===================================================================
+
+def _ensure_ga4_tables(db: DBSession):
+    """Auto-create tabelle GA4 se mancanti. Idempotente."""
+    from models.database import GA4Daily, GA4GeoDaily, GA4SyncLog, engine
+    for model in (GA4Daily, GA4GeoDaily, GA4SyncLog):
+        try:
+            model.__table__.create(bind=engine, checkfirst=True)
+        except Exception as e:
+            logger.warning(f"GA4 table create check {model.__tablename__}: {e}")
+
+
+@app.get("/v1/ga4/daily")
+async def ga4_daily(
+    date: Optional[str] = Query(None, description="ISO date YYYY-MM-DD; default: most recent date with data"),
+    property: Optional[str] = Query(None, description="Filter by property_name (WoM, MU) or property_id"),
+    limit: int = Query(50, ge=1, le=500, description="Top N pages by sessions"),
+    min_sessions: int = Query(0, ge=0, description="Filtro: pagine con almeno N sessioni"),
+    db: DBSession = Depends(get_db),
+):
+    """
+    Top pagine per (date, property) ordinate per sessions DESC.
+    Se 'date' è omesso, ritorna le righe del giorno più recente disponibile.
+    """
+    from models.database import GA4Daily
+    from datetime import datetime as dt
+    _ensure_ga4_tables(db)
+
+    q = db.query(GA4Daily)
+    target_date = None
+    if date:
+        try:
+            target_date = dt.fromisoformat(date).date()
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Invalid date format: {date} (atteso YYYY-MM-DD)")
+        q = q.filter(GA4Daily.date == target_date)
+    else:
+        latest = db.query(GA4Daily.date).order_by(GA4Daily.date.desc()).limit(1).first()
+        if not latest:
+            return {"date": None, "property": property, "pages": [], "total": 0, "warning": "no data yet"}
+        target_date = latest[0]
+        q = q.filter(GA4Daily.date == target_date)
+
+    if property:
+        q = q.filter((GA4Daily.property_name == property) | (GA4Daily.property_id == property))
+    if min_sessions > 0:
+        q = q.filter(GA4Daily.sessions >= min_sessions)
+
+    rows = q.order_by(GA4Daily.sessions.desc()).limit(limit).all()
+    return {
+        "date": target_date.isoformat(),
+        "property": property,
+        "pages": [
+            {
+                "property_id": r.property_id,
+                "property_name": r.property_name,
+                "page_path": r.page_path,
+                "page_title": r.page_title,
+                "sessions": r.sessions,
+                "active_users": r.active_users,
+                "new_users": r.new_users,
+                "views": r.views,
+                "engaged_sessions": r.engaged_sessions,
+                "average_session_duration": float(r.average_session_duration or 0),
+                "user_engagement_duration": float(r.user_engagement_duration or 0),
+                "engagement_rate": float(r.engagement_rate or 0),
+                "bounce_rate": float(r.bounce_rate or 0),
+                "key_events": r.key_events,
+                "scroll_count": r.scroll_count,
+                "user_engagement_count": r.user_engagement_count,
+                "lead_magnet_view_count": r.lead_magnet_view_count,
+                "checklist_view_count": r.checklist_view_count,
+                "synced_at": r.synced_at.isoformat() if r.synced_at else None,
+            }
+            for r in rows
+        ],
+        "total": len(rows),
+    }
+
+
+@app.get("/v1/ga4/geo")
+async def ga4_geo(
+    date: Optional[str] = Query(None, description="ISO date YYYY-MM-DD; default: most recent"),
+    property: Optional[str] = Query(None, description="Filter by property_name or property_id"),
+    limit: int = Query(100, ge=1, le=1000),
+    db: DBSession = Depends(get_db),
+):
+    """Distribuzione geografica del traffico GA4 per (date, property)."""
+    from models.database import GA4GeoDaily
+    from datetime import datetime as dt
+    _ensure_ga4_tables(db)
+
+    q = db.query(GA4GeoDaily)
+    target_date = None
+    if date:
+        try:
+            target_date = dt.fromisoformat(date).date()
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Invalid date format: {date}")
+        q = q.filter(GA4GeoDaily.date == target_date)
+    else:
+        latest = db.query(GA4GeoDaily.date).order_by(GA4GeoDaily.date.desc()).limit(1).first()
+        if not latest:
+            return {"date": None, "property": property, "rows": [], "total": 0, "warning": "no data yet"}
+        target_date = latest[0]
+        q = q.filter(GA4GeoDaily.date == target_date)
+
+    if property:
+        q = q.filter((GA4GeoDaily.property_name == property) | (GA4GeoDaily.property_id == property))
+
+    rows = q.order_by(GA4GeoDaily.sessions.desc()).limit(limit).all()
+    return {
+        "date": target_date.isoformat(),
+        "property": property,
+        "rows": [
+            {
+                "property_id": r.property_id,
+                "property_name": r.property_name,
+                "country": r.country,
+                "city": r.city,
+                "language": r.language,
+                "sessions": r.sessions,
+                "active_users": r.active_users,
+                "views": r.views,
+            }
+            for r in rows
+        ],
+        "total": len(rows),
+    }
+
+
+@app.get("/v1/ga4/sync-log")
+async def ga4_sync_log(
+    limit: int = Query(20, ge=1, le=200),
+    status: Optional[str] = Query(None, description="Filter: running | ok | error"),
+    db: DBSession = Depends(get_db),
+):
+    """Ultimi N run del cron albeni-ga4-sync (1 riga per property per target_date)."""
+    from models.database import GA4SyncLog
+    _ensure_ga4_tables(db)
+    q = db.query(GA4SyncLog)
+    if status:
+        q = q.filter(GA4SyncLog.status == status)
+    rows = q.order_by(GA4SyncLog.started_at.desc()).limit(limit).all()
+    return {
+        "runs": [
+            {
+                "id": r.id,
+                "started_at": r.started_at.isoformat() if r.started_at else None,
+                "completed_at": r.completed_at.isoformat() if r.completed_at else None,
+                "target_date": r.target_date.isoformat() if r.target_date else None,
+                "property_id": r.property_id,
+                "rows_inserted": r.rows_inserted,
+                "rows_updated": r.rows_updated,
+                "api_calls": r.api_calls,
+                "status": r.status,
+                "error_message": r.error_message,
+                "runtime_seconds": float(r.runtime_seconds) if r.runtime_seconds else None,
+            }
+            for r in rows
+        ],
+        "total": len(rows),
+    }
+
+
+@app.get("/v1/ga4/summary")
+async def ga4_summary(db: DBSession = Depends(get_db)):
+    """
+    Snapshot stato cron ga4-sync: per ogni property l'ultima sync + totali 7g.
+    Pensato come tile dashboard "GA4 sync health".
+    """
+    from models.database import GA4Daily, GA4SyncLog
+    from sqlalchemy import func, distinct
+    from datetime import date as dt_date, timedelta
+    _ensure_ga4_tables(db)
+
+    seven_days_ago = dt_date.today() - timedelta(days=7)
+    # Aggregato per property: ultima data sincronizzata + totals
+    rows = (
+        db.query(
+            GA4Daily.property_id,
+            GA4Daily.property_name,
+            func.max(GA4Daily.date).label("latest_date"),
+            func.count(distinct(GA4Daily.page_path)).label("pages_7d"),
+            func.sum(GA4Daily.sessions).label("sessions_7d"),
+            func.sum(GA4Daily.key_events).label("key_events_7d"),
+        )
+        .filter(GA4Daily.date >= seven_days_ago)
+        .group_by(GA4Daily.property_id, GA4Daily.property_name)
+        .all()
+    )
+
+    # Ultimi 5 run dal sync-log
+    last_runs = (
+        db.query(GA4SyncLog)
+        .order_by(GA4SyncLog.started_at.desc())
+        .limit(5)
+        .all()
+    )
+    last_error = (
+        db.query(GA4SyncLog)
+        .filter(GA4SyncLog.status == "error")
+        .order_by(GA4SyncLog.started_at.desc())
+        .first()
+    )
+    return {
+        "properties": [
+            {
+                "property_id": r.property_id,
+                "property_name": r.property_name,
+                "latest_date": r.latest_date.isoformat() if r.latest_date else None,
+                "pages_7d": r.pages_7d or 0,
+                "sessions_7d": int(r.sessions_7d or 0),
+                "key_events_7d": int(r.key_events_7d or 0),
+            }
+            for r in rows
+        ],
+        "last_runs": [
+            {
+                "target_date": r.target_date.isoformat() if r.target_date else None,
+                "property_id": r.property_id,
+                "status": r.status,
+                "rows_inserted": r.rows_inserted,
+                "started_at": r.started_at.isoformat() if r.started_at else None,
+                "runtime_seconds": float(r.runtime_seconds) if r.runtime_seconds else None,
+            }
+            for r in last_runs
+        ],
+        "last_error": (
+            {
+                "target_date": last_error.target_date.isoformat() if last_error.target_date else None,
+                "property_id": last_error.property_id,
+                "started_at": last_error.started_at.isoformat() if last_error.started_at else None,
+                "error_message": last_error.error_message,
+            }
+            if last_error
+            else None
+        ),
+    }
+
+
 @app.get("/v1/notion/pipeline/stats")
 async def get_notion_stats():
     """

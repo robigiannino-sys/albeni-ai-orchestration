@@ -266,6 +266,84 @@ class GSCIndexingScan(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+class GA4Daily(Base):
+    """
+    GA4 Data API — metriche aggregate giornaliere per (data, property, pagina).
+    Sorgente: microservice albeni-ga4-sync (cron 03:00 UTC, repo robigiannino-sys/albeni-ga4-sync).
+    UPSERT su (date, property_id, page_path) con dedup intra-batch (fix AOC-036 2026-05-22).
+    """
+    __tablename__ = "ga4_daily"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    date = Column(Date, nullable=False, index=True)
+    property_id = Column(String(20), nullable=False, index=True)
+    property_name = Column(String(100), nullable=False)
+    page_path = Column(Text, nullable=False, index=True)
+    page_title = Column(Text)
+
+    # Metriche traffico
+    sessions = Column(Integer, default=0)
+    active_users = Column(Integer, default=0)
+    new_users = Column(Integer, default=0)
+    views = Column(Integer, default=0)
+    engaged_sessions = Column(Integer, default=0)
+
+    # Engagement
+    average_session_duration = Column(Numeric(10, 2), default=0)
+    user_engagement_duration = Column(Numeric(10, 2), default=0)
+    engagement_rate = Column(Numeric(5, 4), default=0)
+    bounce_rate = Column(Numeric(5, 4), default=0)
+
+    # Eventi chiave (conversioni)
+    key_events = Column(Integer, default=0)
+    scroll_count = Column(Integer, default=0)
+    user_engagement_count = Column(Integer, default=0)
+    lead_magnet_view_count = Column(Integer, default=0)
+    checklist_view_count = Column(Integer, default=0)
+
+    synced_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+
+
+class GA4GeoDaily(Base):
+    """
+    GA4 Data API — distribuzione geografica giornaliera per (data, property, paese, città, lingua).
+    Sorgente: microservice albeni-ga4-sync. Usato per priorità mercati 4L (IT/EN/DE/FR).
+    """
+    __tablename__ = "ga4_geo_daily"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    date = Column(Date, nullable=False, index=True)
+    property_id = Column(String(20), nullable=False, index=True)
+    property_name = Column(String(100), nullable=False)
+    country = Column(String(80), nullable=False, index=True)
+    city = Column(String(80))
+    language = Column(String(10))
+    sessions = Column(Integer, default=0)
+    active_users = Column(Integer, default=0)
+    views = Column(Integer, default=0)
+    synced_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+
+
+class GA4SyncLog(Base):
+    """
+    Audit log delle esecuzioni del cron albeni-ga4-sync (1 riga per run per property).
+    Permette health-check del cron senza dover entrare in Railway logs.
+    """
+    __tablename__ = "ga4_sync_log"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    started_at = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow, index=True)
+    completed_at = Column(DateTime(timezone=True))
+    target_date = Column(Date, nullable=False, index=True)
+    property_id = Column(String(20), nullable=False)
+    rows_inserted = Column(Integer, default=0)
+    rows_updated = Column(Integer, default=0)
+    api_calls = Column(Integer, default=0)
+    status = Column(String(20), nullable=False, default="running", index=True)
+    error_message = Column(Text)
+    runtime_seconds = Column(Numeric(8, 2))
+
+
 class SemanticDefenseSnapshot(Base):
     """
     Daily snapshot delle 4 metriche del pannello Semantic Defense (cluster C6).
