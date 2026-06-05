@@ -82,7 +82,7 @@ curl https://your-railway-url.up.railway.app/v1/adv/allocate
 ```bash
 curl -X PUT https://your-railway-url.up.railway.app/v1/adv/config \
   -H "Content-Type: application/json" \
-  -H "X-Api-Key: albeni-gsc-2026" \
+  -H "X-Api-Key: albeni1905-internal-api-v1" \
   -d '{"month": 3}'
 ```
 
@@ -91,7 +91,7 @@ curl -X PUT https://your-railway-url.up.railway.app/v1/adv/config \
 ```bash
 curl -X POST https://your-railway-url.up.railway.app/v1/adv/index-event \
   -H "Content-Type: application/json" \
-  -H "X-Api-Key: albeni-gsc-2026" \
+  -H "X-Api-Key: albeni1905-internal-api-v1" \
   -d '{"urlPath": "/struttura-cheratina-2", "site": "mu", "cluster": "A"}'
 ```
 

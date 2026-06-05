@@ -46,7 +46,7 @@ function ADVBudgetPage() {
     try {
       const res = await fetch('/v1/adv/config', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'X-Api-Key': 'albeni-gsc-2026' },
+        headers: { 'Content-Type': 'application/json', 'X-Api-Key': 'albeni1905-internal-api-v1' },
         body: JSON.stringify({ month: configMonth }),
       });
       if (res.ok) await loadReport();
