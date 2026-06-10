@@ -2,7 +2,7 @@
 name: mu-content-deployer
 description: |
   **MU Content Page Deployer**: Deploys new content pages (checklists, scorecards, guides, educational articles) across all 4 languages (IT/EN/DE/FR) on the Merino University WordPress production site. Handles the complete pipeline: HTML content generation, batch page creation via wp.apiFetch, content loading via chunked JS, Polylang translation linking, Rank Math SEO, WPCode snippet updates (#2867 interlinking, #2866 references), LiteSpeed cache purge, and frontend verification.
-  - MANDATORY TRIGGERS: deploy pages, deploy content, crea pagine, deploy checklist, deploy guide, nuove pagine MU, new MU pages, batch deploy, pipeline deploy, deploy 4 lingue, implementa pagine
+  - MANDATORY TRIGGERS: deploy pages, deploy content, crea pagine, deploy checklist, deploy guide, nuove pagine MU, new MU pages, batch deploy, pipeline deploy, deploy 4 lingue, implementa pagine, Step 1.5, pre-publish gate, validation gate, applica il gate
   - Also trigger when: user asks to create new educational pages on MU, deploy interactive content across languages, add new pages to the Practical Lab or any MU department, create checklists/scorecards/guides for behavioral clusters, or implement content from the Framework Editoriale Material-First
 ---
 
@@ -34,7 +34,7 @@ For Radar-specific work: also load `merino-news-scanner/references/wom-radar-voi
 
 # MU Content Page Deployer
 
-You are deploying new content pages to Merino University (MU) production site (`merinouniversity.com`). This skill encodes the proven 7-step deployment pipeline that reliably creates, loads, links, and verifies multilingual content pages.
+You are deploying new content pages to Merino University (MU) production site (`merinouniversity.com`). This skill encodes the proven deployment pipeline that reliably creates, loads, links, and verifies multilingual content pages — gated by a mandatory **Step 1.5 Pre-Publish Validation Gate** (5 checks) that blocks malformed, leaked, or duplicate content from ever going live.
 
 ## When to Use This Skill
 
@@ -96,41 +96,147 @@ Read `references/content-templates.md` for complete templates for checklists, sc
 
 **For non-interactive pages** (articles, guides without scoring), you can use standard Gutenberg blocks (paragraphs, headings, lists) wrapped in `<!-- wp:html -->` with the MU design system CSS.
 
+### Step 1.5: Pre-Publish Validation Gate (MANDATORY)
+
+**Run this gate on every page object BEFORE it is created or published. No page reaches `status: 'publish'` without passing all five checks.** Any failure forces the page to `status: 'draft'` and records a machine-readable reason code — nothing is silently published. The gate also catches the residual `Loading...` placeholder from a failed Step 3 and moves Polylang language assignment to happen *immediately* at creation, not deferred to Step 4. Manual trigger: **"applica il gate"**.
+
+Reason codes: `bad_title`, `leak_marker`, `dup_title`, `pll_failed`.
+
+**Check 1 — Slug normalization (Patch A): no language prefix.**
+Polylang already prepends the language path (`/en/`, `/de/`, `/fr/`). Adding `en-`/`de-`/`fr-` to the slug produces double-prefixed, broken URLs. Strip any leading language prefix from every slug.
+```javascript
+function normalizeSlug(slug) {
+  return String(slug)
+    .toLowerCase()
+    .replace(/^(en|de|fr|it)-/, '')   // Patch A: drop leading lang prefix
+    .replace(/[^a-z0-9-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+```
+
+**Check 2 — Title sanity.**
+Reject empty titles, the literal `Untitled`, titles shorter than 8 or longer than 80 characters, and titles beginning with `#`. On failure → `draft`, reason `bad_title`.
+```javascript
+function titleOk(t) {
+  if (!t) return false;
+  t = String(t).trim();
+  if (t === '' || /^untitled$/i.test(t)) return false;
+  if (t.length < 8 || t.length > 80) return false;
+  if (t.startsWith('#')) return false;
+  return true;
+}
+```
+
+**Check 3 — Content anti-leak.**
+Block any page whose content contains internal/AI-pipeline markers, or the residual `Loading...` placeholder left behind by a failed Step 3 load. On failure → `draft`, reason `leak_marker`.
+```javascript
+var LEAK_MARKERS = [
+  '## ROUTING VERDICT', 'ROUTING VERDICT',
+  'Titoli proposti:', 'Proposed titles:', 'Vorgeschlagene Titel:', 'Titres proposés:',
+  '<p>Loading...</p>'   // residual placeholder from a failed Step 3
+];
+function contentClean(html) {
+  if (!html) return false;
+  return !LEAK_MARKERS.some(function(m) { return html.indexOf(m) !== -1; });
+}
+```
+
+**Check 4 — Duplicate title.**
+Before creating, query existing pages under the same parent and compare normalized titles (trim + lowercase + collapse whitespace). If a match exists, **skip creation** and reuse the existing ID; record reason `dup_title`.
+```javascript
+function normTitle(t){ return String(t).trim().toLowerCase().replace(/\s+/g,' '); }
+function findDuplicate(parentId, title) {
+  return wp.apiFetch({
+    path: '/wp/v2/pages?parent=' + parentId + '&per_page=100&status=publish,draft&_fields=id,title'
+  }).then(function(list) {
+    var n = normTitle(title);
+    var hit = list.find(function(p){ return normTitle(p.title.rendered) === n; });
+    return hit ? hit.id : null;
+  });
+}
+```
+
+**Check 5 — Immediate Polylang language assignment.**
+Assign the language with `tmp_pll_set_lang` **right after each POST**, not deferred to Step 4. If assignment fails, **revert the page to `draft`** (reason `pll_failed`) so an unlocalized page is never left published. Step 4 then only links the translation groups — the per-page language is already set here. (Requires the tmp PLL AJAX handler from Step 4a/4b, which now also exposes `tmp_pll_set_lang`.)
+```javascript
+function setLangImmediate(pageId, lang) {
+  var fd = new FormData();
+  fd.append('action', 'tmp_pll_set_lang');
+  fd.append('post_id', pageId);
+  fd.append('lang', lang);
+  return fetch('/wp-admin/admin-ajax.php', {method:'POST', body:fd, credentials:'same-origin'})
+    .then(function(r){ return r.json(); })
+    .then(function(j){
+      if (!j || !j.success) {
+        return wp.apiFetch({ path:'/wp/v2/pages/'+pageId, method:'POST',
+          data:{ status:'draft' } }).then(function(){ return {ok:false, reason:'pll_failed'}; });
+      }
+      return {ok:true};
+    });
+}
+```
+
+**Gate orchestration (apply per page object before/at creation):**
+```javascript
+function gate(page) {                          // page: {title, slug, parent, content, lang}
+  page.slug = normalizeSlug(page.slug);        // Check 1
+  if (!titleOk(page.title))         return Promise.resolve({skip:true, status:'draft', reason:'bad_title', page:page});
+  if (!contentClean(page.content))  return Promise.resolve({skip:true, status:'draft', reason:'leak_marker', page:page});
+  return findDuplicate(page.parent, page.title).then(function(dupId){   // Check 4
+    if (dupId) return {skip:true, status:'draft', reason:'dup_title', existingId:dupId, page:page};
+    page.status = 'publish';
+    return {skip:false, page:page};
+  });
+}
+// After POST for an eligible page, immediately run setLangImmediate(newId, page.lang)  // Check 5
+```
+
+**Gate report:** after a batch, emit `window._gateReport = {passed:[ids], drafted:[{id,reason}], skipped:[{title,reason}]}` so the deploy is auditable, and flag anything in `drafted`/`skipped` to the user.
+
+---
+
 ### Step 2: Batch Create Pages via wp.apiFetch
 
-Create all pages at once from the WP admin dashboard. The pattern creates placeholder pages, returns their IDs, and loads content in the next step.
+Create all pages at once from the WP admin dashboard. The pattern creates placeholder pages, returns their IDs, and loads content in the next step. **Every page object must pass Step 1.5's `gate()` first; create as `draft`, run `setLangImmediate()` on each new ID, then promote eligible pages to `publish`.**
 
 **Page creation pattern — one language at a time (4-8 pages per batch):**
 ```javascript
 var pages = [
-  {title:'Page Title IT', slug:'slug-it'},
-  {title:'Page Title 2 IT', slug:'slug-2-it'}
+  {title:'Page Title IT', slug:'slug-it', lang:'it', parent:36, content:'...'},
+  {title:'Page Title 2 IT', slug:'slug-2-it', lang:'it', parent:36, content:'...'}
 ];
 window._ids = [];
 var chain = Promise.resolve();
 pages.forEach(function(p) {
-  chain = chain.then(function() {
+  chain = chain.then(function() { return gate(p); }).then(function(res) {   // Step 1.5 gate
+    if (res.skip) { window._ids.push(res.existingId || null); return; }      // gate veto
     return wp.apiFetch({
       path: '/wp/v2/pages',
       method: 'POST',
       data: {
-        title: p.title,
-        slug: p.slug,
-        status: 'publish',
-        parent: 36,  // ← parent hub ID
+        title: res.page.title,
+        slug: res.page.slug,        // already normalized (Patch A)
+        status: 'draft',            // promote after language is set
+        parent: res.page.parent,    // ← parent hub ID
         content: '<!-- wp:html --><p>Loading...</p><!-- /wp:html -->'
       }
+    }).then(function(r) {
+      window._ids.push(r.id);
+      return setLangImmediate(r.id, res.page.lang).then(function(s) {        // Check 5
+        if (s.ok) return wp.apiFetch({ path:'/wp/v2/pages/'+r.id, method:'POST', data:{status:'publish'} });
+      });
     });
-  }).then(function(r) { window._ids.push(r.id); });
+  });
 });
 chain.then(function() { window._createResult = 'OK:' + window._ids.join(','); });
 ```
 
-**Repeat for EN, DE, FR** with localized titles and slugs. The slug convention is:
+**Repeat for EN, DE, FR** with localized titles and slugs. The slug convention (Patch A — **no language prefix**, Polylang adds `/xx/`):
 - IT: `checklist-qualita-heritage-merino`
-- EN: `en-checklist-heritage-quality-merino`
-- DE: `de-checkliste-heritage-qualitaet-merino`
-- FR: `fr-checklist-qualite-heritage-merino`
+- EN: `checklist-heritage-quality-merino`
+- DE: `checkliste-heritage-qualitaet-merino`
+- FR: `checklist-qualite-heritage-merino`
 
 **Record all page IDs immediately** — you'll need them for every subsequent step.
 
@@ -174,7 +280,9 @@ wp.apiFetch({
 
 ### Step 4: Link Polylang Translation Groups
 
-Polylang translation linking requires PHP functions (`pll_set_post_language`, `pll_save_post_translations`) which aren't available via REST API. Use a temporary functions.php AJAX handler:
+> **Step 1.5 change:** per-page **language assignment** now happens immediately at creation (Check 5, `tmp_pll_set_lang`). Step 4 is reduced to **linking the translation groups** (`pll_save_post_translations`) — the languages themselves are already set.
+
+Polylang translation linking requires PHP functions (`pll_set_post_language`, `pll_save_post_translations`) which aren't available via REST API. Use a temporary functions.php AJAX handler that exposes **both** `tmp_pll_set_lang` (used by Step 1.5) and `tmp_pll_link` (used here):
 
 **Step 4a — Navigate to theme file editor:**
 ```
@@ -186,7 +294,9 @@ Polylang translation linking requires PHP functions (`pll_set_post_language`, `p
 var ta = document.getElementById('newcontent');
 window._baseline = ta.value.length;  // SAVE THIS — you need it for cleanup
 
-var handler = '\n// TEMP_PLL_HANDLER\nadd_action(\'wp_ajax_tmp_pll_link\',function(){\n  if(!current_user_can(\'manage_options\')) wp_die(\'no\');\n  $groups=json_decode(stripslashes($_POST[\'groups\']),true);\n  $langs=array(\'it\',\'en\',\'de\',\'fr\');\n  $results=array();\n  foreach($groups as $gi=>$g){\n    foreach($langs as $li=>$lang){\n      if(isset($g[$li])) pll_set_post_language((int)$g[$li],$lang);\n    }\n    $tr=array();\n    foreach($langs as $li=>$lang){\n      if(isset($g[$li])) $tr[$lang]=(int)$g[$li];\n    }\n    pll_save_post_translations($tr);\n    $results[]=$tr;\n  }\n  wp_send_json_success($results);\n});\n';
+var handler = '\n// TEMP_PLL_HANDLER\n'
++ 'add_action(\'wp_ajax_tmp_pll_set_lang\',function(){\n  if(!current_user_can(\'manage_options\')) wp_die(\'no\');\n  pll_set_post_language((int)$_POST[\'post_id\'], sanitize_text_field($_POST[\'lang\']));\n  wp_send_json_success(true);\n});\n'
++ 'add_action(\'wp_ajax_tmp_pll_link\',function(){\n  if(!current_user_can(\'manage_options\')) wp_die(\'no\');\n  $groups=json_decode(stripslashes($_POST[\'groups\']),true);\n  $langs=array(\'it\',\'en\',\'de\',\'fr\');\n  $results=array();\n  foreach($groups as $gi=>$g){\n    foreach($langs as $li=>$lang){\n      if(isset($g[$li])) pll_set_post_language((int)$g[$li],$lang);\n    }\n    $tr=array();\n    foreach($langs as $li=>$lang){\n      if(isset($g[$li])) $tr[$lang]=(int)$g[$li];\n    }\n    pll_save_post_translations($tr);\n    $results[]=$tr;\n  }\n  wp_send_json_success($results);\n});\n';
 ta.value += handler;
 ```
 
@@ -342,6 +452,10 @@ After successful verification:
 | Symptom | Cause | Fix |
 |---|---|---|
 | `wp.apiFetch` undefined | Not on a WP admin page | Navigate to `/wp-admin/index.php` |
+| Page stuck as `draft` after deploy | Failed a Step 1.5 check | Read its reason (`bad_title`/`leak_marker`/`dup_title`/`pll_failed`) in `window._gateReport`, fix the source, re-run |
+| URL has double lang prefix (`/en/en-...`) | Slug kept a lang prefix | Patch A — `normalizeSlug()` strips it; re-save slug |
+| `## ROUTING VERDICT` / `Titoli proposti:` visible on page | AI pipeline leak | Anti-leak check (Check 3) reverts page to draft; clean content and re-load |
+| Page published but unlocalized | `tmp_pll_set_lang` failed | Check 5 reverts to draft (`pll_failed`); re-run language assignment |
 | Content payload timeout | Content > 15KB | Use chunked `window._c` approach |
 | Polylang AJAX returns `0` | Handler not saved to functions.php | Verify with `ta.value.includes('TEMP_PLL_HANDLER')` |
 | Rank Math SEO silently fails | Using standard REST API | Switch to `/rankmath/v1/updateMeta` |
