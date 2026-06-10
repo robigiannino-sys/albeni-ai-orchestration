@@ -1,9 +1,9 @@
 ---
 name: albeni-mt-validator
 description: |
-  **Albeni 1905 MT+PE Validator (Step 1 Gate + Step 3 Final)**: Validates German (and FR/EN) translations against the Reda/Albeni glossary, SEO keyword requirements, tone of voice guidelines, and behavioral cluster messaging. Operates in two modes: (1) Auto-Approve Gate after Step 1 AI translation to decide if Step 2 human post-edit can be skipped (threshold from DEC-002, currently ≥85/100); (2) Final Validator after Step 2 to certify publication readiness. Produces a quantitative scoring report (0-100 composite) with weighted dimensions and routing verdict.
+  **Albeni 1905 MT+PE Validator (Step 1 Gate + Step 3 Final)**: Valida traduzioni DE (e FR/EN) contro glossario Reda/Albeni, requisiti SEO keyword, tone of voice e messaging dei cluster. Due modi: (1) Auto-Approve Gate dopo lo Step 1 AI per decidere se saltare il post-edit umano (soglia DEC-002, >=85/100); (2) Final Validator dopo lo Step 2 per certificare la pubblicazione. Produce uno scoring report quantitativo (0-100) con dimensioni pesate e verdetto di routing.
   - MANDATORY TRIGGERS: validate, validare, validazione, check translation, controlla traduzione, Step 3, Step 1 Gate, MT-pipeline QA, quality check, QA traduzione, SEO check, glossary check, verifica glossario, auto-approve, auto-accept, soglia QA
-  - Also trigger when: user has a German/French/English text that needs quality verification, asks to review DE/FR/EN content before publishing, mentions validation/QA in the translation context, or asks the MT-pipeline to decide auto-approve routing
+  - Also trigger when: user has DE/FR/EN text to verify, asks to review content before publishing, or asks the MT-pipeline to decide auto-approve routing
 ---
 
 # Albeni 1905 — MT+PE Validator (dual mode: Step 1 Gate + Step 3 Final)

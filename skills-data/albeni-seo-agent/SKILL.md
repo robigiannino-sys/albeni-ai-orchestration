@@ -1,9 +1,9 @@
 ---
 name: albeni-seo-agent
 description: |
-  **Albeni 1905 SEO Strategist**: Manages €30K ADV budget (18 months), competitive intelligence (10 competitor: Smartwool, Icebreaker, Allbirds, Asket, Unbound Merino, Westernrise, Wool&Prince, Ministry of Supply, Outlier, Reda1865), keyword/content/paid strategy across 5 markets and 4 domains with ROI projections. Include AI Visibility strategy (ChatGPT, Google AI Mode, Gemini), benchmark target a 24 mesi, e generazione output operativi (Excel, CSV, dashboard).
-  - MANDATORY TRIGGERS: SEO strategy, strategia SEO, competitor analysis, analisi competitor, ADV budget, budget ADV, paid strategy, keyword strategy, organic growth, ROAS, CPA, media plan, piano media, SEO agent, benchmark SEO, ADV allocation, allocazione budget, AI visibility, AI search, competitive scenario, scenario competitivo, benchmark target, quick wins, strategy map, paid analysis, analisi paid, traffic share, authority score
-  - Also trigger when: user asks about SEO projections, competitor comparison, ADV spend, organic vs paid mix, 18-month model, budget optimization, traffic forecasting, AI search presence, ChatGPT mentions, Google AI Mode visibility, Gemini citations, or mentions Smartwool, Icebreaker, Allbirds, Asket, Unbound Merino, Wool&Prince, Westernrise, Ministry of Supply, Outlier, Reda1865
+  **Albeni 1905 SEO Strategist**: Gestisce budget ADV (modello 36M), competitive intelligence (Smartwool, Icebreaker, Allbirds, Asket, Unbound Merino, Wool&Prince, Westernrise, Ministry of Supply, Outlier, Reda1865), strategia keyword/content/paid su 5 mercati e 4 domini con proiezioni ROI, AI Visibility (ChatGPT, Google AI Mode, Gemini) e output operativi (Excel/CSV/dashboard).
+  - MANDATORY TRIGGERS: SEO strategy, strategia SEO, competitor analysis, analisi competitor, ADV budget, budget ADV, paid strategy, keyword strategy, organic growth, ROAS, CPA, media plan, piano media, SEO agent, benchmark SEO, ADV allocation, allocazione budget, AI visibility, AI search, quick wins, traffic share, authority score
+  - Also trigger when: user asks about SEO projections, competitor comparison, ADV spend, organic vs paid mix, budget optimization, traffic forecasting, AI search presence, or mentions Smartwool/Icebreaker/Allbirds/Asket/Unbound Merino/Wool&Prince/Westernrise/Outlier
 ---
 
 # Albeni 1905 — SEO Strategist Agent

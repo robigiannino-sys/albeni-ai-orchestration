@@ -1,9 +1,9 @@
 ---
 name: mu-content-deployer
 description: |
-  **MU Content Page Deployer**: Deploys new content pages (checklists, scorecards, guides, educational articles) across all 4 languages (IT/EN/DE/FR) on the Merino University WordPress production site. Handles the complete pipeline: HTML content generation, batch page creation via wp.apiFetch, content loading via chunked JS, Polylang translation linking, Rank Math SEO, WPCode snippet updates (#2867 interlinking, #2866 references), LiteSpeed cache purge, and frontend verification.
+  **MU Content Page Deployer**: Deploys content pages (checklists, scorecards, guides, articles) across 4 languages (IT/EN/DE/FR) on merinouniversity.com. Full pipeline: HTML generation, Step 1.5 pre-publish validation gate, batch creation via wp.apiFetch, chunked JS load, Polylang linking, Rank Math SEO, WPCode snippets (#2867/#2866), cache purge, verification.
   - MANDATORY TRIGGERS: deploy pages, deploy content, crea pagine, deploy checklist, deploy guide, nuove pagine MU, new MU pages, batch deploy, pipeline deploy, deploy 4 lingue, implementa pagine, Step 1.5, pre-publish gate, validation gate, applica il gate
-  - Also trigger when: user asks to create new educational pages on MU, deploy interactive content across languages, add new pages to the Practical Lab or any MU department, create checklists/scorecards/guides for behavioral clusters, or implement content from the Framework Editoriale Material-First
+  - Also trigger when: user asks to create new pages on MU, deploy interactive content across languages, add pages to the Practical Lab or any MU department, or create checklists/scorecards/guides for behavioral clusters
 ---
 
 ## 🎙️ Voice Guidelines — MANDATORY READ (v1.0 — 2026-05-12)

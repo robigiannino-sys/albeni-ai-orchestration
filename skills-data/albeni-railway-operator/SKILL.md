@@ -1,9 +1,9 @@
 ---
 name: albeni-railway-operator
 description: |
-  **Albeni 1905 Railway Operator**: Manages the Railway cloud infrastructure for the Albeni 1905 AI Stack. Covers project lifecycle (create/link/delete), service deployment, plugin management (PostgreSQL/Redis), public/internal networking, custom domains, environment variables, smoke testing, and the migration patterns learned during the kind-prosperity setup and tender-nurturing decommission.
-  - MANDATORY TRIGGERS: railway, Railway, deploy railway, railway deploy, railway CLI, railway link, railway delete, railway run, railway logs, railway service, railway status, postgres railway, redis railway, public networking railway, DATABASE_PUBLIC_URL, DATABASE_URL railway, railway.toml, ai-router railway, ml-worker railway, creative-perfection, kind-prosperity, container railway, plugin railway, custom domain railway, smoke test railway, tracking endpoint
-  - Also trigger when: user asks to deploy/redeploy something to Railway, switch between Railway projects, debug a "why is the dashboard empty" or "why don't real events arrive" problem, manage Postgres/Redis plugins, set env vars, configure custom domains, decommission an old Railway project, or migrate snippets/clients between Railway endpoints.
+  **Albeni 1905 Railway Operator**: Gestisce l'infrastruttura cloud Railway dell'AI Stack — lifecycle progetti (create/link/delete), deploy servizi, plugin PostgreSQL/Redis, networking pubblico/interno, domini custom, variabili d'ambiente, smoke test e pattern di migrazione (kind-prosperity, decommission tender-nurturing).
+  - MANDATORY TRIGGERS: railway, deploy railway, railway CLI, railway link, railway delete, railway run, railway logs, railway service, railway status, postgres railway, redis railway, public networking railway, DATABASE_PUBLIC_URL, DATABASE_URL railway, railway.toml, ai-router railway, ml-worker railway, creative-perfection, kind-prosperity, custom domain railway, smoke test railway, tracking endpoint
+  - Also trigger when: user asks to deploy/redeploy to Railway, switch Railway projects, debug "dashboard empty" or "no real events", manage Postgres/Redis, set env vars, configure custom domains, or decommission a Railway project
 ---
 
 # Albeni 1905 — Railway Operator
