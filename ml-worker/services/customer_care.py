@@ -1,6 +1,8 @@
 """
 Customer Care AI — Multilingua Chatbot
-Albeni 1905 — Invisible Luxury Ecosystem
+micron-è (Best Before S.r.l.) — Invisible Luxury Ecosystem
+Guardrail copy 2026-07-10: mai Albeni / Reda / ZQ / nomi fornitori; filiera = RWS;
+tecnologia di raffrescamento = solo "tecnologia micron-è"; claim numerici con disclaimer.
 
 Agente conversazionale che:
 1. Risponde in < 22 secondi a domande su sizing, care, materiali
@@ -35,58 +37,54 @@ settings = get_settings()
 
 SIZING_GUIDE = {
     "150g": {
-        "name": "Lightweight (150g/m²)",
+        "name": "micron-è Cool (150g/m²)",
         "season": "Primavera/Estate",
         "temp_range": "18°C–35°C",
         "description": {
-            "it": "La versione estiva. Tessuto Reda 150g/m² in fibra Merino Super 120's da 17 micron. Freschezza termica attiva: la fibra gestisce l'umidità prima che diventi sudore. Ideale sotto la giacca nelle giornate calde.",
-            "en": "The summer edition. Reda 150g/m² fabric in Super 120's 17-micron Merino fiber. Active thermal freshness: the fiber manages moisture before it becomes sweat. Perfect under a blazer on warm days.",
-            "de": "Die Sommerversion. Reda-Gewebe 150g/m² aus Super 120's 17-Mikron-Merinofaser. Aktive thermische Frische: Die Faser reguliert Feuchtigkeit, bevor sie zu Schweiß wird. Ideal unter dem Sakko an warmen Tagen.",
-            "fr": "La version estivale. Tissu Reda 150g/m² en fibre Mérinos Super 120's de 17 microns. Fraîcheur thermique active : la fibre gère l'humidité avant qu'elle ne devienne transpiration.",
+            "it": "La linea per il caldo pieno. Jersey 150g/m² in merino Super 120's da 17,6 micron con tecnologia micron-è dual-action: fresca al tatto già prima di sudare, poi raffrescamento evaporativo continuo, fino a −3°C sulla temperatura del tessuto (dato di laboratorio, validazione in corso). Oltre il 50% di componente biobased certificata USDA.",
+            "en": "The line for full heat. 150g/m² jersey in Super 120's 17.6-micron Merino with dual-action micron-è technology: cool to the touch before you even sweat, then continuous evaporative cooling, up to −3°C on fabric temperature (laboratory data, validation in progress). Over 50% USDA-certified biobased content.",
+            "de": "Die Linie für heiße Tage. Jersey 150g/m² aus Super 120's 17,6-Mikron-Merino mit Dual-Action-micron-è-Technologie: kühl bei Berührung noch vor dem Schwitzen, dann kontinuierliche Verdunstungskühlung, bis zu −3°C Gewebetemperatur (Labordaten, Validierung läuft). Über 50% USDA-zertifizierter biobasierter Anteil.",
+            "fr": "La ligne pour les grandes chaleurs. Jersey 150g/m² en Mérinos Super 120's de 17,6 microns avec technologie micron-è double action : frais au toucher avant même de transpirer, puis rafraîchissement évaporatif continu, jusqu'à −3°C sur la température du tissu (données de laboratoire, validation en cours). Plus de 50% de contenu biosourcé certifié USDA.",
         },
     },
-    "190g": {
-        "name": "All-Season (190g/m²)",
+    "195g": {
+        "name": "micron-è Adaptive (195g/m²)",
         "season": "Tutto l'anno / 4 Stagioni",
         "temp_range": "5°C–28°C",
         "description": {
-            "it": "La versione 4 stagioni. Tessuto Reda 190g/m² con la stessa fibra Merino 17 micron ma grammatura più sostanziosa. Regolazione termica che funziona dalla boardroom alla cena. Il capo che elimina la decisione 'cosa mi metto?'.",
-            "en": "The all-season edition. Reda 190g/m² fabric with the same 17-micron Merino fiber but a more substantial weight. Thermal regulation that works from the boardroom to dinner. The garment that eliminates the 'what do I wear?' decision.",
-            "de": "Die Ganzjahresversion. Reda-Gewebe 190g/m² mit derselben 17-Mikron-Merinofaser, aber mit höherem Gewicht. Thermoregulation, die vom Büro bis zum Abendessen funktioniert.",
-            "fr": "La version 4 saisons. Tissu Reda 190g/m² avec la même fibre Mérinos 17 microns mais un grammage plus conséquent. Régulation thermique du bureau au dîner.",
+            "it": "La linea 4 stagioni. Jersey 195g/m² nella stessa fibra merino Super 120's da 17,6 micron, con tecnologia micron-è adattiva: il raffrescamento si attiva quando sei accaldato e sudato (fino a −2,5°C, dato di laboratorio in validazione) e si spegne da solo quando non serve — mai freddo addosso. Il naturale tepore, quando serve, lo dà la lana.",
+            "en": "The all-season line. 195g/m² jersey in the same Super 120's 17.6-micron Merino fiber, with adaptive micron-è technology: cooling activates when you're hot and sweaty (up to −2.5°C, laboratory data under validation) and switches itself off when not needed — never a chill. The natural warmth, when needed, comes from the wool.",
+            "de": "Die Ganzjahreslinie. Jersey 195g/m² aus derselben Super 120's 17,6-Mikron-Merinofaser, mit adaptiver micron-è-Technologie: Die Kühlung aktiviert sich, wenn Ihnen heiß ist (bis zu −2,5°C, Labordaten in Validierung), und schaltet sich von selbst ab — nie ein Kältegefühl. Die natürliche Wärme kommt, wenn nötig, von der Wolle.",
+            "fr": "La ligne 4 saisons. Jersey 195g/m² dans la même fibre Mérinos Super 120's de 17,6 microns, avec technologie micron-è adaptative : le rafraîchissement s'active quand vous avez chaud (jusqu'à −2,5°C, données de laboratoire en validation) et s'arrête de lui-même — jamais de sensation de froid. La chaleur naturelle, quand il le faut, vient de la laine.",
         },
     },
 }
 
 # ================================================================
 # SIZE & FIT FINDER — Interactive Sizing Calculator
-# Mirrors the Shopify widget on albeni1905.com
+# Gamma ufficiale micron-è a 9 varianti (grading a finestre torace da 8 cm),
+# identica al motore sizing.ts dello store micron-e.com. L'assegnazione è per
+# finestra (lookup), NON per formula di agio minimo.
 # ================================================================
 
-# Size data: garment chest measurements in cm per size
-# Slim Fit = body + 2cm ease | Regular Fit = body + 6cm ease
+# Size data: per taglia, finestra torace utente [from, to) e misure capo finito.
 SIZE_FIT_DATA = {
     "slim": {
-        "ease_cm": 2,
         "label": "Slim Fit",
         "description": {
-            "it": "Vestibilità aderente. Silhouette definita che segue il corpo. Ideale sotto giacca o blazer.",
+            "it": "Vestibilità asciutta. Silhouette definita che segue il corpo. Ideale sotto giacca o blazer.",
             "en": "Close fit. Defined silhouette that follows the body. Perfect under a jacket or blazer.",
             "de": "Körpernahe Passform. Definierte Silhouette, die dem Körper folgt. Ideal unter Sakko oder Blazer.",
             "fr": "Coupe ajustée. Silhouette définie qui suit le corps. Idéal sous une veste ou un blazer.",
         },
         "sizes": {
-            "XS":   {"chest_cm": 92,  "body_range": "86-90"},
-            "S":    {"chest_cm": 96,  "body_range": "90-94"},
-            "M":    {"chest_cm": 100, "body_range": "94-98"},
-            "L":    {"chest_cm": 104, "body_range": "98-102"},
-            "XL":   {"chest_cm": 108, "body_range": "102-106"},
-            "XXL":  {"chest_cm": 112, "body_range": "106-110"},
-            "XXXL": {"chest_cm": 116, "body_range": "110-114"},
+            "S":   {"from": 88,  "to": 96,  "chest_cm": 100, "body_range": "88-96"},
+            "M":   {"from": 96,  "to": 104, "chest_cm": 108, "body_range": "96-104"},
+            "L":   {"from": 104, "to": 112, "chest_cm": 116, "body_range": "104-112"},
+            "XL":  {"from": 112, "to": 120, "chest_cm": 124, "body_range": "112-120"},
         },
     },
     "regular": {
-        "ease_cm": 6,
         "label": "Regular Fit",
         "description": {
             "it": "Vestibilità comoda. Più spazio nel busto per libertà di movimento. Perfetta per l'uso quotidiano.",
@@ -95,65 +93,66 @@ SIZE_FIT_DATA = {
             "fr": "Coupe confortable. Plus d'espace au buste pour la liberté de mouvement. Parfaite au quotidien.",
         },
         "sizes": {
-            "XS":   {"chest_cm": 102, "body_range": "86-96"},
-            "S":    {"chest_cm": 106, "body_range": "90-100"},
-            "M":    {"chest_cm": 110, "body_range": "94-104"},
-            "L":    {"chest_cm": 114, "body_range": "98-108"},
-            "XL":   {"chest_cm": 118, "body_range": "102-112"},
-            "XXL":  {"chest_cm": 124, "body_range": "106-118"},
-            "XXXL": {"chest_cm": 128, "body_range": "110-122"},
+            "M":   {"from": 96,  "to": 104, "chest_cm": 114, "body_range": "96-104"},
+            "L":   {"from": 104, "to": 112, "chest_cm": 120, "body_range": "104-112"},
+            "XL":  {"from": 112, "to": 120, "chest_cm": 126, "body_range": "112-120"},
+            "XXL": {"from": 120, "to": 128, "chest_cm": 134, "body_range": "120-128"},
+            "3XL": {"from": 128, "to": 136, "chest_cm": 142, "body_range": "128-136"},
         },
     },
 }
 
-STRETCH_TOLERANCE_CM = 1.0  # Merino stretch factor
-
 
 def calculate_best_sizes(user_chest: float) -> Dict[str, Any]:
     """
-    Calculate the best size for both Slim Fit and Regular Fit
-    given the user's chest circumference in cm.
-
-    Algorithm (same as Shopify widget):
-        Find first size where: garment_measure + stretch_tolerance >= user_chest + ease
+    Assegna la taglia per finestra torace (limite inferiore incluso, superiore
+    escluso) per entrambe le vestibilità — stessa logica di sizing.ts.
+    Sotto la finestra minima di un fit si consiglia la taglia più piccola
+    (nota "below_range"); oltre la massima si segnala "exceeds_range".
     """
     results = {}
 
     for fit_key, fit_data in SIZE_FIT_DATA.items():
-        ease = fit_data["ease_cm"]
-        target = user_chest + ease
+        sizes = fit_data["sizes"]
         best_size = None
-
-        for size_label, size_info in fit_data["sizes"].items():
-            garment = size_info["chest_cm"]
-            if garment + STRETCH_TOLERANCE_CM >= target:
+        for size_label, size_info in sizes.items():
+            if size_info["from"] <= user_chest < size_info["to"]:
                 best_size = size_label
                 break
 
-        if best_size is None:
-            # User exceeds largest size
-            largest = list(fit_data["sizes"].keys())[-1]
-            largest_cm = fit_data["sizes"][largest]["chest_cm"]
+        first_label = next(iter(sizes))
+        last_label = list(sizes.keys())[-1]
+
+        if best_size is None and user_chest < sizes[first_label]["from"]:
+            info = sizes[first_label]
+            results[fit_key] = {
+                "recommended_size": first_label,
+                "fit_label": fit_data["label"],
+                "garment_chest_cm": info["chest_cm"],
+                "body_range": info["body_range"],
+                "ease_cm": round(info["chest_cm"] - user_chest, 1),
+                "note": "below_range",
+            }
+        elif best_size is None:
             results[fit_key] = {
                 "recommended_size": None,
                 "fit_label": fit_data["label"],
                 "note": "exceeds_range",
-                "largest_available": largest,
-                "largest_chest_cm": largest_cm,
+                "largest_available": last_label,
+                "largest_chest_cm": sizes[last_label]["chest_cm"],
             }
         else:
-            size_info = fit_data["sizes"][best_size]
+            info = sizes[best_size]
             results[fit_key] = {
                 "recommended_size": best_size,
                 "fit_label": fit_data["label"],
-                "garment_chest_cm": size_info["chest_cm"],
-                "body_range": size_info["body_range"],
-                "ease_cm": ease,
+                "garment_chest_cm": info["chest_cm"],
+                "body_range": info["body_range"],
+                "ease_cm": round(info["chest_cm"] - user_chest, 1),
             }
 
     return {
         "user_chest_cm": user_chest,
-        "stretch_tolerance_cm": STRETCH_TOLERANCE_CM,
         "recommendations": results,
     }
 
@@ -180,30 +179,30 @@ ASK_CHEST_PROMPTS = {
 
 CARE_INSTRUCTIONS = {
     "it": {
-        "daily": "La fibra Merino 17 micron si rigenera naturalmente con l'aria. Dopo l'uso, appendila e lasciala respirare 12-24 ore. Nella maggior parte dei casi, non serve lavarla.",
+        "daily": "La fibra merino 17,6 micron si rigenera naturalmente con l'aria. Dopo l'uso, appendila e lasciala respirare 12-24 ore. Nella maggior parte dei casi, non serve lavarla.",
         "washing": "Quando necessario, lavaggio a mano o in lavatrice a 30°C con ciclo delicato. Usa un detersivo specifico per lana. Mai usare ammorbidente — danneggia la fibra.",
-        "drying": "Stendi in piano su un asciugamano. Mai in asciugatrice, mai su gruccia da bagnata (deforma le spalle). La fibra Reda mantiene la forma se trattata correttamente.",
+        "drying": "Stendi in piano su un asciugamano. Mai in asciugatrice, mai su gruccia da bagnata (deforma le spalle). La fibra merino mantiene la forma se trattata correttamente.",
         "ironing": "Raramente necessario grazie alla costruzione Cut & Sewn che mantiene la forma. Se serve, ferro a bassa temperatura con panno umido interposto.",
         "storage": "Conserva piegata, mai su gruccia per lunghi periodi. In un cassetto con legno di cedro per protezione naturale dalle tarme.",
     },
     "en": {
-        "daily": "17-micron Merino fiber naturally regenerates with air. After wearing, hang it and let it breathe for 12-24 hours. Most of the time, you won't need to wash it.",
+        "daily": "17.6-micron Merino fiber naturally regenerates with air. After wearing, hang it and let it breathe for 12-24 hours. Most of the time, you won't need to wash it.",
         "washing": "When needed, hand wash or machine wash at 30°C on a delicate cycle. Use a wool-specific detergent. Never use fabric softener — it damages the fiber.",
-        "drying": "Lay flat on a towel to dry. Never tumble dry, never hang wet on a hanger (it stretches the shoulders). Reda fiber keeps its shape when treated properly.",
+        "drying": "Lay flat on a towel to dry. Never tumble dry, never hang wet on a hanger (it stretches the shoulders). Merino fiber keeps its shape when treated properly.",
         "ironing": "Rarely needed thanks to the Cut & Sewn construction that holds its form. If needed, low-temperature iron with a damp cloth between.",
         "storage": "Store folded, never on a hanger for extended periods. In a drawer with cedar wood for natural moth protection.",
     },
     "de": {
-        "daily": "Die 17-Mikron-Merinofaser regeneriert sich natürlich an der Luft. Nach dem Tragen aufhängen und 12-24 Stunden atmen lassen. In den meisten Fällen ist kein Waschen nötig.",
+        "daily": "Die 17,6-Mikron-Merinofaser regeneriert sich natürlich an der Luft. Nach dem Tragen aufhängen und 12-24 Stunden atmen lassen. In den meisten Fällen ist kein Waschen nötig.",
         "washing": "Bei Bedarf: Handwäsche oder Maschinenwäsche bei 30°C im Schonwaschgang. Verwenden Sie ein Wollwaschmittel. Niemals Weichspüler verwenden — er schädigt die Faser.",
-        "drying": "Flach auf einem Handtuch trocknen. Nie im Trockner, nie nass auf einen Bügel hängen. Die Reda-Faser behält ihre Form bei richtiger Behandlung.",
+        "drying": "Flach auf einem Handtuch trocknen. Nie im Trockner, nie nass auf einen Bügel hängen. Die Merinofaser behält ihre Form bei richtiger Behandlung.",
         "ironing": "Dank der Cut & Sewn-Konstruktion selten nötig. Falls erforderlich, niedrige Temperatur mit feuchtem Tuch dazwischen.",
         "storage": "Gefaltet aufbewahren, nie längere Zeit auf einem Bügel. In einer Schublade mit Zedernholz als natürlichem Mottenschutz.",
     },
     "fr": {
-        "daily": "La fibre Mérinos 17 microns se régénère naturellement à l'air. Après utilisation, suspendez-la et laissez-la respirer 12-24 heures. La plupart du temps, aucun lavage n'est nécessaire.",
+        "daily": "La fibre Mérinos 17,6 microns se régénère naturellement à l'air. Après utilisation, suspendez-la et laissez-la respirer 12-24 heures. La plupart du temps, aucun lavage n'est nécessaire.",
         "washing": "Si nécessaire, lavage à la main ou en machine à 30°C cycle délicat. Utilisez une lessive spéciale laine. Jamais d'adoucissant — il endommage la fibre.",
-        "drying": "Sécher à plat sur une serviette. Jamais au sèche-linge, jamais suspendu mouillé sur un cintre. La fibre Reda garde sa forme si elle est bien traitée.",
+        "drying": "Sécher à plat sur une serviette. Jamais au sèche-linge, jamais suspendu mouillé sur un cintre. La fibre mérinos garde sa forme si elle est bien traitée.",
         "ironing": "Rarement nécessaire grâce à la construction Cut & Sewn. Si besoin, fer à basse température avec un linge humide interposé.",
         "storage": "Conserver plié, jamais sur cintre longtemps. Dans un tiroir avec du bois de cèdre pour une protection naturelle contre les mites.",
     },
@@ -218,28 +217,34 @@ FAQ_KNOWLEDGE = {
         "fr": "Nos t-shirts sont fabriqués en technique Cut & Sewn (coupé et cousu), PAS en tricot. Cela signifie : stabilité dimensionnelle supérieure, aucune déformation après lavage, un fit qui reste identique dans le temps.",
     },
     "material": {
-        "it": "Utilizziamo esclusivamente fibra Merino Super 120's da 17 micron, prodotta da Reda 1865 — uno dei lanifici più antichi al mondo (160+ anni). La fibra è certificata ZQ per il benessere animale e la tracciabilità dal pascolo al prodotto finito.",
-        "en": "We exclusively use Super 120's 17-micron Merino fiber, produced by Reda 1865 — one of the world's oldest woolen mills (160+ years). The fiber is ZQ certified for animal welfare and traceability from farm to finished product.",
-        "de": "Wir verwenden ausschließlich Super 120's 17-Mikron-Merinofaser, hergestellt von Reda 1865 — einer der ältesten Wollspinnereien der Welt (160+ Jahre). Die Faser ist ZQ-zertifiziert für Tierwohl und Rückverfolgbarkeit.",
-        "fr": "Nous utilisons exclusivement de la fibre Mérinos Super 120's de 17 microns, produite par Reda 1865 — l'une des plus anciennes filatures au monde (160+ ans). La fibre est certifiée ZQ.",
+        "it": "Utilizziamo esclusivamente merino Super 120's da 17,6 micron di finezza media: un jersey di fascia sartoriale prodotto nel distretto laniero di Biella da un lanificio italiano partner della nostra filiera. La lana proviene da allevamenti merino neozelandesi ed è certificata RWS (Responsible Wool Standard): benessere animale e tracciabilità lungo l'intera catena del valore, dalla fattoria al tessuto. Nessuna fibra sintetica, nessun elastan.",
+        "en": "We exclusively use Super 120's Merino with an average fineness of 17.6 microns: a tailoring-grade jersey produced in the Biella wool district by an Italian mill that is part of our supply chain. The wool comes from New Zealand Merino farms and is RWS certified (Responsible Wool Standard): animal welfare and traceability along the entire value chain, from farm to fabric. No synthetic fibers, no elastane.",
+        "de": "Wir verwenden ausschließlich Super 120's Merino mit einer mittleren Feinheit von 17,6 Mikron: ein Jersey auf Schneiderniveau, hergestellt im Wolldistrikt von Biella von einer italienischen Partnerweberei unserer Lieferkette. Die Wolle stammt aus neuseeländischen Merinofarmen und ist RWS-zertifiziert (Responsible Wool Standard): Tierwohl und Rückverfolgbarkeit entlang der gesamten Wertschöpfungskette. Keine Synthetikfasern, kein Elasthan.",
+        "fr": "Nous utilisons exclusivement du Mérinos Super 120's d'une finesse moyenne de 17,6 microns : un jersey de niveau tailleur produit dans le district lainier de Biella par une filature italienne partenaire de notre filière. La laine provient d'élevages mérinos néo-zélandais et est certifiée RWS (Responsible Wool Standard) : bien-être animal et traçabilité sur toute la chaîne de valeur. Aucune fibre synthétique, aucun élasthanne.",
+    },
+    "microne": {
+        "it": "micron-è è un marchio italiano indipendente di Best Before S.r.l. e, insieme, la sua tecnologia proprietaria di raffrescamento tessile. **Cos'è**: una t-shirt in merino Super 120's (17,6 micron), costruzione Cut & Sewn, Made in Italy, in due linee — **Adaptive 195 g/m²** e **Cool 150 g/m²** — a 125 €. **A cosa serve**: la tecnologia micron-è gestisce il calore percepito. Sull'Adaptive il raffrescamento si attiva quando sei accaldato e sudato (fino a −2,5°C sulla temperatura del tessuto) e si spegne da solo; sulla Cool è dual-action: fresca al tatto già prima del sudore, poi raffrescamento evaporativo continuo (fino a −3°C), con oltre il 50% di componente biobased certificata USDA. Il fresco lo dà la tecnologia; il naturale tepore, quando serve, lo dà la lana. I dati di raffrescamento sono di laboratorio, con validazione in corso. La capsula di lancio (edizione limitata, 302 pezzi) arriva a settembre 2026 su micron-e.com: la waitlist dà accesso prioritario.",
+        "en": "micron-è is an independent Italian brand by Best Before S.r.l. and, at the same time, its proprietary textile cooling technology. **What it is**: a Super 120's Merino t-shirt (17.6 microns), Cut & Sewn construction, Made in Italy, in two lines — **Adaptive 195 g/m²** and **Cool 150 g/m²** — at €125. **What it's for**: micron-è technology manages perceived heat. On the Adaptive, cooling activates when you're hot and sweaty (up to −2.5°C on fabric temperature) and switches itself off; the Cool is dual-action: cool to the touch before you even sweat, then continuous evaporative cooling (up to −3°C), with over 50% USDA-certified biobased content. The coolness comes from the technology; the natural warmth, when needed, comes from the wool. Cooling figures are laboratory data, validation in progress. The launch capsule (limited edition, 302 pieces) arrives in September 2026 on micron-e.com: the waitlist gives priority access.",
+        "de": "micron-è ist eine unabhängige italienische Marke von Best Before S.r.l. und zugleich ihre proprietäre textile Kühltechnologie. **Was es ist**: ein T-Shirt aus Super 120's Merino (17,6 Mikron), Cut & Sewn-Konstruktion, Made in Italy, in zwei Linien — **Adaptive 195 g/m²** und **Cool 150 g/m²** — für 125 €. **Wofür es dient**: Die micron-è-Technologie reguliert die gefühlte Wärme. Beim Adaptive aktiviert sich die Kühlung, wenn Ihnen heiß ist (bis zu −2,5°C Gewebetemperatur), und schaltet sich von selbst ab; das Cool ist Dual-Action: kühl bei Berührung noch vor dem Schwitzen, dann kontinuierliche Verdunstungskühlung (bis zu −3°C), mit über 50% USDA-zertifiziertem biobasiertem Anteil. Die Kühle kommt von der Technologie; die natürliche Wärme, wenn nötig, von der Wolle. Die Kühlwerte sind Labordaten, Validierung läuft. Die Launch-Kapsel (limitierte Auflage, 302 Stück) erscheint im September 2026 auf micron-e.com: Die Warteliste gibt bevorzugten Zugang.",
+        "fr": "micron-è est une marque italienne indépendante de Best Before S.r.l. et, en même temps, sa technologie propriétaire de rafraîchissement textile. **Ce que c'est** : un t-shirt en Mérinos Super 120's (17,6 microns), construction Cut & Sewn, Made in Italy, en deux lignes — **Adaptive 195 g/m²** et **Cool 150 g/m²** — à 125 €. **À quoi ça sert** : la technologie micron-è gère la chaleur perçue. Sur l'Adaptive, le rafraîchissement s'active quand vous avez chaud (jusqu'à −2,5°C sur la température du tissu) et s'arrête de lui-même ; le Cool est double action : frais au toucher avant même la transpiration, puis rafraîchissement évaporatif continu (jusqu'à −3°C), avec plus de 50% de contenu biosourcé certifié USDA. Le frais vient de la technologie ; la chaleur naturelle, quand il le faut, vient de la laine. Les données de rafraîchissement sont des données de laboratoire, validation en cours. La capsule de lancement (édition limitée, 302 pièces) arrive en septembre 2026 sur micron-e.com : la liste d'attente donne un accès prioritaire.",
     },
     "shipping": {
-        "it": "Spediamo in tutta Europa e negli Stati Uniti. Tempi di consegna: IT 2-3 giorni lavorativi, EU 3-5 giorni, US/UK 5-7 giorni. Spedizione gratuita sopra €150.",
-        "en": "We ship throughout Europe and the United States. Delivery times: EU 3-5 business days, US/UK 5-7 days. Free shipping on orders over €150.",
-        "de": "Wir liefern in ganz Europa und in die USA. Lieferzeiten: DE 3-5 Werktage, US/UK 5-7 Tage. Kostenloser Versand ab €150.",
-        "fr": "Nous livrons dans toute l'Europe et aux États-Unis. Délais : FR 3-5 jours ouvrés, US/UK 5-7 jours. Livraison gratuite dès €150.",
+        "it": "Lo store micron-e.com apre a settembre 2026 con la capsula di lancio: il perimetro definitivo di spedizione (paesi, costi, tempi e corriere) sarà pubblicato all'apertura. I mercati di riferimento sono l'Unione Europea, con Regno Unito e Stati Uniti a listino dedicato (125 € UE / £115 UK). Iscrivendoti alla waitlist su micron-e.com ricevi l'avviso all'apertura.",
+        "en": "The micron-e.com store opens in September 2026 with the launch capsule: the definitive shipping scope (countries, costs, times and carrier) will be published at opening. Reference markets are the European Union, with the UK and US on a dedicated price list (€125 EU / £115 UK). Join the waitlist at micron-e.com to be notified at opening.",
+        "de": "Der Store micron-e.com öffnet im September 2026 mit der Launch-Kapsel: Der endgültige Versandumfang (Länder, Kosten, Zeiten, Versanddienstleister) wird zur Eröffnung veröffentlicht. Referenzmärkte sind die EU, mit UK und USA zu eigener Preisliste (125 € EU / £115 UK). Tragen Sie sich auf micron-e.com in die Warteliste ein.",
+        "fr": "La boutique micron-e.com ouvre en septembre 2026 avec la capsule de lancement : le périmètre définitif de livraison (pays, coûts, délais, transporteur) sera publié à l'ouverture. Les marchés de référence sont l'Union européenne, avec le Royaume-Uni et les États-Unis à tarif dédié (125 € UE / £115 UK). Inscrivez-vous à la liste d'attente sur micron-e.com.",
     },
     "returns": {
-        "it": "Reso gratuito entro 30 giorni dall'acquisto. Il capo deve essere non utilizzato, con etichette originali. Rimborso completo entro 5-7 giorni lavorativi dalla ricezione del reso.",
-        "en": "Free returns within 30 days of purchase. The garment must be unworn, with original tags. Full refund within 5-7 business days of receiving the return.",
-        "de": "Kostenlose Rücksendung innerhalb von 30 Tagen nach dem Kauf. Das Kleidungsstück muss ungetragen sein, mit Original-Etiketten. Vollständige Rückerstattung innerhalb von 5-7 Werktagen.",
-        "fr": "Retour gratuit dans les 30 jours suivant l'achat. Le vêtement doit être non porté, avec les étiquettes d'origine. Remboursement complet sous 5-7 jours ouvrés.",
+        "it": "La politica resi completa sarà pubblicata all'apertura dello store micron-e.com (settembre 2026). Sono garantiti fin d'ora i diritti UE: almeno 14 giorni di recesso e 2 anni di garanzia legale di conformità per i difetti. I dettagli operativi (procedura, cambio taglia) arrivano col lancio.",
+        "en": "The full returns policy will be published when the micron-e.com store opens (September 2026). EU rights are guaranteed from day one: at least 14 days of withdrawal and a 2-year legal conformity guarantee for defects. Operational details (procedure, size exchange) arrive at launch.",
+        "de": "Die vollständige Rückgaberichtlinie wird zur Eröffnung des Stores micron-e.com (September 2026) veröffentlicht. EU-Rechte sind von Anfang an garantiert: mindestens 14 Tage Widerruf und 2 Jahre gesetzliche Gewährleistung bei Mängeln. Die operativen Details folgen zum Launch.",
+        "fr": "La politique de retour complète sera publiée à l'ouverture de la boutique micron-e.com (septembre 2026). Les droits UE sont garantis dès maintenant : au moins 14 jours de rétractation et 2 ans de garantie légale de conformité. Les détails opérationnels arrivent au lancement.",
     },
     "sustainability": {
-        "it": "La fibra Merino è naturale, rinnovabile e biodegradabile. La certificazione ZQ garantisce il benessere degli animali e pratiche sostenibili. Il processo CompACT® di Reda riduce il consumo d'acqua del 50% rispetto al processo tradizionale.",
-        "en": "Merino fiber is natural, renewable, and biodegradable. ZQ certification guarantees animal welfare and sustainable practices. Reda's CompACT® process reduces water consumption by 50% compared to traditional processing.",
-        "de": "Merinofaser ist natürlich, erneuerbar und biologisch abbaubar. Die ZQ-Zertifizierung garantiert Tierwohl und nachhaltige Praktiken. Der CompACT®-Prozess von Reda reduziert den Wasserverbrauch um 50%.",
-        "fr": "La fibre Mérinos est naturelle, renouvelable et biodégradable. La certification ZQ garantit le bien-être animal. Le procédé CompACT® de Reda réduit la consommation d'eau de 50%.",
+        "it": "La fibra merino è naturale, rinnovabile e biodegradabile. La nostra lana arriva da una filiera integrata e certificata RWS (Responsible Wool Standard), dall'allevamento neozelandese al tessuto, con pratiche orientate all'agricoltura rigenerativa. Il lanificio partner lavora nel distretto biellese con energie rinnovabili, sistemi di filtrazione dell'acqua e riduzione continua dei consumi.",
+        "en": "Merino fiber is natural, renewable, and biodegradable. Our wool comes from an integrated, RWS-certified supply chain (Responsible Wool Standard), from New Zealand farms to fabric, with practices oriented to regenerative agriculture. The partner mill works in the Biella district with renewable energy, water filtration systems and continuous consumption reduction.",
+        "de": "Merinofaser ist natürlich, erneuerbar und biologisch abbaubar. Unsere Wolle stammt aus einer integrierten, RWS-zertifizierten Lieferkette (Responsible Wool Standard), von neuseeländischen Farmen bis zum Gewebe, mit Praktiken regenerativer Landwirtschaft. Die Partnerweberei arbeitet im Distrikt Biella mit erneuerbaren Energien und Wasserfiltrationssystemen.",
+        "fr": "La fibre Mérinos est naturelle, renouvelable et biodégradable. Notre laine provient d'une filière intégrée et certifiée RWS (Responsible Wool Standard), des élevages néo-zélandais au tissu, avec des pratiques orientées vers l'agriculture régénérative. La filature partenaire travaille dans le district de Biella avec des énergies renouvelables et des systèmes de filtration de l'eau.",
     },
     "regulation": {
         "it": (
@@ -302,15 +307,19 @@ DISSATISFACTION_SIGNALS = {
 # Topic detection keywords per routing a FAQ
 TOPIC_KEYWORDS = {
     "sizing": ["taglia", "size", "sizing", "misura", "grande", "piccolo", "largo", "stretto", "fit",
-               "150g", "190g", "grammatura", "weight", "gramm", "gewicht", "poids", "größe",
+               "150g", "195g", "190g", "grammatura", "weight", "gramm", "gewicht", "poids", "größe",
                "slim", "regular", "petto", "chest", "brust", "poitrine", "circonferenza",
                "circumference", "umfang", "cm", "vestibilità", "passform", "coupe"],
     "care": ["lavaggio", "lavare", "wash", "washing", "stirare", "iron", "asciugare", "dry",
              "conservare", "storage", "cura", "care", "pflege", "waschen", "bügeln", "entretien"],
     "construction": ["cut & sewn", "cut and sew", "costruzione", "tessuto", "fabric", "material",
                      "maglia", "knit", "sartoriale", "tailored", "stoff", "gewebe", "tissu"],
-    "material": ["merino", "lana", "wool", "fibra", "fiber", "reda", "17 micron", "super 120",
-                 "compact", "zq", "wolle", "faser", "laine", "fibre"],
+    "material": ["merino", "lana", "wool", "fibra", "fiber", "reda", "17 micron", "17,6", "17.6",
+                 "super 120", "compact", "zq", "wolle", "faser", "laine", "fibre"],
+    "microne": ["micron-e", "micron-è", "micron e", "micron è", "microne", "micronemerino",
+                "best before", "adaptive", "cool", "raffrescamento", "raffresca", "cooling",
+                "kühlung", "rafraîchissement", "tecnologia micron", "cos'e micron", "cosa e micron",
+                "what is micron", "was ist micron", "qu'est-ce que micron", "a cosa serve"],
     "shipping": ["spedizione", "shipping", "consegna", "delivery", "tracciamento", "tracking",
                  "tempi", "quando arriva", "lieferung", "versand", "livraison"],
     "returns": ["reso", "restituzione", "return", "rimborso", "refund", "cambio", "exchange",
@@ -336,6 +345,7 @@ SITE_IDENTITY_KEYWORDS = [
     "merino university", "merinouniversity",
     "perfect merino", "perfectmerino",
     "albeni 1905", "albeni1905",
+    "micron-è", "micron-e", "micron e", "micronemerino", "best before",
     "il vostro sito", "your site", "your website", "questo sito", "this site",
     "cosa posso imparare", "cosa posso scoprire", "cosa posso trovare",
     "what can i learn", "what can i find", "what can i discover",
@@ -356,24 +366,24 @@ DOMAIN_WELCOME_MESSAGES = {
     },
     # MOFU — Merino University: tono educativo, tecnico ma accessibile
     "mofu": {
-        "it": "Ciao! Sono Merino University, il tuo assistente per approfondire tutto sulla fibra Merino. Posso spiegarti le differenze tra costruzioni tessili, il significato dei micronaggi, la certificazione ZQ e molto altro. Su cosa vorresti fare chiarezza?",
-        "en": "Hello! I'm Merino University, your assistant for deep-diving into everything Merino. I can explain differences between fabric constructions, what micron counts mean, ZQ certification, and much more. What would you like to understand better?",
-        "de": "Hallo! Ich bin Merino University, Ihr Assistent für alles rund um Merinofaser. Ich kann Ihnen die Unterschiede zwischen Gewebekonstruktionen, die Bedeutung von Mikronzahlen, die ZQ-Zertifizierung und vieles mehr erklären. Was möchten Sie besser verstehen?",
-        "fr": "Bonjour ! Je suis Merino University, votre assistant pour approfondir tout sur la fibre Mérinos. Je peux vous expliquer les différences entre les constructions textiles, la signification des microns, la certification ZQ et bien plus. Que souhaitez-vous mieux comprendre ?",
+        "it": "Ciao! Sono Merino University, il tuo assistente per approfondire tutto sulla fibra Merino. Posso spiegarti le differenze tra costruzioni tessili, il significato dei micronaggi, le certificazioni di filiera (RWS) e molto altro. Su cosa vorresti fare chiarezza?",
+        "en": "Hello! I'm Merino University, your assistant for deep-diving into everything Merino. I can explain differences between fabric constructions, what micron counts mean, supply-chain certifications (RWS), and much more. What would you like to understand better?",
+        "de": "Hallo! Ich bin Merino University, Ihr Assistent für alles rund um Merinofaser. Ich kann Ihnen die Unterschiede zwischen Gewebekonstruktionen, die Bedeutung von Mikronzahlen, die Lieferketten-Zertifizierungen (RWS) und vieles mehr erklären. Was möchten Sie besser verstehen?",
+        "fr": "Bonjour ! Je suis Merino University, votre assistant pour approfondir tout sur la fibre Mérinos. Je peux vous expliquer les différences entre les constructions textiles, la signification des microns, les certifications de filière (RWS) et bien plus. Que souhaitez-vous mieux comprendre ?",
     },
     # BOFU Tech — Perfect Merino Shirt: tono pratico, focus prodotto, sizing
     "bofu_tech": {
-        "it": "Ciao! Sono Perfect Merino Shirt, il tuo consulente per trovare la t-shirt Merino perfetta. Posso aiutarti con taglie, vestibilità, confronto grammature (150g vs 190g), cura del capo e dettagli tecnici. Come posso guidarti nella scelta?",
-        "en": "Hello! I'm Perfect Merino Shirt, your consultant for finding the perfect Merino tee. I can help with sizing, fit, weight comparison (150g vs 190g), garment care, and technical details. How can I guide your choice?",
-        "de": "Hallo! Ich bin Perfect Merino Shirt, Ihr Berater für das perfekte Merino-T-Shirt. Ich kann Ihnen bei Größen, Passform, Grammatur-Vergleich (150g vs 190g), Pflege und technischen Details helfen. Wie kann ich Sie bei der Wahl unterstützen?",
-        "fr": "Bonjour ! Je suis Perfect Merino Shirt, votre conseiller pour trouver le t-shirt Mérinos parfait. Je peux vous aider avec les tailles, la coupe, la comparaison des grammages (150g vs 190g), l'entretien et les détails techniques. Comment puis-je guider votre choix ?",
+        "it": "Ciao! Sono Perfect Merino Shirt, il tuo consulente per trovare la t-shirt Merino perfetta. Posso aiutarti con taglie, vestibilità, confronto linee (Cool 150g vs Adaptive 195g), cura del capo e dettagli tecnici. Come posso guidarti nella scelta?",
+        "en": "Hello! I'm Perfect Merino Shirt, your consultant for finding the perfect Merino tee. I can help with sizing, fit, line comparison (Cool 150g vs Adaptive 195g), garment care, and technical details. How can I guide your choice?",
+        "de": "Hallo! Ich bin Perfect Merino Shirt, Ihr Berater für das perfekte Merino-T-Shirt. Ich kann Ihnen bei Größen, Passform, Linien-Vergleich (Cool 150g vs Adaptive 195g), Pflege und technischen Details helfen. Wie kann ich Sie bei der Wahl unterstützen?",
+        "fr": "Bonjour ! Je suis Perfect Merino Shirt, votre conseiller pour trouver le t-shirt Mérinos parfait. Je peux vous aider avec les tailles, la coupe, la comparaison des lignes (Cool 150g vs Adaptive 195g), l'entretien et les détails techniques. Comment puis-je guider votre choix ?",
     },
-    # BOFU Heritage — Albeni 1905: tono autorevole, heritage, conversion-focused
+    # BOFU — micron-è (micron-e.com): tono sobrio, Invisible Luxury, conversion-focused
     "bofu_heritage": {
-        "it": "Ciao! Sono l'assistente di Albeni 1905, 120 anni di eccellenza tessile italiana. Posso aiutarti con taglie, cura del capo, materiali, spedizioni, resi o qualsiasi domanda sul tuo ordine. Come posso esserti utile?",
-        "en": "Hello! I'm the Albeni 1905 assistant, 120 years of Italian textile excellence. I can help you with sizing, garment care, materials, shipping, returns, or any questions about your order. How can I help you?",
-        "de": "Hallo! Ich bin der Assistent von Albeni 1905, 120 Jahre italienische Textilexzellenz. Ich kann Ihnen bei Größen, Pflege, Materialien, Versand, Retouren oder Fragen zu Ihrer Bestellung helfen. Wie kann ich Ihnen behilflich sein?",
-        "fr": "Bonjour ! Je suis l'assistant d'Albeni 1905, 120 ans d'excellence textile italienne. Je peux vous aider pour les tailles, l'entretien, les matériaux, la livraison, les retours ou toute question sur votre commande. Comment puis-je vous aider ?",
+        "it": "Benvenuto. Sono l'assistente micron-è. Posso aiutarti su prodotto e tecnologia di raffrescamento, taglie e vestibilità, cura del capo, lancio e disponibilità. Come posso esserti utile?",
+        "en": "Welcome. I'm the micron-è assistant. I can help with product and cooling technology, sizing and fit, garment care, launch and availability. How can I help you?",
+        "de": "Willkommen. Ich bin der micron-è-Assistent. Ich helfe Ihnen bei Produkt und Kühltechnologie, Größen und Passform, Pflege, Launch und Verfügbarkeit. Wie kann ich behilflich sein?",
+        "fr": "Bienvenue. Je suis l'assistant micron-è. Je peux vous aider sur le produit et la technologie de rafraîchissement, les tailles, l'entretien, le lancement et la disponibilité. Comment puis-je vous aider ?",
     },
 }
 
@@ -392,10 +402,10 @@ CROSS_DOMAIN_CTAS = {
         "fr": "Vous voulez trouver votre taille parfaite ? Essayez le configurateur sur perfectmerinoshirt.com →",
     },
     "bofu_tech": {
-        "it": "Pronto per l'acquisto? Scopri la collezione su albeni1905.com →",
-        "en": "Ready to buy? Explore the collection at albeni1905.com →",
-        "de": "Bereit zum Kauf? Entdecken Sie die Kollektion auf albeni1905.com →",
-        "fr": "Prêt à acheter ? Découvrez la collection sur albeni1905.com →",
+        "it": "Pronto per l'acquisto? Scopri micron-è su micron-e.com →",
+        "en": "Ready to buy? Discover micron-è at micron-e.com →",
+        "de": "Bereit zum Kauf? Entdecken Sie micron-è auf micron-e.com →",
+        "fr": "Prêt à acheter ? Découvrez micron-è sur micron-e.com →",
     },
     "bofu_heritage": {
         "it": "",  # Nessun CTA cross-domain — siamo già sul sito di conversione
@@ -408,69 +418,112 @@ CROSS_DOMAIN_CTAS = {
 # Domain-specific Gemini system prompt — identità completa + conoscenza del sito
 DOMAIN_SYSTEM_PROMPTS = {
     "tofu": """Sei l'assistente di World of Merino (worldofmerino.com), il magazine digitale lifestyle dell'ecosistema Invisible Luxury.
-IDENTITÀ: World of Merino. NON sei Albeni 1905, NON presentarti mai come tale.
+IDENTITÀ: World of Merino. NON sei micron-è, NON presentarti mai come tale.
 
 CHI È WORLD OF MERINO:
 - Un magazine online che racconta il mondo della fibra Merino attraverso storie, cultura e lifestyle
 - La missione è ispirare le persone a scoprire perché il Merino sta cambiando il modo di vestire
-- Copre temi come: sostenibilità (certificazione ZQ, biodegradabilità), la filiera dalla pecora al capo finito,
+- Copre temi come: sostenibilità (benessere animale certificato RWS, biodegradabilità), la filiera dalla pecora al capo finito,
   il confronto tra fibre naturali e sintetiche, la storia millenaria della lana Merino, lo stile di vita
   di chi sceglie capi durevoli e consapevoli
 - NON è un e-commerce: non vende nulla, ispira la scoperta
 - Fa parte di un ecosistema più ampio: per approfondire la scienza tessile → merinouniversity.com,
-  per trovare il capo perfetto → perfectmerinoshirt.com, per acquistare → albeni1905.com
+  per acquistare la t-shirt micron-è → micron-e.com
+
+CONOSCENZA micron-è (cos'è e a cosa serve) — il prodotto dell'ecosistema:
+- micron-è è un marchio italiano indipendente di Best Before S.r.l. e la sua tecnologia proprietaria di raffrescamento tessile
+- Prodotto: t-shirt in merino Super 120's (17,6 micron), costruzione Cut & Sewn, Made in Italy, 125 €
+- Due linee: Adaptive 195 g/m² (raffrescamento adattivo: si attiva con calore e sudore, fino a −2,5°C, si spegne da solo)
+  e Cool 150 g/m² (dual-action: fresca al tatto prima del sudore + raffrescamento evaporativo continuo, fino a −3°C,
+  oltre il 50% di componente biobased certificata USDA)
+- Regola: il fresco lo dà la tecnologia micron-è; il naturale tepore, quando serve, lo dà la lana
+- I dati di raffrescamento sono di laboratorio, validazione in corso: citali sempre con questa precisazione
+- Filiera: lana neozelandese certificata RWS, tessuto del distretto biellese (lanificio partner — mai nominarlo)
+- Lancio: capsula in edizione limitata di 302 pezzi, settembre 2026, solo online su micron-e.com (waitlist attiva, nessun negozio fisico)
 
 TONO: narrativo, curioso, evocativo, caldo. Racconta storie, usa metafore, ispira.
-Non spingere MAI alla vendita — se l'utente chiede di comprare, guidalo gentilmente verso albeni1905.com.
+Non spingere MAI alla vendita — se l'utente chiede di comprare, guidalo gentilmente verso micron-e.com.
 Se vuole approfondire tecnicamente, indirizzalo a merinouniversity.com.""",
 
     "mofu": """Sei l'assistente di Merino University (merinouniversity.com), la piattaforma educativa dell'ecosistema Invisible Luxury.
-IDENTITÀ: Merino University. NON sei Albeni 1905, NON presentarti mai come tale.
+IDENTITÀ: Merino University. NON sei micron-è, NON presentarti mai come tale.
 
 CHI È MERINO UNIVERSITY:
 - Una piattaforma educativa che insegna la scienza dietro la fibra Merino e la costruzione tessile
-- I contenuti coprono: la differenza tra Cut & Sewn e Knit, il significato di Super 120's e dei micronaggi (17μ),
-  la certificazione ZQ e il benessere animale, il processo CompACT® di Reda che riduce il consumo d'acqua del 50%,
+- I contenuti coprono: la differenza tra Cut & Sewn e Knit, il significato di Super 120's e dei micronaggi (17,6μ),
+  la certificazione RWS e il benessere animale, la tracciabilità di filiera dal pascolo al tessuto,
   le proprietà termoregolatrici della fibra Merino, il confronto Merino vs cotone vs sintetico
 - Ogni articolo è strutturato come una "lezione" accessibile ma rigorosa
 - Pubblica l'**Osservatorio Merino**: analisi normative e trend regolatori del settore tessile (es. REACH Annex XVII, ESPR 2026, divieto invenduti UE, reporting microplastiche ECHA)
 - NON è un e-commerce: insegna, non vende
-- Fa parte dell'ecosistema: per storie lifestyle → worldofmerino.com,
-  per trovare taglia e vestibilità → perfectmerinoshirt.com, per acquistare → albeni1905.com
+- Fa parte dell'ecosistema: per storie lifestyle → worldofmerino.com, per acquistare la t-shirt micron-è → micron-e.com
+
+CONOSCENZA micron-è (cos'è e a cosa serve) — il prodotto dell'ecosistema:
+- micron-è è un marchio italiano indipendente di Best Before S.r.l. e la sua tecnologia proprietaria di raffrescamento tessile
+- Prodotto: t-shirt in merino Super 120's (17,6 micron), costruzione Cut & Sewn, Made in Italy, 125 €
+- Due linee: Adaptive 195 g/m² (raffrescamento adattivo: si attiva con calore e sudore, fino a −2,5°C, si spegne da solo)
+  e Cool 150 g/m² (dual-action: fresca al tatto prima del sudore + raffrescamento evaporativo continuo, fino a −3°C,
+  oltre il 50% di componente biobased certificata USDA)
+- Regola: il fresco lo dà la tecnologia micron-è; il naturale tepore, quando serve, lo dà la lana
+- I dati di raffrescamento sono di laboratorio, validazione in corso: citali sempre con questa precisazione
+- Filiera: lana neozelandese certificata RWS, tessuto del distretto biellese (lanificio partner — mai nominarlo)
+- Lancio: capsula in edizione limitata di 302 pezzi, settembre 2026, solo online su micron-e.com (waitlist attiva, nessun negozio fisico)
 
 TONO: didattico, preciso ma accessibile, come un professore appassionato. Usa dati concreti, confronti misurabili.
-Insegna, non vendere. Se l'utente vuole comprare, guidalo verso perfectmerinoshirt.com per la scelta e poi albeni1905.com.""",
+Insegna, non vendere. Se l'utente vuole comprare, guidalo verso micron-e.com.""",
 
     "bofu_tech": """Sei l'assistente di Perfect Merino Shirt (perfectmerinoshirt.com), il configuratore di prodotto dell'ecosistema Invisible Luxury.
-IDENTITÀ: Perfect Merino Shirt. NON sei Albeni 1905, NON presentarti mai come tale.
+IDENTITÀ: Perfect Merino Shirt. NON sei micron-è, NON presentarti mai come tale.
 
 CHI È PERFECT MERINO SHIRT:
 - Un sito dedicato ad aiutare le persone a trovare la t-shirt Merino perfetta per il loro corpo e il loro stile di vita
-- Offre: guida taglie interattiva (Slim Fit vs Regular Fit), confronto grammature (150g/m² estate vs 190g/m² 4-stagioni),
+- Offre: guida taglie interattiva (Slim Fit vs Regular Fit), confronto linee (Cool 150g/m² estate vs Adaptive 195g/m² 4-stagioni),
   istruzioni di cura del capo (lavaggio, asciugatura, stiratura, conservazione), dettagli tecnici sulla costruzione
-  Cut & Sewn e sulla fibra Merino Super 120's 17 micron di Reda 1865
+  Cut & Sewn e sul merino Super 120's 17,6 micron
 - Il Size & Fit Finder permette di inserire la misura del petto e ricevere la taglia consigliata per entrambe le vestibilità
 - NON è l'e-commerce: guida la scelta, non processa ordini
-- Quando l'utente ha scelto, indirizzalo ad albeni1905.com per l'acquisto
+- Quando l'utente ha scelto, indirizzalo a micron-e.com per l'acquisto
+
+CONOSCENZA micron-è (cos'è e a cosa serve) — il prodotto dell'ecosistema:
+- micron-è è un marchio italiano indipendente di Best Before S.r.l. e la sua tecnologia proprietaria di raffrescamento tessile
+- Prodotto: t-shirt in merino Super 120's (17,6 micron), costruzione Cut & Sewn, Made in Italy, 125 €
+- Due linee: Adaptive 195 g/m² (raffrescamento adattivo: si attiva con calore e sudore, fino a −2,5°C, si spegne da solo)
+  e Cool 150 g/m² (dual-action: fresca al tatto prima del sudore + raffrescamento evaporativo continuo, fino a −3°C,
+  oltre il 50% di componente biobased certificata USDA)
+- Regola: il fresco lo dà la tecnologia micron-è; il naturale tepore, quando serve, lo dà la lana
+- I dati di raffrescamento sono di laboratorio, validazione in corso: citali sempre con questa precisazione
+- Filiera: lana neozelandese certificata RWS, tessuto del distretto biellese (lanificio partner — mai nominarlo)
+- Lancio: capsula in edizione limitata di 302 pezzi, settembre 2026, solo online su micron-e.com (waitlist attiva, nessun negozio fisico)
 
 TONO: pratico, consulenziale, competente. Come un personal shopper esperto di tessuti.
-Guida alla scelta senza pressione. Se l'utente è pronto ad acquistare → albeni1905.com.""",
+Guida alla scelta senza pressione. Se l'utente è pronto ad acquistare → micron-e.com.""",
 
-    "bofu_heritage": """Sei l'assistente virtuale di Albeni 1905 (albeni1905.com), il brand di lusso invisibile dell'ecosistema Invisible Luxury.
-IDENTITÀ: Albeni 1905.
+    "bofu_heritage": """Sei l'assistente virtuale di micron-è (micron-e.com), il marchio dell'ecosistema Invisible Luxury.
+IDENTITÀ: micron-è (si scrive sempre minuscolo, con il trattino).
 
-CHI È ALBENI 1905:
-- Un brand con 120+ anni di storia nell'eccellenza tessile italiana, specializzato in t-shirt in fibra Merino 17 micron
-- Il tessuto è prodotto da Reda 1865 (160+ anni), uno dei lanifici più antichi al mondo
-- Prodotto: t-shirt Merino Super 120's, costruzione Cut & Sewn, due grammature (150g estate, 190g 4-stagioni),
-  due vestibilità (Slim Fit e Regular Fit)
-- Posizionamento: "Same Silhouette, Superior Substance" — lusso discreto, invisibile dall'esterno, percepito da chi lo indossa
-- Questo è l'UNICO sito e-commerce dell'ecosistema: gestisce ordini, spedizioni (EU 3-5gg, US 5-7gg, free sopra €150),
-  resi (gratuiti entro 30 giorni), e assistenza post-vendita
-- Supporto: support@albeni1905.com
+CHI È micron-è:
+- Un marchio italiano indipendente di Best Before S.r.l.: un solo capo fatto molto bene — la t-shirt in merino
+  Super 120's (17,6 micron) con tecnologia proprietaria di raffrescamento, costruzione Cut & Sewn, Made in Italy, 125 €
+- Posizionamento: "Invisible Luxury" — la sostanza prima della forma, lusso percepito da chi lo indossa
+- Questo è l'UNICO sito e-commerce dell'ecosistema. Lo store apre a settembre 2026 con una capsula in edizione
+  limitata di 302 pezzi: oggi è attiva la waitlist, che dà accesso prioritario all'apertura
+- Spedizioni, resi e pagamenti: i dettagli operativi saranno pubblicati all'apertura; valgono fin d'ora i diritti UE
+  (almeno 14 giorni di recesso, 2 anni di garanzia legale). Non promettere condizioni non ancora pubblicate
+- Per assistenza diretta: invita a lasciare l'email nella waitlist su micron-e.com indicando la richiesta
 
-TONO: autorevole, sobrio, mai aggressivo commercialmente. Heritage italiano autentico.
-Puoi suggerire l'acquisto quando appropriato — sei l'unico dominio di conversione.""",
+CONOSCENZA micron-è (cos'è e a cosa serve) — il prodotto dell'ecosistema:
+- micron-è è un marchio italiano indipendente di Best Before S.r.l. e la sua tecnologia proprietaria di raffrescamento tessile
+- Prodotto: t-shirt in merino Super 120's (17,6 micron), costruzione Cut & Sewn, Made in Italy, 125 €
+- Due linee: Adaptive 195 g/m² (raffrescamento adattivo: si attiva con calore e sudore, fino a −2,5°C, si spegne da solo)
+  e Cool 150 g/m² (dual-action: fresca al tatto prima del sudore + raffrescamento evaporativo continuo, fino a −3°C,
+  oltre il 50% di componente biobased certificata USDA)
+- Regola: il fresco lo dà la tecnologia micron-è; il naturale tepore, quando serve, lo dà la lana
+- I dati di raffrescamento sono di laboratorio, validazione in corso: citali sempre con questa precisazione
+- Filiera: lana neozelandese certificata RWS, tessuto del distretto biellese (lanificio partner — mai nominarlo)
+- Lancio: capsula in edizione limitata di 302 pezzi, settembre 2026, solo online su micron-e.com (waitlist attiva, nessun negozio fisico)
+
+TONO: calmo, sobrio, understatement, mai aggressivo commercialmente. Niente iperboli.
+Puoi suggerire l'iscrizione alla waitlist quando appropriato — sei l'unico dominio di conversione.""",
 }
 
 # Nome brand per dominio — usato nelle risposte dinamiche
@@ -478,7 +531,7 @@ DOMAIN_BRAND_NAMES = {
     "tofu": "World of Merino",
     "mofu": "Merino University",
     "bofu_tech": "Perfect Merino Shirt",
-    "bofu_heritage": "Albeni 1905",
+    "bofu_heritage": "micron-è",
 }
 
 # Backward-compatible alias — fallback per codice legacy
@@ -495,6 +548,7 @@ ESCALATION_MESSAGES = {
 EDUCATIONAL_LINKS = {
     "construction": {"url": "https://merinouniversity.com/cut-and-sew-vs-knit", "label": "Cut & Sew vs Knit"},
     "material": {"url": "https://merinouniversity.com/super-120s-merino", "label": "Super 120's Merino"},
+    "microne": {"url": "https://micron-e.com", "label": "micron-è"},
     "sustainability": {"url": "https://merinouniversity.com/merino-vs-cotton", "label": "Merino vs Cotton"},
     "care": {"url": "https://merinouniversity.com/merino-care-guide", "label": "Guida alla Cura del Merino"},
     "regulation": {"url": "https://merinouniversity.com/reach-annex-xvii-espr-compliance-tessile-microplastiche", "label": "REACH Annex XVII & ESPR 2026"},
@@ -507,7 +561,7 @@ EDUCATIONAL_LINKS = {
 
 class CustomerCareAI:
     """
-    Multilingua chatbot for Albeni 1905 customer support.
+    Multilingua chatbot for the micron-è / Invisible Luxury ecosystem (WoM, MU, PMS, store).
 
     Features:
     - Product knowledge (sizing, care, materials, construction)
@@ -896,9 +950,9 @@ class CustomerCareAI:
                           f"{SIZE_FIT_DATA['regular']['description']['it']}"
             else:
                 reg_text = f"\n\n**Regular Fit** — La tua misura supera la taglia più grande disponibile ({regular['largest_available']}). " \
-                          f"Contatta support@albeni1905.com per soluzioni personalizzate."
+                          f"Segnalacelo dalla waitlist su micron-e.com: i casi reali guidano le estensioni di gamma."
 
-            footer = "\n\n💡 *La fibra Merino 17 micron ha un'elasticità naturale di ~1 cm, già considerata nel calcolo.*"
+            footer = "\n\n💡 *Taglia assegnata per finestra di torace (grading ufficiale micron-è a finestre di 8 cm).*"
 
         elif language == "de":
             header = f"Bei einem Brustumfang von **{chest_cm} cm** empfehle ich Ihnen:\n"
@@ -916,9 +970,9 @@ class CustomerCareAI:
                           f"{SIZE_FIT_DATA['regular']['description']['de']}"
             else:
                 reg_text = f"\n\n**Regular Fit** — Ihr Maß übersteigt die größte verfügbare Größe ({regular['largest_available']}). " \
-                          f"Kontaktieren Sie support@albeni1905.com für individuelle Lösungen."
+                          f"Melden Sie es uns über die Warteliste auf micron-e.com."
 
-            footer = "\n\n💡 *Die 17-Mikron-Merinofaser hat eine natürliche Elastizität von ~1 cm, die bereits im Kalkül berücksichtigt ist.*"
+            footer = "\n\n💡 *Größe nach Brustumfang-Fenster zugewiesen (offizielles micron-è-Grading mit 8-cm-Fenstern).*"
 
         elif language == "fr":
             header = f"Avec un tour de poitrine de **{chest_cm} cm**, voici mes recommandations :\n"
@@ -936,9 +990,9 @@ class CustomerCareAI:
                           f"{SIZE_FIT_DATA['regular']['description']['fr']}"
             else:
                 reg_text = f"\n\n**Regular Fit** — Votre mesure dépasse la plus grande taille disponible ({regular['largest_available']}). " \
-                          f"Contactez support@albeni1905.com pour des solutions personnalisées."
+                          f"Signalez-le-nous via la liste d'attente sur micron-e.com."
 
-            footer = "\n\n💡 *La fibre Mérinos 17 microns a une élasticité naturelle d'~1 cm, déjà prise en compte dans le calcul.*"
+            footer = "\n\n💡 *Taille attribuée par fenêtre de tour de poitrine (grading officiel micron-è par fenêtres de 8 cm).*"
 
         else:  # English default
             header = f"With a chest measurement of **{chest_cm} cm**, here are my recommendations:\n"
@@ -956,16 +1010,16 @@ class CustomerCareAI:
                           f"{SIZE_FIT_DATA['regular']['description']['en']}"
             else:
                 reg_text = f"\n\n**Regular Fit** — Your measurement exceeds the largest available size ({regular['largest_available']}). " \
-                          f"Please contact support@albeni1905.com for custom solutions."
+                          f"Let us know via the waitlist at micron-e.com — real cases guide range extensions."
 
-            footer = "\n\n💡 *17-micron Merino fiber has a natural stretch of ~1 cm, already factored into the calculation.*"
+            footer = "\n\n💡 *Size assigned by chest window (official micron-è grading, 8 cm windows).*"
 
         return header + slim_text + reg_text + footer
 
     def _format_sizing_overview(self, language: str) -> str:
         """Format a general sizing overview that invites the user to use the fit finder."""
         info_150 = SIZING_GUIDE["150g"]
-        info_190 = SIZING_GUIDE["190g"]
+        info_195 = SIZING_GUIDE["195g"]
 
         # Build size table summary
         sizes_list = " | ".join(SIZE_FIT_DATA["slim"]["sizes"].keys())
@@ -973,32 +1027,32 @@ class CustomerCareAI:
         templates = {
             "it": (
                 f"Offriamo due versioni:\n\n"
-                f"**150g/m² — Lightweight** ({info_150['temp_range']})\n{info_150['description']['it']}\n\n"
-                f"**190g/m² — All-Season** ({info_190['temp_range']})\n{info_190['description']['it']}\n\n"
+                f"**Cool 150g/m² — Lightweight** ({info_150['temp_range']})\n{info_150['description']['it']}\n\n"
+                f"**Adaptive 195g/m² — 4 Stagioni** ({info_195['temp_range']})\n{info_195['description']['it']}\n\n"
                 f"📐 **Taglie disponibili:** {sizes_list}\n"
                 f"Ogni taglia è disponibile in **Slim Fit** (aderente) e **Regular Fit** (comodo).\n\n"
                 f"👉 *Dimmi la tua misura del petto in centimetri e ti consiglierò la taglia perfetta per entrambe le vestibilità!*"
             ),
             "en": (
                 f"We offer two versions:\n\n"
-                f"**150g/m² — Lightweight** ({info_150['temp_range']})\n{info_150['description']['en']}\n\n"
-                f"**190g/m² — All-Season** ({info_190['temp_range']})\n{info_190['description']['en']}\n\n"
+                f"**Cool 150g/m² — Lightweight** ({info_150['temp_range']})\n{info_150['description']['en']}\n\n"
+                f"**Adaptive 195g/m² — All-Season** ({info_195['temp_range']})\n{info_195['description']['en']}\n\n"
                 f"📐 **Available sizes:** {sizes_list}\n"
                 f"Each size comes in **Slim Fit** (close) and **Regular Fit** (comfortable).\n\n"
                 f"👉 *Tell me your chest measurement in centimeters and I'll recommend the perfect size for both fits!*"
             ),
             "de": (
                 f"Wir bieten zwei Versionen an:\n\n"
-                f"**150g/m² — Lightweight** ({info_150['temp_range']})\n{info_150['description']['de']}\n\n"
-                f"**190g/m² — All-Season** ({info_190['temp_range']})\n{info_190['description']['de']}\n\n"
+                f"**Cool 150g/m² — Lightweight** ({info_150['temp_range']})\n{info_150['description']['de']}\n\n"
+                f"**Adaptive 195g/m² — Ganzjahres** ({info_195['temp_range']})\n{info_195['description']['de']}\n\n"
                 f"📐 **Verfügbare Größen:** {sizes_list}\n"
                 f"Jede Größe ist in **Slim Fit** (körpernah) und **Regular Fit** (bequem) erhältlich.\n\n"
                 f"👉 *Nennen Sie mir Ihren Brustumfang in Zentimetern und ich empfehle Ihnen die perfekte Größe für beide Passformen!*"
             ),
             "fr": (
                 f"Nous proposons deux versions :\n\n"
-                f"**150g/m² — Lightweight** ({info_150['temp_range']})\n{info_150['description']['fr']}\n\n"
-                f"**190g/m² — All-Season** ({info_190['temp_range']})\n{info_190['description']['fr']}\n\n"
+                f"**Cool 150g/m² — Lightweight** ({info_150['temp_range']})\n{info_150['description']['fr']}\n\n"
+                f"**Adaptive 195g/m² — 4 Saisons** ({info_195['temp_range']})\n{info_195['description']['fr']}\n\n"
                 f"📐 **Tailles disponibles :** {sizes_list}\n"
                 f"Chaque taille est disponible en **Slim Fit** (ajusté) et **Regular Fit** (confortable).\n\n"
                 f"👉 *Dites-moi votre tour de poitrine en centimètres et je vous recommanderai la taille parfaite pour les deux coupes !*"
@@ -1036,7 +1090,7 @@ class CustomerCareAI:
         # Domain-specific identity and tone
         domain = domain_type if domain_type in DOMAIN_SYSTEM_PROMPTS else "bofu_heritage"
         domain_identity = DOMAIN_SYSTEM_PROMPTS[domain]
-        brand_name = DOMAIN_BRAND_NAMES.get(domain, "Albeni 1905")
+        brand_name = DOMAIN_BRAND_NAMES.get(domain, "micron-è")
 
         system_prompt = f"""{domain_identity}
 
@@ -1044,12 +1098,17 @@ REGOLE NON NEGOZIABILI:
 1. Rispondi SEMPRE in {lang_names.get(language, 'English')}
 2. Presentati SEMPRE come assistente di {brand_name} — MAI usare un nome di brand diverso
 3. Mai posizionare il prodotto come abbigliamento sportivo o intimo — è un capo ELEGANTE per uso quotidiano
-4. Termini mai traducibili: Albeni 1905, Reda 1865, CompACT®, ZQ, Merino, Cut & Sewn, Invisible Luxury
-5. Micronaggi (17 micron) e grammature (150g/190g) devono essere sempre precisi
-6. Se non conosci la risposta, suggerisci di contattare support@albeni1905.com
+4. TERMINI VIETATI in ogni lingua, senza eccezioni: "Albeni", "1905", "HeiQ", "ZQ", "finissaggio", "superfine",
+   il nome di qualunque lanificio o fornitore. La tecnologia si chiama SOLO "tecnologia micron-è";
+   il lanificio è "un lanificio italiano partner del distretto biellese"; la certificazione lana è "RWS"
+5. Termini mai traducibili: micron-è, Merino, Cut & Sewn, Invisible Luxury, RWS
+6. Micronaggio (17,6 micron) e grammature (Cool 150g / Adaptive 195g) devono essere sempre precisi
+7. Claim di raffrescamento (−2,5°C / −3°C, ≥40 lavaggi) sempre con la precisazione "dato di laboratorio, validazione in corso"
+8. Se non conosci la risposta, invita a lasciare l'email nella waitlist su micron-e.com — mai inventare
 
-CONTESTO ECOSISTEMA: Le t-shirt sono prodotte da Albeni 1905 con fibra Merino Super 120's 17 micron di Reda 1865.
-Costruzione Cut & Sewn (non knit), due grammature (150g estate, 190g 4 stagioni).
+CONTESTO ECOSISTEMA: Le t-shirt micron-è (Best Before S.r.l.) sono in merino Super 120's 17,6 micron,
+costruzione Cut & Sewn (non knit), due linee (Cool 150g estate, Adaptive 195g 4 stagioni), Made in Italy, 125 €.
+Store: micron-e.com, capsula di lancio 302 pezzi a settembre 2026, waitlist attiva.
 Tu però ti presenti come {brand_name}, parte dell'ecosistema Invisible Luxury."""
 
         try:
@@ -1114,12 +1173,12 @@ Tu però ti presenti come {brand_name}, parte dell'ecosistema Invisible Luxury."
 
     def _get_fallback_response(self, language: str, domain_type: str = "bofu_heritage") -> str:
         """Fallback when Gemini is unavailable — domain-aware."""
-        brand = DOMAIN_BRAND_NAMES.get(domain_type, "Albeni 1905")
+        brand = DOMAIN_BRAND_NAMES.get(domain_type, "micron-è")
         fallbacks = {
-            "it": f"Grazie per la domanda. Per una risposta più dettagliata, ti invito a scrivere a support@albeni1905.com o consultare merinouniversity.com per approfondimenti.",
-            "en": f"Thank you for your question. For a more detailed answer, please email support@albeni1905.com or visit merinouniversity.com.",
-            "de": f"Vielen Dank für Ihre Frage. Für eine detailliertere Antwort schreiben Sie bitte an support@albeni1905.com oder besuchen Sie merinouniversity.com.",
-            "fr": f"Merci pour votre question. Pour une réponse plus détaillée, veuillez écrire à support@albeni1905.com ou consulter merinouniversity.com.",
+            "it": f"Grazie per la domanda. Non ho una risposta certa in archivio e preferisco non inventare: lascia la tua email nella waitlist su micron-e.com indicando la richiesta, oppure consulta merinouniversity.com per gli approfondimenti tecnici.",
+            "en": f"Thank you for your question. I don't have a certain answer on file and prefer not to guess: leave your email on the waitlist at micron-e.com with your request, or visit merinouniversity.com for technical deep-dives.",
+            "de": f"Vielen Dank für Ihre Frage. Ich habe keine gesicherte Antwort und rate ungern: Hinterlassen Sie Ihre E-Mail auf der Warteliste auf micron-e.com, oder besuchen Sie merinouniversity.com für technische Vertiefungen.",
+            "fr": f"Merci pour votre question. Je n'ai pas de réponse certaine et je préfère ne pas inventer : laissez votre email sur la liste d'attente de micron-e.com, ou consultez merinouniversity.com pour les approfondissements techniques.",
         }
         return fallbacks.get(language, fallbacks["en"])
 
@@ -1140,8 +1199,8 @@ Tu però ti presenti come {brand_name}, parte dell'ecosistema Invisible Luxury."
         - MOFU (Merino University): construction, material, sustainability, care
           (educativo) — sizing/shipping/returns vanno a Gemini con redirect
         - BOFU Tech (Perfect Merino Shirt): sizing, care, construction, material
-          — shipping/returns vanno a Gemini con redirect ad albeni1905.com
-        - BOFU Heritage (Albeni 1905): tutti i topic — servizio completo
+          — shipping/returns vanno a Gemini con redirect a micron-e.com
+        - BOFU (micron-è, micron-e.com): tutti i topic — servizio completo
         """
         DOMAIN_ALLOWED_TOPICS = {
             "tofu": {"sustainability"},
@@ -1264,7 +1323,7 @@ Tu però ti presenti come {brand_name}, parte dell'ecosistema Invisible Luxury."
                         "Content-Type": "application/json",
                     }
 
-                    # Create a page in the Albeni 1905 AI Stack workspace
+                    # Create a page in the AI Stack workspace (Notion)
                     page_payload = {
                         "parent": {"page_id": "9507e7359a2a42ac904c6281931750ab"},  # AI Stack parent
                         "properties": {
