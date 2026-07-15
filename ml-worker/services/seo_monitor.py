@@ -12,7 +12,7 @@ Per-domain SEMrush market mapping:
 - worldofmerino.com  → "us" (lifestyle internazionale, niente rank IT)
 - merinouniversity.com → "it" (educational, italiano)
 - perfectmerinoshirt.com → "us" (commerciale US/EN)
-- albeni1905.com → "it" (e-commerce italiano)
+- micron-e.com → "it" (e-commerce italiano)
 """
 import json
 import logging
@@ -64,16 +64,16 @@ DOMAIN_KEYWORD_MAP = {
         ],
         "protected_topics": ["product specs", "purchase conversion", "technical landing pages"]
     },
-    "albeni1905.com": {
-        "role": "BOFU Heritage - Brand Store",
+    "micron-e.com": {
+        "role": "BOFU Brand Store (micron-è)",
         "funnel_stage": "BOFU",
         "semrush_database": "it",
         "primary_keywords": [
-            "albeni 1905", "reda wool", "italian luxury t-shirt",
-            "made in italy merino", "luxury undershirt", "heritage wool brand",
-            "cut & sewn vs knit", "albeni merino"
+            "micron-e", "micron-e merino", "merino super 120s t-shirt",
+            "made in italy merino", "luxury merino t-shirt",
+            "cooling merino t-shirt", "cut & sewn t-shirt", "t-shirt merino italia"
         ],
-        "protected_topics": ["brand identity", "heritage narrative", "e-commerce"]
+        "protected_topics": ["brand identity", "product landing", "e-commerce"]
     }
 }
 
@@ -233,7 +233,32 @@ class SEOMonitor:
         # source rimane quello determinato da _fetch_domain_data: 'live' se SEMrush
         # ha risposto keyword o traffic, 'fallback' solo se TUTTE le call sono vuote.
 
-        return SEOHealthCheck(
+        # Auto-alimentazione: se SEMrush è vuoto (piano sospeso), usa l'ultimo
+        # snapshot salvato in seo_monitoring — i dati raccolti finora restano
+        # visibili con data_source="snapshot" e la data reale della misurazione.
+        # Quando il piano si riattiva, il ramo live torna a prevalere da solo.
+        if source == "fallback":
+            snap = self._load_snapshot(domain)
+            if snap:
+                return SEOHealthCheck(
+                    domain=domain,
+                    role=config.get("role"),
+                    funnel_stage=config.get("funnel_stage"),
+                    behavioral_expansion_pct=snap["behavioral_expansion_pct"] or behavioral_pct,
+                    semantic_defense_pct=snap["semantic_defense_pct"] or defense_pct,
+                    cannibalization_score=snap["cannibalization_score"],
+                    conflicting_keywords=[],
+                    alert_level=snap["alert_level"],
+                    topical_authority_score=snap["topical_authority_score"],
+                    keywords_in_rank=snap["total_tracked_keywords"],
+                    organic_traffic=0,
+                    authority_score=int(snap["topical_authority_score"]),
+                    semrush_database=config.get("semrush_database", ""),
+                    data_source="snapshot",
+                    fetched_at=str(snap["check_date"]),
+                )
+
+        check = SEOHealthCheck(
             domain=domain,
             role=config.get("role"),
             funnel_stage=config.get("funnel_stage"),
@@ -250,6 +275,75 @@ class SEOMonitor:
             data_source=source,
             fetched_at=datetime.utcnow().isoformat() + "Z",
         )
+        if source == "live" and my_keywords:
+            self._persist_snapshot(check, my_keywords)
+        return check
+
+    # -------------------------------------------------------------------------
+    # SNAPSHOT persistence (tabella seo_monitoring) — auto-alimentazione quando
+    # il piano SEMrush è sospeso: live → snapshot storico → euristica statica.
+    # -------------------------------------------------------------------------
+    def _load_snapshot(self, domain: str) -> Optional[Dict]:
+        """Ultimo check salvato per il dominio. Usato quando SEMrush non risponde."""
+        from sqlalchemy import text
+        try:
+            row = self.db.execute(text(
+                "SELECT check_date, behavioral_expansion_pct, semantic_defense_pct, "
+                "cannibalization_score, total_tracked_keywords, keywords_top3, keywords_top10, "
+                "topical_authority_score, alert_level "
+                "FROM seo_monitoring WHERE domain = :d ORDER BY check_date DESC LIMIT 1"
+            ), {"d": domain}).fetchone()
+        except Exception as e:
+            logger.warning(f"seo_monitoring snapshot read failed for {domain}: {e}")
+            return None
+        if not row:
+            return None
+        return {
+            "check_date": row[0],
+            "behavioral_expansion_pct": float(row[1] or 0),
+            "semantic_defense_pct": float(row[2] or 0),
+            "cannibalization_score": float(row[3] or 0),
+            "total_tracked_keywords": int(row[4] or 0),
+            "keywords_top3": int(row[5] or 0),
+            "keywords_top10": int(row[6] or 0),
+            "topical_authority_score": float(row[7] or 0),
+            "alert_level": row[8] or "green",
+        }
+
+    def _persist_snapshot(self, check: "SEOHealthCheck", keywords: List[Dict]) -> None:
+        """Salva il check live in seo_monitoring (1 riga per dominio/giorno, upsert)."""
+        from sqlalchemy import text
+        import uuid
+        try:
+            positions = [int(k.get("position", 999) or 999) for k in keywords]
+            self.db.execute(text(
+                "DELETE FROM seo_monitoring WHERE domain = :d AND check_date = CURRENT_DATE"
+            ), {"d": check.domain})
+            self.db.execute(text(
+                "INSERT INTO seo_monitoring (id, check_date, domain, language, "
+                "behavioral_expansion_pct, semantic_defense_pct, cannibalization_score, "
+                "conflicting_keywords, canonical_suggestions, total_tracked_keywords, "
+                "keywords_top3, keywords_top10, topical_authority_score, "
+                "featured_snippets_won, featured_snippets_lost, alert_level) "
+                "VALUES (:id, CURRENT_DATE, :d, 'it', :bpct, :dpct, :cann, :ckw, :cs, "
+                ":total, :top3, :top10, :auth, 0, 0, :alert)"
+            ), {
+                "id": str(uuid.uuid4()), "d": check.domain,
+                "bpct": check.behavioral_expansion_pct, "dpct": check.semantic_defense_pct,
+                "cann": check.cannibalization_score,
+                "ckw": check.conflicting_keywords or [], "cs": [],
+                "total": check.keywords_in_rank,
+                "top3": sum(1 for p in positions if p <= 3),
+                "top10": sum(1 for p in positions if p <= 10),
+                "auth": check.topical_authority_score, "alert": check.alert_level,
+            })
+            self.db.commit()
+        except Exception as e:
+            logger.warning(f"seo_monitoring snapshot write failed for {check.domain}: {e}")
+            try:
+                self.db.rollback()
+            except Exception:
+                pass
 
     # -------------------------------------------------------------------------
     # COMPUTATION helpers (pure functions, no I/O)
