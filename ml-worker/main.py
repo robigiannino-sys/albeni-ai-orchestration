@@ -950,6 +950,56 @@ async def seo_health_check(
 # DASHBOARD METRICS
 # ===================================================================
 
+@app.get("/v1/dashboard/traffic")
+async def get_dashboard_traffic(hours: int = 24, db: DBSession = Depends(get_db)):
+    """
+    Traffico live per dominio (fonte: behavioral_signals).
+    Ritorna eventi nella finestra richiesta, eventi/visitatori 7g, ultimo evento
+    e serie oraria per grafici. Usato dal pannello "Traffico live" della Control Tower.
+    """
+    from sqlalchemy import text
+    try:
+        hours = max(1, min(int(hours), 168))
+        now = datetime.utcnow()
+        wcut = now - timedelta(hours=hours)
+        d7cut = now - timedelta(days=7)
+        rows = db.execute(text(
+            "SELECT domain, "
+            "COUNT(*) FILTER (WHERE created_at >= :wcut) AS events_window, "
+            "COUNT(*) AS events_7d, "
+            "COUNT(DISTINCT user_id) AS visitors_7d, "
+            "MAX(created_at) AS last_event "
+            "FROM behavioral_signals "
+            "WHERE created_at >= :d7cut AND domain IS NOT NULL AND domain <> '' "
+            "GROUP BY domain ORDER BY events_7d DESC"
+        ), {"wcut": wcut, "d7cut": d7cut}).fetchall()
+        hourly = db.execute(text(
+            "SELECT to_char(date_trunc('hour', created_at), 'YYYY-MM-DD\"T\"HH24:00:00') AS hour, "
+            "domain, COUNT(*) AS events "
+            "FROM behavioral_signals "
+            "WHERE created_at >= :wcut AND domain IS NOT NULL AND domain <> '' "
+            "GROUP BY 1, 2 ORDER BY 1"
+        ), {"wcut": wcut}).fetchall()
+        return {
+            "window_hours": hours,
+            "generated_at": now.isoformat(),
+            "domains": [
+                {
+                    "domain": r[0],
+                    "events_window": int(r[1] or 0),
+                    "events_7d": int(r[2] or 0),
+                    "visitors_7d": int(r[3] or 0),
+                    "last_event": r[4].isoformat() if r[4] else None,
+                }
+                for r in rows
+            ],
+            "hourly": [{"hour": r[0], "domain": r[1], "events": int(r[2])} for r in hourly],
+        }
+    except Exception as e:
+        logger.error(f"Dashboard traffic error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to aggregate traffic")
+
+
 @app.get("/v1/dashboard/metrics", response_model=DashboardMetrics)
 async def get_dashboard_metrics(db: DBSession = Depends(get_db)):
     """

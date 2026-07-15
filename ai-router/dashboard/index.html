@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Albeni 1905 — AI Control Tower</title>
+    <title>micron-è — AI Control Tower</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
@@ -286,7 +286,7 @@ function Sidebar({ page, setPage, health, pendingCount }) {
     return (
         <div className="sidebar">
             <div className="sidebar-brand">
-                <h1>Albeni 1905</h1>
+                <h1>micron-è</h1>
                 <div className="subtitle">AI Control Tower</div>
             </div>
             <div className="sidebar-nav">
@@ -372,6 +372,13 @@ function DashboardPage({ health, notionStats }) {
     const funnelChart = useRef(null);
 
     useEffect(() => { api('/v1/dashboard/metrics').then(setMetrics); }, []);
+    const [traffic, setTraffic] = useState(null);
+    useEffect(() => {
+        const load = () => api('/v1/dashboard/traffic?hours=24').then(setTraffic).catch(() => {});
+        load();
+        const t = setInterval(load, 60000);
+        return () => clearInterval(t);
+    }, []);
 
     useEffect(() => {
         // Fix 2026-05-06: usa metrics (visitatori) come fonte primaria; notionStats è fallback per contenuti.
@@ -426,14 +433,49 @@ function DashboardPage({ health, notionStats }) {
 
             {/* ── Behavioral System Status Banner ── */}
             <div style={{marginBottom:'20px',padding:'14px 18px',background:'linear-gradient(135deg,#0f2027,#1a2a3a)',border:'1px solid #1e3a5f',borderRadius:'10px',display:'flex',alignItems:'center',gap:'16px',flexWrap:'wrap'}}>
-                <div style={{fontWeight:700,fontSize:'13px',color:'#7dd3fc',letterSpacing:'0.05em'}}>⚡ SISTEMA ADATTIVO — 3 DOMINI ATTIVI</div>
+                <div style={{fontWeight:700,fontSize:'13px',color:'#7dd3fc',letterSpacing:'0.05em'}}>⚡ SISTEMA ADATTIVO — 4 DOMINI ATTIVI</div>
                 <div style={{display:'flex',gap:'10px',flexWrap:'wrap'}}>
                     <span style={{fontSize:'12px',padding:'3px 10px',borderRadius:'20px',background:'#14532d',color:'#4ade80',fontWeight:600}}>✓ worldofmerino.com (TOFU)</span>
                     <span style={{fontSize:'12px',padding:'3px 10px',borderRadius:'20px',background:'#713f12',color:'#fbbf24',fontWeight:600}}>✓ merinouniversity.com (MOFU)</span>
                     <span style={{fontSize:'12px',padding:'3px 10px',borderRadius:'20px',background:'#7f1d1d',color:'#f87171',fontWeight:600}}>✓ perfectmerinoshirt.com (BOFU + Klaviyo)</span>
-                    <span style={{fontSize:'12px',padding:'3px 10px',borderRadius:'20px',background:'#27272a',color:'#71717a',fontWeight:600}}>🔒 albeni1905.com (frontend pending)</span>
+                    <span style={{fontSize:'12px',padding:'3px 10px',borderRadius:'20px',background:'#1e3a5f',color:'#7dd3fc',fontWeight:600}}>✓ micron-e.com (BOFU Store + CS Bot)</span>
                 </div>
                 <div style={{marginLeft:'auto',fontSize:'11px',color:'#52525b'}}>IDS Engine · Cluster Detection · Content Personalization · Klaviyo Sync</div>
+            </div>
+
+            {/* ── Traffico live per dominio (fonte behavioral_signals via /v1/dashboard/traffic) ── */}
+            <div style={{marginBottom:'20px',padding:'16px 18px',background:'#18181b',border:'1px solid #27272a',borderRadius:'10px'}}>
+                <div style={{display:'flex',alignItems:'baseline',gap:'10px',marginBottom:'10px',flexWrap:'wrap'}}>
+                    <div style={{fontWeight:700,fontSize:'13px',color:'#e4e4e7'}}>📡 Traffico live per dominio</div>
+                    <div style={{fontSize:'11px',color:'#71717a'}}>eventi comportamentali reali · finestra 24h · auto-refresh 60s{traffic ? ` · aggiornato ${new Date(traffic.generated_at + 'Z').toLocaleTimeString('it-IT')}` : ''}</div>
+                </div>
+                {!traffic ? <div style={{fontSize:'12px',color:'#71717a'}}>Caricamento traffico…</div> : (
+                <table style={{width:'100%',borderCollapse:'collapse',fontSize:'12px'}}>
+                    <thead><tr style={{color:'#71717a',textAlign:'left'}}>
+                        <th style={{padding:'6px 8px',fontWeight:600}}>Dominio</th>
+                        <th style={{padding:'6px 8px',fontWeight:600}}>Eventi 24h</th>
+                        <th style={{padding:'6px 8px',fontWeight:600}}>Eventi 7g</th>
+                        <th style={{padding:'6px 8px',fontWeight:600}}>Visitatori 7g</th>
+                        <th style={{padding:'6px 8px',fontWeight:600}}>Ultimo evento</th>
+                        <th style={{padding:'6px 8px',fontWeight:600}}>Stato</th>
+                    </tr></thead>
+                    <tbody>
+                    {traffic.domains.length === 0 && <tr><td colSpan="6" style={{padding:'10px 8px',color:'#f87171'}}>Nessun evento negli ultimi 7 giorni — verificare tracker e ingestion (health Redis).</td></tr>}
+                    {traffic.domains.map(d => {
+                        const ageH = d.last_event ? (Date.now() - new Date(d.last_event + 'Z').getTime()) / 3.6e6 : Infinity;
+                        const col = ageH < 24 ? '#4ade80' : ageH < 72 ? '#fbbf24' : '#f87171';
+                        const lbl = !d.last_event ? '—' : ageH < 1 ? Math.max(1, Math.round(ageH * 60)) + ' min fa' : ageH < 48 ? Math.round(ageH) + ' h fa' : Math.round(ageH / 24) + ' g fa';
+                        return (<tr key={d.domain} style={{borderTop:'1px solid #27272a',color:'#a1a1aa'}}>
+                            <td style={{padding:'6px 8px',color:'#e4e4e7',fontWeight:600}}>{d.domain}</td>
+                            <td style={{padding:'6px 8px'}}>{d.events_window}</td>
+                            <td style={{padding:'6px 8px'}}>{d.events_7d}</td>
+                            <td style={{padding:'6px 8px'}}>{d.visitors_7d}</td>
+                            <td style={{padding:'6px 8px'}}>{lbl}</td>
+                            <td style={{padding:'6px 8px'}}><span title={ageH < 24 ? 'attivo nelle 24h' : ageH < 72 ? 'silenzio 24-72h' : 'nessun evento da 72h+'} style={{display:'inline-block',width:'8px',height:'8px',borderRadius:'50%',background:col,boxShadow:'0 0 5px ' + col}}></span></td>
+                        </tr>);
+                    })}
+                    </tbody>
+                </table>)}
             </div>
 
             <div className="cards-grid">
