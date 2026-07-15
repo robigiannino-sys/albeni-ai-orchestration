@@ -106,24 +106,89 @@ class SemrushDataLibrary:
         "previous position": "prev_position",
     }
 
+    # Storage: Postgres (tabella semrush_library_imports). Fino al 2026-07-15 era
+    # file-based in SEMRUSH_DATA_DIR: il filesystem del container Railway è
+    # effimero, quindi la libreria si svuotava a ogni redeploy. La directory
+    # resta solo per l'auto-migrazione di eventuali file legacy.
+    _table_ready = False
+
     def __init__(self):
-        os.makedirs(SEMRUSH_DATA_DIR, exist_ok=True)
         self._index = self._load_index()
 
-    def _index_path(self) -> str:
-        return os.path.join(SEMRUSH_DATA_DIR, "_index.json")
+    def _db(self):
+        from models.database import SessionLocal
+        return SessionLocal()
+
+    def _ensure_table(self, db) -> None:
+        if SemrushDataLibrary._table_ready:
+            return
+        from sqlalchemy import text
+        db.execute(text(
+            "CREATE TABLE IF NOT EXISTS semrush_library_imports ("
+            "id TEXT PRIMARY KEY, "
+            "record JSONB NOT NULL, "
+            "data JSONB NOT NULL, "
+            "imported_at TIMESTAMPTZ DEFAULT NOW())"
+        ))
+        db.commit()
+        SemrushDataLibrary._table_ready = True
 
     def _load_index(self) -> List[Dict]:
-        """Load the data library index."""
-        path = self._index_path()
-        if os.path.exists(path):
-            with open(path, "r") as f:
-                return json.load(f)
-        return []
+        """Load the data library index from Postgres (+ auto-migrate legacy files)."""
+        from sqlalchemy import text
+        try:
+            db = self._db()
+            try:
+                self._ensure_table(db)
+                rows = db.execute(text(
+                    "SELECT record FROM semrush_library_imports ORDER BY imported_at"
+                )).fetchall()
+                index = [r[0] for r in rows]
+                if not index:
+                    migrated = self._migrate_legacy_files(db)
+                    if migrated:
+                        index = migrated
+                return index
+            finally:
+                db.close()
+        except Exception as e:
+            logger.error(f"Semrush library: load index from DB failed: {e}")
+            return []
 
-    def _save_index(self):
-        with open(self._index_path(), "w") as f:
-            json.dump(self._index, f, indent=2, default=str)
+    def _migrate_legacy_files(self, db) -> List[Dict]:
+        """One-shot: importa in Postgres eventuali file della vecchia libreria file-based."""
+        from sqlalchemy import text
+        legacy_index = os.path.join(SEMRUSH_DATA_DIR, "_index.json")
+        if not os.path.exists(legacy_index):
+            return []
+        try:
+            with open(legacy_index, "r") as f:
+                old = json.load(f)
+        except Exception:
+            return []
+        migrated = []
+        for rec in old:
+            data_path = rec.get("data_path", "")
+            if not data_path or not os.path.exists(data_path):
+                continue
+            try:
+                with open(data_path, "r") as f:
+                    payload = json.load(f)
+                rec = {k: v for k, v in rec.items() if k != "data_path"}
+                db.execute(text(
+                    "INSERT INTO semrush_library_imports (id, record, data, imported_at) "
+                    "VALUES (:id, CAST(:rec AS jsonb), CAST(:data AS jsonb), :ts) "
+                    "ON CONFLICT (id) DO NOTHING"
+                ), {"id": rec["id"], "rec": json.dumps(rec, default=str),
+                    "data": json.dumps(payload.get("data", []), default=str),
+                    "ts": rec.get("imported_at")})
+                migrated.append(rec)
+            except Exception as e:
+                logger.warning(f"Semrush library: legacy migration failed for {rec.get('id')}: {e}")
+        if migrated:
+            db.commit()
+            logger.info(f"Semrush library: migrated {len(migrated)} legacy file imports to Postgres")
+        return migrated
 
     # ================================================================
     # IMPORT / PARSE
@@ -287,7 +352,6 @@ class SemrushDataLibrary:
         Returns the import record.
         """
         import_id = f"sr_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{len(self._index)}"
-        data_path = os.path.join(SEMRUSH_DATA_DIR, f"{import_id}.json")
 
         record = {
             "id": import_id,
@@ -297,7 +361,6 @@ class SemrushDataLibrary:
             "imported_at": datetime.utcnow().isoformat(),
             "metadata": metadata or {},
             "columns": list(rows[0].keys()) if rows else [],
-            "data_path": data_path,
         }
 
         # Extract summary stats
@@ -319,13 +382,22 @@ class SemrushDataLibrary:
                 )[:5],
             }
 
-        # Save data
-        with open(data_path, "w") as f:
-            json.dump({"record": record, "data": rows}, f, default=str)
+        # Save data (Postgres)
+        from sqlalchemy import text
+        db = self._db()
+        try:
+            self._ensure_table(db)
+            db.execute(text(
+                "INSERT INTO semrush_library_imports (id, record, data) "
+                "VALUES (:id, CAST(:rec AS jsonb), CAST(:data AS jsonb))"
+            ), {"id": import_id, "rec": json.dumps(record, default=str),
+                "data": json.dumps(rows, default=str)})
+            db.commit()
+        finally:
+            db.close()
 
-        # Update index
+        # Update in-memory index
         self._index.append(record)
-        self._save_index()
 
         logger.info(f"Stored Semrush import: {import_id} ({len(rows)} rows, type: {export_type})")
         return record
@@ -343,12 +415,18 @@ class SemrushDataLibrary:
 
     def get_import(self, import_id: str) -> Optional[Dict]:
         """Get a specific import by ID, including full data."""
-        for rec in self._index:
-            if rec["id"] == import_id:
-                if os.path.exists(rec["data_path"]):
-                    with open(rec["data_path"], "r") as f:
-                        return json.load(f)
-        return None
+        from sqlalchemy import text
+        db = self._db()
+        try:
+            self._ensure_table(db)
+            row = db.execute(text(
+                "SELECT record, data FROM semrush_library_imports WHERE id = :id"
+            ), {"id": import_id}).fetchone()
+            if not row:
+                return None
+            return {"record": row[0], "data": row[1]}
+        finally:
+            db.close()
 
     def get_import_data(self, import_id: str) -> List[Dict]:
         """Get just the data rows for an import."""
@@ -357,14 +435,20 @@ class SemrushDataLibrary:
 
     def delete_import(self, import_id: str) -> bool:
         """Delete an import and its data."""
-        for i, rec in enumerate(self._index):
-            if rec["id"] == import_id:
-                if os.path.exists(rec["data_path"]):
-                    os.remove(rec["data_path"])
-                self._index.pop(i)
-                self._save_index()
-                return True
-        return False
+        from sqlalchemy import text
+        db = self._db()
+        try:
+            self._ensure_table(db)
+            res = db.execute(text(
+                "DELETE FROM semrush_library_imports WHERE id = :id"
+            ), {"id": import_id})
+            db.commit()
+            deleted = bool(res.rowcount)
+        finally:
+            db.close()
+        if deleted:
+            self._index = [r for r in self._index if r["id"] != import_id]
+        return deleted
 
     def search_keywords(self, query: str, import_id: Optional[str] = None) -> List[Dict]:
         """
