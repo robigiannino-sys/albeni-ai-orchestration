@@ -1,4 +1,4 @@
-# AI Orchestration Layer - Albeni 1905
+# AI Orchestration Layer - micron-è
 
 Il "cervello" centrale dell'ecosistema digitale Invisible Luxury, che coordina i quattro domini attraverso una logica basata sull'intento dell'utente.
 
@@ -95,13 +95,13 @@ open http://localhost:8000/dashboard
 | worldofmerino.com | TOFU - Lifestyle & Discovery | 0-30 |
 | merinouniversity.com | MOFU - Technical Authority | 31-65 |
 | perfectmerinoshirt.com | BOFU - Product (Tech clusters) | >65 |
-| albeni1905.com | BOFU - Brand Store (Heritage clusters) | >65 |
+| micron-e.com | BOFU - Brand Store (Heritage clusters) | >65 |
 
 ## 5 Cluster Comportamentali
 
 1. **Business Professional** - Performance sotto blazer, viaggi, efficienza
 2. **Heritage Mature** - Investimento, qualita permanente, tradizione
-3. **Conscious Premium** - Sostenibilita, etica, certificazione ZQ
+3. **Conscious Premium** - Sostenibilita, etica, certificazione RWS
 4. **Modern Minimalist** - Design pulito, capsule wardrobe, essenziale
 5. **Italian Authentic** - Made in Italy, comfort termico, artigianalita
 

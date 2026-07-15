@@ -49,7 +49,7 @@ app.use(cors({
         process.env.DOMAIN_TOFU || 'https://worldofmerino.com',
         process.env.DOMAIN_MOFU || 'https://merinouniversity.com',
         process.env.DOMAIN_BOFU_TECH || 'https://perfectmerinoshirt.com',
-        process.env.DOMAIN_BOFU_HERITAGE || 'https://albeni1905.com',
+        process.env.DOMAIN_BOFU_HERITAGE || 'https://micron-e.com',
         'http://localhost:3000',
         'http://localhost:8000',
         'http://localhost:8080',
