@@ -424,6 +424,12 @@ Rispondi SOLO con un JSON valido:
         # Check weights — only 150g or 190g
         weight_pattern = r'(\d+)\s*g(?:ramm|/)'
         weight_matches = re.findall(weight_pattern, content_str)
+        # La coppia "150/190" compare nelle CTA senza unità di misura, quindi sfugge
+        # al pattern con la 'g': il QA AI l'ha intercettata, il check a regole no.
+        if "150/190" in content_str or "150 / 190" in content_str:
+            details["warnings"].append(
+                "Coppia grammature '150/190' obsoleta: l'Adaptive si dichiara 195 g/m²")
+
         for match in weight_matches:
             if match == "190":
                 details["warnings"].append(
