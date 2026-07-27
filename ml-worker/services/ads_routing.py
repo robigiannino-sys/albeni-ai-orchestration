@@ -1,6 +1,6 @@
 """
 Dynamic ADV Routing — Intelligent Landing & Cross-Domain Shift
-Albeni 1905 — Invisible Luxury Ecosystem
+micron-è — Invisible Luxury Ecosystem
 
 Decide dove mandare l'utente in base a:
 1. Source (Google Ads vs Meta Ads vs Organic)
@@ -11,7 +11,7 @@ Decide dove mandare l'utente in base a:
 
 Regole:
 - Search Intent "informative" → worldofmerino.com (TOFU)
-- Search Intent "transactional" → albeni1905.com o perfectmerinoshirt.com (BOFU)
+- Search Intent "transactional" → micron-e.com o perfectmerinoshirt.com (BOFU)
 - Social Intent "visual" → perfectmerinoshirt.com (BOFU mobile-fast)
 - IDS alto su TOFU → shift a BOFU con messaggio personalizzato
 """
@@ -43,15 +43,15 @@ INFORMATIONAL_KEYWORDS = [
     "merino estate", "merino summer", "merino sommer",
 ]
 
-# Transactional keywords → BOFU (albeni1905.com / perfectmerinoshirt.com)
+# Transactional keywords → BOFU (micron-e.com / perfectmerinoshirt.com)
 TRANSACTIONAL_KEYWORDS = [
     "t-shirt merino", "merino t-shirt", "merino tshirt",
     "polo merino", "merino polo",
     "comprare merino", "buy merino", "merino kaufen",
     "t-shirt lusso", "luxury t-shirt", "luxus t-shirt",
     "merino prezzo", "merino price", "merino preis",
-    "albeni", "albeni 1905",
-    "reda merino", "perfect merino shirt",
+    "micron-e", "micron è", "microne",
+    "perfect merino shirt",
     "cut and sewn", "cut & sewn",
     "invisible luxury",
     "merino uomo elegante", "merino men elegant",
@@ -75,16 +75,16 @@ CONSIDERATION_KEYWORDS = [
 
 SHIFT_MESSAGES = {
     "tofu_to_bofu": {
-        "it": "Ora che conosci la fibra, scopri come Albeni la trasforma in un capo che indosserai ogni giorno.",
-        "en": "Now that you know the fiber, discover how Albeni transforms it into a garment you'll wear every day.",
-        "de": "Jetzt, wo Sie die Faser kennen, entdecken Sie, wie Albeni sie in ein Kleidungsstück verwandelt, das Sie jeden Tag tragen werden.",
-        "fr": "Maintenant que vous connaissez la fibre, découvrez comment Albeni la transforme en un vêtement que vous porterez chaque jour.",
+        "it": "Ora che conosci la fibra, scopri come diventa un capo che indosserai ogni giorno.",
+        "en": "Now that you know the fiber, see how it becomes a garment you'll wear every day.",
+        "de": "Jetzt, wo Sie die Faser kennen, entdecken Sie, wie daraus ein Kleidungsstück wird, das Sie jeden Tag tragen.",
+        "fr": "Maintenant que vous connaissez la fibre, découvrez comment elle devient un vêtement que vous porterez chaque jour.",
     },
     "mofu_to_bofu": {
-        "it": "Hai confrontato le alternative. Albeni 1905 + Reda 1865 = 270+ anni di eccellenza. Pronto a toccare con mano?",
-        "en": "You've compared the alternatives. Albeni 1905 + Reda 1865 = 270+ years of excellence. Ready to experience it?",
-        "de": "Sie haben die Alternativen verglichen. Albeni 1905 + Reda 1865 = 270+ Jahre Exzellenz. Bereit, es zu erleben?",
-        "fr": "Vous avez comparé les alternatives. Albeni 1905 + Reda 1865 = 270+ ans d'excellence. Prêt à découvrir ?",
+        "it": "Hai confrontato le alternative. Merino 17,5µ, Cut & Sewn, Made in Italy. Pronto a toccare con mano?",
+        "en": "You've compared the alternatives. 17.5µ merino, Cut & Sewn, Made in Italy. Ready to feel it?",
+        "de": "Sie haben die Alternativen verglichen. 17,5µ Merino, Cut & Sewn, Made in Italy. Bereit, es zu erleben?",
+        "fr": "Vous avez comparé les alternatives. Mérinos 17,5µ, Cut & Sewn, Made in Italy. Prêt à découvrir ?",
     },
     "social_mobile": {
         "it": "La T-shirt che non si stira, non prende odori, e dura anni. Scoprila ora.",
@@ -123,9 +123,9 @@ CLUSTER_HEADLINES = {
         "de": "Ein Kleidungsstück. Jeden Tag. Ohne nachzudenken. Die Essentials beginnen hier.",
     },
     "italian_authentic": {
-        "it": "Reda 1865 × Albeni 1905. Due secoli di artigianato italiano nel tuo quotidiano.",
-        "en": "Reda 1865 × Albeni 1905. Two centuries of Italian craftsmanship in your everyday.",
-        "de": "Reda 1865 × Albeni 1905. Zwei Jahrhunderte italienisches Handwerk im Alltag.",
+        "it": "micron-è. Artigianato italiano nel tuo quotidiano.",
+        "en": "micron-è. Italian craftsmanship in your everyday.",
+        "de": "micron-è. Italienisches Handwerk im Alltag.",
     },
 }
 
@@ -222,7 +222,7 @@ class ADVRouter:
                 })
             else:  # transactional
                 result.update({
-                    "target_domain": "albeni1905.com",
+                    "target_domain": "micron-e.com",
                     "target_url": settings.DOMAIN_BOFU_HERITAGE,
                     "layout": "product_hero",
                     "routing_reason": f"Search intent transactional: '{keyword}'",
@@ -251,7 +251,7 @@ class ADVRouter:
         # ---- ORGANIC / EMAIL / DIRECT ----
         else:
             result.update({
-                "target_domain": "albeni1905.com",
+                "target_domain": "micron-e.com",
                 "target_url": settings.DOMAIN_BOFU_HERITAGE,
                 "layout": "default",
                 "routing_reason": f"Non-paid traffic from {source}",
@@ -262,14 +262,14 @@ class ADVRouter:
             # High intent user on TOFU/MOFU → shift to BOFU
             if current_stage == "TOFU":
                 result["shift_target"] = {
-                    "domain": "albeni1905.com",
+                    "domain": "micron-e.com",
                     "url": settings.DOMAIN_BOFU_HERITAGE,
                     "message": SHIFT_MESSAGES["tofu_to_bofu"].get(language, SHIFT_MESSAGES["tofu_to_bofu"]["en"]),
                     "reason": f"IDS {ids_score} > {settings.ADV_IDS_HIGH_QUALITY_THRESHOLD} on TOFU → shift to BOFU",
                 }
             elif current_stage == "MOFU":
                 result["shift_target"] = {
-                    "domain": "albeni1905.com",
+                    "domain": "micron-e.com",
                     "url": settings.DOMAIN_BOFU_HERITAGE,
                     "message": SHIFT_MESSAGES["mofu_to_bofu"].get(language, SHIFT_MESSAGES["mofu_to_bofu"]["en"]),
                     "reason": f"IDS {ids_score} > {settings.ADV_IDS_HIGH_QUALITY_THRESHOLD} on MOFU → shift to BOFU",

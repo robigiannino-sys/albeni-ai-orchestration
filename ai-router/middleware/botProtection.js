@@ -50,8 +50,8 @@ function botProtection(req, res, next) {
         console.warn(`[BOT_BLOCK] Blocked AI bot: ${userAgent} from ${ip}`);
         return res.status(402).json({
             error: 'Payment Required',
-            message: 'Unauthorized AI training/scraping detected. Please contact licensing@albeni1905.com for data access agreements.',
-            policy: 'https://albeni1905.com/ai-data-policy',
+            message: 'Unauthorized AI training/scraping detected. Please contact info@micron-e.com for data access agreements.',
+            policy: 'https://micron-e.com/ai-data-policy',
             bot_detected: userAgent.substring(0, 100)
         });
     }
@@ -84,7 +84,7 @@ function botProtection(req, res, next) {
         console.warn(`[RATE_BLOCK] Suspected scraper: ${ip} (${recent.length} req/min)`);
         return res.status(429).json({
             error: 'Too Many Requests',
-            message: 'Request rate exceeds acceptable limits. If you are a legitimate service, please contact api@albeni1905.com.'
+            message: 'Request rate exceeds acceptable limits. If you are a legitimate service, please contact info@micron-e.com.'
         });
     }
 

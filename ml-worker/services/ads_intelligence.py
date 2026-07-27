@@ -1,6 +1,6 @@
 """
 ADV Intelligence Layer — Signal Feedback Loop
-Albeni 1905 — Invisible Luxury Ecosystem
+micron-è — Invisible Luxury Ecosystem
 
 Cattura i segnali ADV (UTM, gclid, fbclid) e orchestra:
 1. UTM Sensor: decodifica la provenienza dell'utente (Google/Meta/Organic)
@@ -67,12 +67,12 @@ class UTMSensor:
         "retargeting": "retargeting",
     }
 
-    # Albeni domain → funnel stage
+    # Dominio → funnel stage
     DOMAIN_STAGE = {
         "worldofmerino.com": "TOFU",
         "merinouniversity.com": "MOFU",
         "perfectmerinoshirt.com": "BOFU",
-        "albeni1905.com": "BOFU_HERITAGE",
+        "micron-e.com": "BOFU_STORE",
     }
 
     @staticmethod
@@ -403,7 +403,7 @@ class SignalFeedbackLoop:
 
 class CrossDomainAttribution:
     """
-    Tracks user journeys across the 4 Albeni domains.
+    Tracks user journeys across the 4 ecosystem domains.
     Maps TOFU→MOFU→BOFU progression with ADV source attribution.
     """
 

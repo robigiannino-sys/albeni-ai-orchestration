@@ -31,7 +31,7 @@ KLAVIYO_API_BASE = "https://a.klaviyo.com/api"
 FLOW_MAPPING = {
     "TOFU": {
         "flow_name": "Welcome Series - Educational",
-        "description": "Storia di Reda e Albeni, introduzione al merino",
+        "description": "Introduzione alla fibra merino e alla filiera",
         "trigger_metric": "TOFU_Entry"
     },
     "MOFU": {

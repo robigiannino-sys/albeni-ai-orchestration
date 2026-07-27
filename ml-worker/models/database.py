@@ -347,7 +347,7 @@ class GA4SyncLog(Base):
 class SemanticDefenseSnapshot(Base):
     """
     Daily snapshot delle 4 metriche del pannello Semantic Defense (cluster C6).
-    Step GAP-F (2026-05-14). C6 è il "moat" competitivo Albeni: 25% budget +
+    Step GAP-F (2026-05-14). C6 è il "moat" competitivo del brand: 25% budget +
     36% contenuti pianificati. 3 cornerstone su MU (Cut&Sew, Super 120's, 17-Micron).
 
     Aggrega:

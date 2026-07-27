@@ -1,6 +1,6 @@
 """
 Semrush Specialist Agent - AI Orchestration Layer
-Albeni 1905 - Invisible Luxury Ecosystem
+micron-è — Invisible Luxury Ecosystem
 
 Connects to Semrush API to acquire and analyze:
 - Domain Analytics (organic + paid traffic, rankings)
@@ -8,7 +8,7 @@ Connects to Semrush API to acquire and analyze:
 - Paid/ADV keyword data and competitor ad copy
 - Competitor analysis (Smartwool, Icebreaker, Allbirds, Asket, Unbound Merino)
 - Backlink profile overview
-- Keyword gap analysis between Albeni domains and competitors
+- Keyword gap analysis between our domains and competitors
 
 Supports the 85/15 SEO balance:
   85% behavioral cluster expansion | 15% semantic defense
@@ -29,19 +29,19 @@ settings = get_settings()
 
 class SemrushAgent:
     """
-    Semrush Specialist Agent for the Albeni 1905 AI Orchestration Layer.
+    Semrush Specialist Agent for the micron-è AI Orchestration Layer.
     Acquires and analyzes SEO + Paid data from Semrush API.
     """
 
     API_BASE = "https://api.semrush.com"
     ANALYTICS_BASE = "https://api.semrush.com/analytics/v1"
 
-    # Albeni 1905 ecosystem domains
+    # Domini dell'ecosistema micron-è
     DOMAINS = {
         "tofu": "worldofmerino.com",
         "mofu": "merinouniversity.com",
         "bofu_tech": "perfectmerinoshirt.com",
-        "bofu_heritage": "albeni1905.com",
+        "bofu_store": "micron-e.com",
     }
 
     # Target markets (Semrush database codes)
@@ -73,8 +73,8 @@ class SemrushAgent:
     ]
 
     SEMANTIC_DEFENSE_KEYWORDS = [
-        "albeni 1905", "albeni merino", "reda 1865",
-        "cut & sewn merino", "invisible luxury",
+        "micron-e", "micron è", "invisible luxury",
+        "cut & sewn merino", "merino italiano",
         "perfect merino shirt", "world of merino",
     ]
 
@@ -229,7 +229,7 @@ class SemrushAgent:
             return {"domain": domain, "database": database, "error": str(e)}
 
     async def get_all_domains_overview(self, database: str = "it") -> Dict[str, Any]:
-        """Get overview for all 4 Albeni domains in a specific market."""
+        """Get overview for all 4 ecosystem domains in a specific market."""
         results = {}
         for funnel, domain in self.DOMAINS.items():
             results[funnel] = await self.get_domain_overview(domain, database)
@@ -381,7 +381,7 @@ class SemrushAgent:
 
     async def benchmark_vs_competitors(self, database: str = "it") -> Dict[str, Any]:
         """
-        Benchmark all 4 Albeni domains against known competitors.
+        Benchmark all 4 ecosystem domains against known competitors.
         Compares organic traffic, keywords, and estimated traffic cost.
         """
         if not self._is_configured():
@@ -395,15 +395,15 @@ class SemrushAgent:
             results[domain] = overview
 
         # Classify into our domains vs competitors
-        albeni_data = {k: results[v] for k, v in self.DOMAINS.items()}
+        ecosystem_data = {k: results[v] for k, v in self.DOMAINS.items()}
         competitor_data = {d: results[d] for d in self.COMPETITORS}
 
         # Calculate totals
-        albeni_total_traffic = sum(
-            d.get("organic_traffic", 0) for d in albeni_data.values()
+        ecosystem_total_traffic = sum(
+            d.get("organic_traffic", 0) for d in ecosystem_data.values()
         )
-        albeni_total_keywords = sum(
-            d.get("organic_keywords", 0) for d in albeni_data.values()
+        ecosystem_total_keywords = sum(
+            d.get("organic_keywords", 0) for d in ecosystem_data.values()
         )
         competitor_avg_traffic = (
             sum(d.get("organic_traffic", 0) for d in competitor_data.values())
@@ -412,13 +412,13 @@ class SemrushAgent:
 
         return {
             "database": database,
-            "albeni_ecosystem": albeni_data,
+            "ecosystem": ecosystem_data,
             "competitors": competitor_data,
             "summary": {
-                "albeni_total_organic_traffic": albeni_total_traffic,
-                "albeni_total_organic_keywords": albeni_total_keywords,
+                "ecosystem_total_organic_traffic": ecosystem_total_traffic,
+                "ecosystem_total_organic_keywords": ecosystem_total_keywords,
                 "competitor_avg_organic_traffic": round(competitor_avg_traffic),
-                "traffic_gap": round(competitor_avg_traffic - albeni_total_traffic),
+                "traffic_gap": round(competitor_avg_traffic - ecosystem_total_traffic),
             },
             "fetched_at": datetime.utcnow().isoformat(),
         }
@@ -554,7 +554,7 @@ class SemrushAgent:
 
     async def analyze_seo_balance(self, database: str = "it") -> Dict[str, Any]:
         """
-        Analyze the 85/15 SEO balance across all Albeni domains.
+        Analyze the 85/15 SEO balance across all ecosystem domains.
         85% = cluster expansion keywords (TOFU/MOFU content)
         15% = semantic defense keywords (brand terms)
 
@@ -643,7 +643,7 @@ class SemrushAgent:
 
         if defense_pct < 10:
             recs.append(
-                "Brand defense is weak. Ensure 'Albeni 1905', 'Reda 1865', "
+                "Brand defense is weak. Ensure 'micron-è', 'Invisible Luxury' "
                 "and 'Cut & Sewn' keywords are ranking on page 1."
             )
 
@@ -669,7 +669,7 @@ class SemrushAgent:
 
     async def full_seo_audit(self, database: str = "it") -> Dict[str, Any]:
         """
-        Run a comprehensive SEO audit across the Albeni ecosystem.
+        Run a comprehensive SEO audit across the micron-è ecosystem.
         Combines domain overview, keywords, competitors, backlinks, and balance.
         """
         if not self._is_configured():
@@ -684,7 +684,7 @@ class SemrushAgent:
             "seo_balance": None,
         }
 
-        # 1. Domain overviews + top keywords for each Albeni domain
+        # 1. Domain overviews + top keywords for each ecosystem domain
         for funnel, domain in self.DOMAINS.items():
             overview = await self.get_domain_overview(domain, database)
             organic_kws = await self.get_organic_keywords(domain, database, limit=20)
@@ -714,20 +714,20 @@ class SemrushAgent:
 
     async def get_paid_intelligence(self, database: str = "it") -> Dict[str, Any]:
         """
-        Paid advertising intelligence across Albeni domains and competitors.
+        Paid advertising intelligence across our domains and competitors.
         Shows ad spend, ad copy, keyword overlap.
         """
         if not self._is_configured():
             return {"error": "Semrush API key not configured"}
 
-        albeni_paid = {}
+        ecosystem_paid = {}
         competitor_paid = {}
 
-        # Albeni paid data
+        # Paid data dei nostri domini
         for funnel, domain in self.DOMAINS.items():
             overview = await self.get_domain_overview(domain, database)
             paid_kws = await self.get_paid_keywords(domain, database, limit=20)
-            albeni_paid[funnel] = {
+            ecosystem_paid[funnel] = {
                 "domain": domain,
                 "paid_keywords": overview.get("paid_keywords", 0),
                 "paid_traffic": overview.get("paid_traffic", 0),
@@ -747,7 +747,7 @@ class SemrushAgent:
             }
 
         # Calculate ADV gap
-        albeni_total_cost = sum(d["paid_cost"] for d in albeni_paid.values())
+        ecosystem_total_cost = sum(d["paid_cost"] for d in ecosystem_paid.values())
         competitor_avg_cost = (
             sum(d["paid_cost"] for d in competitor_paid.values())
             / max(1, len(competitor_paid))
@@ -755,12 +755,12 @@ class SemrushAgent:
 
         return {
             "database": database,
-            "albeni_paid": albeni_paid,
+            "ecosystem_paid": ecosystem_paid,
             "competitor_paid": competitor_paid,
             "summary": {
-                "albeni_total_adv_cost": round(albeni_total_cost, 2),
+                "ecosystem_total_adv_cost": round(ecosystem_total_cost, 2),
                 "competitor_avg_adv_cost": round(competitor_avg_cost, 2),
-                "adv_gap": round(competitor_avg_cost - albeni_total_cost, 2),
+                "adv_gap": round(competitor_avg_cost - ecosystem_total_cost, 2),
             },
             "fetched_at": datetime.utcnow().isoformat(),
         }
@@ -773,11 +773,11 @@ class SemrushAgent:
         self,
         database: str = "it",
         competitor: str = "smartwool.com",
-        albeni_domain: str = "albeni1905.com",
+        our_domain: str = "micron-e.com",
     ) -> Dict[str, Any]:
         """
-        Find keywords where a competitor ranks but the given Albeni domain doesn't.
-        Uses domain_domains comparison. Default Albeni side = albeni1905.com but any
+        Find keywords where a competitor ranks but the given domain doesn't.
+        Uses domain_domains comparison. Default side = micron-e.com but any
         domain in the ecosystem can be passed (worldofmerino, merinouniversity, pms).
         """
         if not self._is_configured():
@@ -786,12 +786,12 @@ class SemrushAgent:
         try:
             data = await self._request({
                 "type": "domain_domains",
-                "domains": f"{albeni_domain}|or|{competitor}|or",
+                "domains": f"{our_domain}|or|{competitor}|or",
                 "database": database,
                 "display_limit": "50",
                 "export_columns": "Ph,Nq,Cp,Co,Kd,P0,P1",
                 "display_sort": "nq_desc",
-                "display_filter": "+|Po0|Eq|0",  # Where Albeni domain has no ranking
+                "display_filter": "+|Po0|Eq|0",  # Where our domain has no ranking
             })
 
             gaps = []
@@ -802,12 +802,12 @@ class SemrushAgent:
                     "cpc": float(row.get("Cp", 0)),
                     "competition": float(row.get("Co", 0)),
                     "keyword_difficulty": int(row.get("Kd", 0)),
-                    "albeni_position": row.get("P0", "-"),
+                    "our_position": row.get("P0", "-"),
                     "competitor_position": row.get("P1", "-"),
                 })
 
             return {
-                "albeni_domain": albeni_domain,
+                "our_domain": our_domain,
                 "competitor": competitor,
                 "database": database,
                 "total_gaps": len(gaps),
@@ -815,7 +815,7 @@ class SemrushAgent:
             }
         except Exception as e:
             logger.error(f"Keyword gap failed vs {competitor}: {e}")
-            return {"competitor": competitor, "albeni_domain": albeni_domain, "error": str(e)}
+            return {"competitor": competitor, "our_domain": our_domain, "error": str(e)}
 
     # =================================================================
     # POSITION TRACKING HELPERS
@@ -825,7 +825,7 @@ class SemrushAgent:
         self, keywords: List[str], database: str = "it"
     ) -> Dict[str, Any]:
         """
-        Check where all 4 Albeni domains rank for specific keywords.
+        Check where all 4 ecosystem domains rank for specific keywords.
         Useful for tracking target keywords from the Content Pipeline.
         """
         if not self._is_configured():

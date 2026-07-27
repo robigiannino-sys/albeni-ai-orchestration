@@ -39,7 +39,7 @@ CLUSTER_SIGNALS = {
         "domains_weight": {
             "perfectmerinoshirt.com": 0.4,
             "merinouniversity.com": 0.3,
-            "albeni1905.com": 0.2,
+            "micron-e.com": 0.2,
             "worldofmerino.com": 0.1
         },
         "preferred_weight": "150g",
@@ -53,7 +53,7 @@ CLUSTER_SIGNALS = {
             "lusso", "luxury", "classico", "classic", "permanente"
         ],
         "domains_weight": {
-            "albeni1905.com": 0.4,
+            "micron-e.com": 0.4,
             "worldofmerino.com": 0.3,
             "merinouniversity.com": 0.2,
             "perfectmerinoshirt.com": 0.1
@@ -71,7 +71,7 @@ CLUSTER_SIGNALS = {
         "domains_weight": {
             "worldofmerino.com": 0.35,
             "merinouniversity.com": 0.35,
-            "albeni1905.com": 0.2,
+            "micron-e.com": 0.2,
             "perfectmerinoshirt.com": 0.1
         },
         "preferred_weight": "150g",
@@ -87,7 +87,7 @@ CLUSTER_SIGNALS = {
         "domains_weight": {
             "perfectmerinoshirt.com": 0.35,
             "worldofmerino.com": 0.25,
-            "albeni1905.com": 0.25,
+            "micron-e.com": 0.25,
             "merinouniversity.com": 0.15
         },
         "preferred_weight": "150g",
@@ -102,7 +102,7 @@ CLUSTER_SIGNALS = {
         ],
         "domains_weight": {
             "worldofmerino.com": 0.3,
-            "albeni1905.com": 0.3,
+            "micron-e.com": 0.3,
             "merinouniversity.com": 0.25,
             "perfectmerinoshirt.com": 0.15
         },

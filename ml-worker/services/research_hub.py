@@ -1,6 +1,6 @@
 """
 Research Data Hub - AI Orchestration Layer
-Albeni 1905 - Invisible Luxury Ecosystem
+micron-è — Invisible Luxury Ecosystem
 
 Universal data import, storage and query engine.
 Accepts ANY data file to power AI agents with research intelligence.
@@ -40,7 +40,7 @@ DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "res
 
 class ResearchHub:
     """
-    Universal Research Data Hub for the Albeni 1905 AI Orchestration Layer.
+    Universal Research Data Hub for the micron-è AI Orchestration Layer.
     Imports, indexes, and serves data from any source.
     """
 

@@ -1,7 +1,7 @@
 /**
  * ============================================================
  * Content AI Layer — Generazione Prioritizzata
- * Albeni 1905 — AI Orchestration Layer
+ * micron-è 1905 — AI Orchestration Layer
  * ============================================================
  *
  * PURPOSE:

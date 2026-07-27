@@ -1,6 +1,6 @@
 """
 Visual Brief Generator — Phase 6 del Merino News Scanner
-Genera immagini editoriali per il brief quotidiano Albeni 1905
+Genera immagini editoriali per il brief quotidiano micron-è
 usando Google Imagen 4 via Gemini API.
 """
 import json

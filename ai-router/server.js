@@ -1,6 +1,6 @@
 /**
  * AI Router - Node.js Express Server
- * Albeni 1905 - AI Orchestration Layer
+ * micron-è — AI Orchestration Layer
  *
  * The "traffic controller" of the ecosystem.
  * Manages cross-domain routing at <120ms latency using Redis cache.

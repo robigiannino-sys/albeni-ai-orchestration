@@ -1,7 +1,7 @@
 /**
  * ============================================================
  * Index-Aware Cross-Domain Router
- * Albeni 1905 â AI Orchestration Layer
+ * micron-è 1905 â AI Orchestration Layer
  * ============================================================
  *
  * PURPOSE:
@@ -259,7 +259,7 @@ function detectSite(url) {
   if (url.includes('merinouniversity')) return 'mu';
   if (url.includes('worldofmerino'))    return 'wom';
   if (url.includes('perfectmerino'))    return 'pms';
-  if (url.includes('albeni1905'))       return 'albeni';
+  if (url.includes('micron-e'))         return 'store';
   return null;
 }
 

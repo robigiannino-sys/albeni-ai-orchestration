@@ -1,6 +1,6 @@
 """
 Data Hub Context Provider — AI Orchestration Layer
-Albeni 1905 — Invisible Luxury Ecosystem
+micron-è — Invisible Luxury Ecosystem
 
 Middleware that connects Data Hub knowledge to all AI agents.
 Every agent calls get_context() before executing, receiving
@@ -40,7 +40,7 @@ CONTEXT_CATEGORIES = {
     "tone_of_voice": {
         "label": "Tone of Voice",
         "icon": "🎨",
-        "description": "Linee guida sullo stile comunicativo Albeni 1905. Definisce voce, tono, registro e personalità del brand.",
+        "description": "Linee guida sullo stile comunicativo micron-è. Definisce voce, tono, registro e personalità del brand.",
         "agents": ["content_generator", "content_validator", "email_copy", "blog_draft", "landing_copy"],
     },
     "seo_guidelines": {
@@ -52,7 +52,7 @@ CONTEXT_CATEGORIES = {
     "glossary": {
         "label": "Glossario Tecnico",
         "icon": "📖",
-        "description": "Terminologia tecnica Reda/Albeni: fibra merino, processi produttivi, certificazioni, naming prodotti.",
+        "description": "Terminologia tecnica micron-è: fibra merino, processi produttivi, certificazioni, naming prodotti.",
         "agents": ["content_generator", "content_validator", "translation_layer", "mt_validator"],
     },
     "competitor_data": {
@@ -662,7 +662,7 @@ class DataHubContextProvider:
         "albeni-seo-agent/shared-resources/glossario-reda-albeni.json": {
             "tags": ["glossary", "product_info"],
             "priority": 10,
-            "label": "📖 Glossario Tecnico Reda/Albeni",
+            "label": "📖 Glossario Tecnico micron-è",
         },
         "albeni-seo-agent/shared-resources/keyword-matrix.csv": {
             "tags": ["seo_guidelines"],
@@ -723,7 +723,7 @@ class DataHubContextProvider:
 
     def sync_skills(self, skills_base_path: str = "/app/skills-data") -> Dict:
         """
-        Import all Albeni skill files into the Data Hub and auto-tag them.
+        Import all ecosystem skill files into the Data Hub and auto-tag them.
         This makes skill knowledge available to all agents via the Context Provider.
 
         Args:

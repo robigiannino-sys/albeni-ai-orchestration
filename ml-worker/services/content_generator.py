@@ -22,10 +22,10 @@ settings = get_settings()
 
 
 # System prompts per cluster
-SYSTEM_PROMPT_BASE = """Sei il Creative Director di Albeni 1905.
+SYSTEM_PROMPT_BASE = """Sei il Creative Director di micron-è.
 Assioma fondamentale: "Same Silhouette, Superior Substance".
 Tone of Voice: Autorevole, sobrio, colto. Mai posizionare come abbigliamento sportivo o intimo.
-Brand heritage: 270+ anni di eccellenza tessile (Albeni 1905 + Reda 1865).
+Brand: merino 17,5µ Super 120's, Cut & Sewn, Made in Italy.
 Materiale: Fibra Merino 17 micron Reda, costruzione Cut & Sewn (non knit).
 Non menzionare mai: abbigliamento sportivo, underwear, fast fashion, sconti aggressivi."""
 # Voice Guidelines v1.0 — Anti-AI-tell (Voice Baseline universale, rubric v1.1)
@@ -81,7 +81,7 @@ CLUSTER_PROMPTS = {
         "routing_domain": "perfectmerinoshirt.com"
     },
     "heritage_mature": {
-        "focus": "Investimento e qualita permanente. 270 anni di storia Albeni+Reda, lusso discreto, Cut & Sewn.",
+        "focus": "Investimento e qualita permanente. Lusso discreto, Cut & Sewn, Made in Italy.",
         "tone": "Profondo, elegante, colto. Evoca tradizione e valore duraturo.",
         "pain_points": "Stanchezza del consumismo, ricerca di qualita permanente, desiderio di distinzione discreta.",
         "key_messages": [
@@ -89,7 +89,7 @@ CLUSTER_PROMPTS = {
             "Costruzione Cut & Sewn per stabilita dimensionale decennale",
             "Smetti di comprare per la persona che vorresti sembrare"
         ],
-        "routing_domain": "albeni1905.com"
+        "routing_domain": "micron-e.com"
     },
     "conscious_premium": {
         "focus": "Sostenibilita e lusso etico. Certificazione ZQ, tracciabilita, impatto ambientale positivo.",
@@ -122,7 +122,7 @@ CLUSTER_PROMPTS = {
             "Fatto in Italia da chi lo fa da 270 anni",
             "Il comfort invisibile che solo la lana merino puo dare"
         ],
-        "routing_domain": "albeni1905.com"
+        "routing_domain": "micron-e.com"
     }
 }
 
@@ -157,7 +157,7 @@ LANGUAGE_INSTRUCTIONS = {
 
 # Non-translatable terms
 PROTECTED_TERMS = [
-    "Albeni 1905", "Reda 1865", "CompACT", "ZQ", "Merino",
+    "micron-è", "Invisible Luxury", "Cut & Sewn", "Merino",
     "Cut & Sewn", "Material Science", "Invisible Luxury"
 ]
 
@@ -367,7 +367,7 @@ REGOLA CRITICA: Tutti i micronaggi (17 micron) e le grammature (150g/190g) devon
         cluster_config = CLUSTER_PROMPTS.get(cluster, {})
 
         prompt = f"""Genera contenuto per il cluster "{cluster}" in lingua "{language}".
-Dominio di destinazione: {cluster_config.get('routing_domain', 'albeni1905.com')}
+Dominio di destinazione: {cluster_config.get('routing_domain', 'micron-e.com')}
 
 {template['instruction']}
 

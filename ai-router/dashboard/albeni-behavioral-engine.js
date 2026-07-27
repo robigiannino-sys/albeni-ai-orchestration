@@ -1,5 +1,5 @@
 /**
- * Albeni 1905 — Behavioral Engine v2
+ * micron-è — Behavioral Engine v2
  * ============================================================
  * Layer 2 del sistema adattivo: IDS calculation + Cluster detection
  * + Content Personalization + Klaviyo CRM sync trigger.
@@ -46,7 +46,7 @@
   const DEBUG       = CONFIG.debug || false;
 
   function log(...args) {
-    if (DEBUG) console.log('[Albeni BE]', ...args);
+    if (DEBUG) console.log('[micron-è BE]', ...args);
   }
 
   // ============================================================
@@ -320,7 +320,7 @@
         heritage_mature: {
           headline:    'Dal 1905. La lana che racconta una storia vera.',
           subheadline: 'Filiera italiana verificata. Artigianalità che si vede e si sente.',
-          cta_primary: 'Scopri l\'eredità Albeni →',
+          cta_primary: 'Scopri i capi micron-è →',
           cta_secondary: 'Filiera e certificazioni',
           value_prop:  '270 anni di storia tessile combinata.',
           trust_signal: 'Produzione italiana verificata.',
@@ -467,7 +467,7 @@
 
   // ============================================================
   // 6. FUNNEL PROGRESSION — Cross-domain CTA banners
-  //    (albeni1905.com escluso: redirige su perfectmerinoshirt.com)
+  //    (lo store micron-e.com ha un percorso di conversione proprio)
   // ============================================================
   function handleFunnelProgression(stage, cluster) {
     // Don't show shift banners on bofu_tech (already at bottom of accessible funnel)

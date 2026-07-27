@@ -1,6 +1,6 @@
 """
 AI Orchestration Layer - Configuration
-Albeni 1905 - Invisible Luxury Ecosystem
+micron-è — Invisible Luxury Ecosystem
 """
 import os
 from pydantic_settings import BaseSettings
@@ -9,7 +9,7 @@ from functools import lru_cache
 
 class Settings(BaseSettings):
     # Application
-    APP_NAME: str = "Albeni 1905 AI Orchestration Layer"
+    APP_NAME: str = "micron-è AI Orchestration Layer"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = False
 
@@ -67,7 +67,7 @@ class Settings(BaseSettings):
     DOMAIN_TOFU: str = "https://worldofmerino.com"
     DOMAIN_MOFU: str = "https://merinouniversity.com"
     DOMAIN_BOFU_TECH: str = "https://perfectmerinoshirt.com"
-    DOMAIN_BOFU_HERITAGE: str = "https://albeni1905.com"
+    DOMAIN_BOFU_HERITAGE: str = "https://micron-e.com"
 
     # IDS Thresholds
     IDS_TOFU_MAX: int = 30

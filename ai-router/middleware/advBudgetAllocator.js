@@ -1,7 +1,7 @@
 /**
  * ============================================================
  * ADV Budget Allocator — Paid/Organic Compensator
- * Albeni 1905 — AI Orchestration Layer
+ * micron-è 1905 — AI Orchestration Layer
  * ============================================================
  *
  * PURPOSE:
@@ -80,7 +80,7 @@ const CLUSTER_KW_WEIGHTS = {
 
 // Funnel multipliers for page-level priority
 const FUNNEL_MULTIPLIER = {
-  bofu: 1.5,   // Pages with PMS/Albeni CTA
+  bofu: 1.5,   // Pages with PMS/micron-è CTA
   mofu: 1.2,   // MU educational, checklists
   tofu: 1.0,   // WoM editorial, stories
 };

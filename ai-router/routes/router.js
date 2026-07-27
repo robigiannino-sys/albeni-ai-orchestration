@@ -9,7 +9,7 @@
  *   IDS 0-30  (TOFU) -> worldofmerino.com
  *   IDS 31-65 (MOFU) -> merinouniversity.com
  *   IDS >65   (BOFU) -> perfectmerinoshirt.com (Business/Minimalist)
- *                     -> albeni1905.com (Heritage/Conscious/Authentic)
+ *                     -> micron-e.com (Heritage/Conscious/Authentic)
  */
 
 const express = require('express');
@@ -24,7 +24,7 @@ const DOMAINS = {
     TOFU: process.env.DOMAIN_TOFU || 'https://worldofmerino.com',
     MOFU: process.env.DOMAIN_MOFU || 'https://merinouniversity.com',
     BOFU_TECH: process.env.DOMAIN_BOFU_TECH || 'https://perfectmerinoshirt.com',
-    BOFU_HERITAGE: process.env.DOMAIN_BOFU_HERITAGE || 'https://albeni1905.com'
+    BOFU_HERITAGE: process.env.DOMAIN_BOFU_HERITAGE || 'https://micron-e.com'
 };
 
 // IDS Thresholds

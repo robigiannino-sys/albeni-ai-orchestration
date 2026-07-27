@@ -1,6 +1,6 @@
 """
 Pydantic Schemas - Request/Response Models
-AI Orchestration Layer - Albeni 1905
+AI Orchestration Layer — micron-è
 """
 from pydantic import BaseModel, Field, EmailStr, AliasChoices
 from typing import Optional, Dict, List, Any

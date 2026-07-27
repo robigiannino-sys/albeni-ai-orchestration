@@ -1,12 +1,12 @@
 /**
- * Albeni 1905 — AI Orchestration Layer Tracker
+ * micron-è — AI Orchestration Layer Tracker
  * Frontend tracking snippet per cattura segnali ADV + comportamentali
  *
  * Installazione: Inserire nell'<head> di tutti i 4 domini:
  * - worldofmerino.com (TOFU)
  * - merinouniversity.com (MOFU)
  * - perfectmerinoshirt.com (BOFU)
- * - albeni1905.com (BOFU Heritage)
+ * - micron-e.com (BOFU store)
  *
  * Configurazione:
  *   window.ALBENI_AI = {
@@ -26,7 +26,7 @@
   const DEBUG = CONFIG.debug || false;
 
   function log(...args) {
-    if (DEBUG) console.log('[Albeni AI]', ...args);
+    if (DEBUG) console.log('[micron-è AI]', ...args);
   }
 
   // ================================================================
@@ -315,7 +315,7 @@
     getVisitorId: getOrCreateVisitorId,
   };
 
-  log('Albeni AI Tracker initialized', {
+  log('micron-è AI Tracker initialized', {
     domain: window.location.hostname,
     campaign: activeCampaign ? 'detected' : 'organic',
     pageViews: pageViewCount,

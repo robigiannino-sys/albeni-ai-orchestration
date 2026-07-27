@@ -1,18 +1,18 @@
 /**
  * C2PA Digital Fingerprinting Middleware
- * Implements the C2PA standard for certifying Albeni 1905 digital assets.
+ * Implements the C2PA standard for certifying micron-è digital assets.
  *
  * Injects cryptographic metadata headers into served images and PDFs
- * to certify their origin as authentic Albeni 1905 content.
+ * to certify their origin as authentic micron-è content.
  */
 
 const crypto = require('crypto');
 
 // C2PA metadata template
 const C2PA_MANIFEST = {
-    claim_generator: 'Albeni 1905 AI Orchestration Layer/1.0',
+    claim_generator: 'micron-è AI Orchestration Layer/1.0',
     claim_generator_info: {
-        name: 'Albeni 1905',
+        name: 'micron-è',
         version: '1.0.0'
     },
     assertions: [
@@ -21,7 +21,7 @@ const C2PA_MANIFEST = {
             data: {
                 actions: [{
                     action: 'c2pa.created',
-                    softwareAgent: 'Albeni 1905 Content Engine'
+                    softwareAgent: 'micron-è Content Engine'
                 }]
             }
         },
@@ -31,10 +31,10 @@ const C2PA_MANIFEST = {
                 '@type': 'CreativeWork',
                 author: {
                     '@type': 'Organization',
-                    name: 'Albeni 1905',
-                    url: 'https://albeni1905.com'
+                    name: 'micron-è',
+                    url: 'https://micron-e.com'
                 },
-                copyrightHolder: 'Albeni 1905 S.r.l.',
+                copyrightHolder: 'Best Before S.r.l.',
                 license: 'All rights reserved'
             }
         }
@@ -47,7 +47,7 @@ const C2PA_MANIFEST = {
 function generateContentSignature(content, timestamp) {
     const signingKey = process.env.C2PA_SIGNING_KEY || 'albeni-1905-content-signing-key';
     const hash = crypto.createHmac('sha256', signingKey)
-        .update(`${content}:${timestamp}:albeni1905`)
+        .update(`${content}:${timestamp}:micron-e`)
         .digest('hex');
     return hash;
 }
@@ -69,11 +69,11 @@ function c2paMiddleware(req, res, next) {
 
     // Inject C2PA-style headers
     res.setHeader('X-C2PA-Claim-Generator', C2PA_MANIFEST.claim_generator);
-    res.setHeader('X-C2PA-Origin', 'Albeni 1905');
+    res.setHeader('X-C2PA-Origin', 'micron-è');
     res.setHeader('X-C2PA-Signature', signature);
     res.setHeader('X-C2PA-Timestamp', timestamp);
-    res.setHeader('X-Content-Origin', 'https://albeni1905.com');
-    res.setHeader('X-Content-License', 'All Rights Reserved - Albeni 1905 S.r.l.');
+    res.setHeader('X-Content-Origin', 'https://micron-e.com');
+    res.setHeader('X-Content-License', 'All Rights Reserved - Best Before S.r.l.');
 
     // Prevent unauthorized caching by AI scrapers
     res.setHeader('X-Robots-Tag', 'noai, noimageai');

@@ -1,6 +1,6 @@
 """
 Notion Integration Service - Bidirectional Sync
-Albeni 1905 - AI Orchestration Layer
+micron-è — AI Orchestration Layer
 
 Connects the Content Pipeline and Calendario Editoriale on Notion
 with the AI content generation engine (Gemini).

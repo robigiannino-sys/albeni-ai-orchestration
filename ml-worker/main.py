@@ -1,6 +1,6 @@
 """
 AI Orchestration Layer - ML Worker (FastAPI)
-Albeni 1905 - Invisible Luxury Ecosystem
+micron-è — Invisible Luxury Ecosystem
 
 The cognitive engine that powers:
 - Intent Depth Score (IDS) calculation
@@ -202,7 +202,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
-    description="AI Orchestration Layer for the Albeni 1905 Invisible Luxury Ecosystem",
+    description="AI Orchestration Layer for the micron-è Invisible Luxury Ecosystem",
     lifespan=lifespan
 )
 
@@ -511,7 +511,7 @@ async def assign_route(
     Determine the optimal destination domain based on IDS and cluster.
     TOFU (0-30) -> worldofmerino.com
     MOFU (31-65) -> merinouniversity.com
-    BOFU (>65) -> perfectmerinoshirt.com or albeni1905.com (by cluster)
+    BOFU (>65) -> perfectmerinoshirt.com or micron-e.com (by cluster)
 
     Accepts either user_id (legacy) or visitor_id (current snippet convention),
     and either `lang` or `language` (sibling-endpoint convention).
@@ -1101,7 +1101,7 @@ FUNNEL_STAGE_EVENTS = {
 }
 
 VALID_PERIODS = {"7d": "7 days", "30d": "30 days", "90d": "90 days"}
-VALID_DOMAINS = {"worldofmerino.com", "merinouniversity.com", "perfectmerinoshirt.com", "albeni1905.com"}
+VALID_DOMAINS = {"worldofmerino.com", "merinouniversity.com", "perfectmerinoshirt.com", "micron-e.com"}
 VALID_CLUSTERS = {
     "business_professional", "heritage_mature", "italian_authentic",
     "modern_minimalist", "conscious_premium",
@@ -1394,7 +1394,7 @@ async def get_funnel_by_domain(
     db: DBSession = Depends(get_db),
 ):
     """
-    Aggregate funnel sliced by domain (WoM / MU / PMS / Albeni) — verifica copertura tracker per dominio.
+    Aggregate funnel sliced by domain (WoM / MU / PMS / micron-e) — verifica copertura tracker per dominio.
     Synthetic test events excluded by default — pass include_test=true to include.
     """
     from sqlalchemy import text
@@ -2206,7 +2206,7 @@ async def adv_spend_summary(
 
 # ===================================================================
 # SEMANTIC DEFENSE — GAP-F (2026-05-14)
-# Pannello dashboard per il cluster C6 (moat competitivo Albeni 1905).
+# Pannello dashboard per il cluster C6 (moat competitivo micron-è).
 # Aggrega 4 metriche da SEMrush + GSC + behavioral_signals: featured snippets,
 # authority backlinks, topical authority, educational engagement.
 # ===================================================================
@@ -2270,7 +2270,7 @@ def _ensure_semantic_defense_table(db: DBSession):
 async def _compute_semantic_defense_snapshot(db: DBSession,
                                               target_date: Optional[date] = None) -> Dict:
     """
-    Calcola le 4 metriche del cluster C6. Per ogni dominio Albeni:
+    Calcola le 4 metriche del cluster C6. Per ogni dominio dell'ecosistema:
       1. Pulla organic keywords via SEMrush agent (con cache Redis 1h)
       2. Filtra per le keyword nella lista C6
       3. Aggrega position / volume / featured snippets
@@ -4165,7 +4165,7 @@ async def semrush_domain_overview(
 ):
     """
     Get domain overview from Semrush.
-    If no domain specified, returns overview for all 4 Albeni domains.
+    If no domain specified, returns overview for all 4 ecosystem domains.
     """
     agent = SemrushAgent()
     if domain:
@@ -4197,7 +4197,7 @@ async def semrush_paid_keywords(
 
 @app.get("/v1/semrush/competitors")
 async def semrush_competitors(
-    domain: str = Query(default="albeni1905.com"),
+    domain: str = Query(default="micron-e.com"),
     database: str = Query(default="it"),
     limit: int = Query(default=20, ge=1, le=50)
 ):
@@ -4211,7 +4211,7 @@ async def semrush_benchmark(
     database: str = Query(default="it")
 ):
     """
-    Benchmark all 4 Albeni domains vs competitors
+    Benchmark all 4 ecosystem domains vs competitors
     (Smartwool, Icebreaker, Allbirds, Asket, Unbound Merino).
     """
     agent = SemrushAgent()
@@ -4241,7 +4241,7 @@ async def semrush_related_keywords(
 
 @app.get("/v1/semrush/backlinks")
 async def semrush_backlinks(
-    domain: str = Query(default="albeni1905.com")
+    domain: str = Query(default="micron-e.com")
 ):
     """Get backlink profile overview (authority score, referring domains)."""
     agent = SemrushAgent()
@@ -4253,7 +4253,7 @@ async def semrush_seo_balance(
     database: str = Query(default="it")
 ):
     """
-    Analyze the 85/15 SEO balance across the Albeni ecosystem.
+    Analyze the 85/15 SEO balance across the micron-è ecosystem.
     85% cluster expansion / 15% semantic defense.
     """
     agent = SemrushAgent()
@@ -4276,17 +4276,18 @@ async def semrush_paid_intelligence(
 async def semrush_keyword_gap(
     competitor: str = Query(default="smartwool.com"),
     database: str = Query(default="it"),
-    domain: Optional[str] = Query(None, description="Albeni domain to compare (default: albeni1905.com)"),
-    albeni_domain: Optional[str] = Query(None),
+    domain: Optional[str] = Query(None, description="Domain to compare (default: micron-e.com)"),
+    our_domain: Optional[str] = Query(None),
+    albeni_domain: Optional[str] = Query(None, include_in_schema=False),  # alias legacy
 ):
     """
-    Find keyword gaps: keywords where a competitor ranks but Albeni doesn't.
+    Find keyword gaps: keywords where a competitor ranks but we don't.
     Identifies content opportunities.
 
-    Accepts `domain` or `albeni_domain` to pick which Albeni satellite to compare
-    (worldofmerino, merinouniversity, perfectmerinoshirt, albeni1905).
+    Accepts `domain` o `our_domain` per scegliere il satellite da confrontare
+    (worldofmerino, merinouniversity, perfectmerinoshirt, micron-e).
     """
-    side = domain or albeni_domain or "albeni1905.com"
+    side = domain or our_domain or albeni_domain or "micron-e.com"
     agent = SemrushAgent()
     return await agent.keyword_gap(database, competitor, side)
 
@@ -4296,7 +4297,7 @@ async def semrush_full_audit(
     database: str = Query(default="it")
 ):
     """
-    Run a comprehensive SEO audit across the entire Albeni ecosystem.
+    Run a comprehensive SEO audit across the entire micron-è ecosystem.
     Combines domain data, keywords, competitors, backlinks, and 85/15 balance.
     WARNING: Uses many API units. Run sparingly.
 
@@ -4322,7 +4323,7 @@ async def semrush_check_positions(
     database: str = Query(default="it")
 ):
     """
-    Check where all 4 Albeni domains rank for specific keywords.
+    Check where all 4 ecosystem domains rank for specific keywords.
     Useful for tracking Content Pipeline target keywords.
     """
     agent = SemrushAgent()
@@ -4606,7 +4607,7 @@ async def context_for_agent(
 @app.post("/v1/context/sync-skills")
 async def context_sync_skills():
     """
-    Import all Albeni skill files (SEO agent, MT translator, validator, orchestrator)
+    Import all ecosystem skill files (SEO agent, MT translator, validator, orchestrator)
     into the Data Hub and auto-tag them so all agents can use them as context.
     """
     provider = DataHubContextProvider()
@@ -4787,7 +4788,7 @@ async def chat_sizing(payload: Dict = Body(...)):
     Interactive Size & Fit Finder.
     Given the user's chest circumference (cm), returns personalized
     size recommendations for both Slim Fit and Regular Fit.
-    Mirrors the Shopify widget logic on albeni1905.com.
+    Mirrors the Shopify widget logic on micron-e.com.
 
     Body-tolerant: accepts {chest_cm} (required) and optional {language|lang}.
     Aligns with sibling endpoint convention (post Bug 1bis pattern).
@@ -5229,10 +5230,10 @@ async def terminal_execute(
 
             hub_context = "\n\n".join(context_parts) if context_parts else "Nessun dato contestuale disponibile."
 
-            ai_prompt = f"""Sei l'AI Strategy Director di Albeni 1905, il sistema di orchestrazione AI per un brand italiano di lusso nel merino.
+            ai_prompt = f"""Sei l'AI Strategy Director di micron-è, il sistema di orchestrazione AI del brand italiano di merino.
 
 ECOSISTEMA ALBENI:
-- 4 domini: worldofmerino.com (TOFU), merinouniversity.com (MOFU), perfectmerinoshirt.com (BOFU), albeni1905.com (BOFU heritage)
+- 4 domini: worldofmerino.com (TOFU), merinouniversity.com (MOFU), perfectmerinoshirt.com (BOFU tecnico), micron-e.com (BOFU store D2C)
 - 5 mercati: IT, DE, US, FR, ES
 - 5 cluster comportamentali: business_professional, heritage_mature, conscious_premium, modern_minimalist, italian_authentic
 - Budget ADV: €30K / 18 mesi (disponibile)
@@ -5299,7 +5300,7 @@ Rispondi come un senior strategist esperto. Sii specifico, azionabile, e struttu
             conv_ctx = _get_terminal_context(last_n=4)
             history_block = f"\n\nCRONOLOGIA CONVERSAZIONE RECENTE:\n{conv_ctx}" if conv_ctx else ""
 
-            routing_prompt = f"""Sei il router dell'AI Orchestration Layer di Albeni 1905.
+            routing_prompt = f"""Sei il router dell'AI Orchestration Layer di micron-è.
 L'utente ha scritto: "{command}"{history_block}
 
 Devi rispondere SOLO con un JSON valido che indica quale azione eseguire:
@@ -5408,7 +5409,7 @@ Se la domanda non riguarda nessun agente specifico, rispondi comunque con una ri
         elif endpoint == "semrush_overview":
             # Extract domain if mentioned
             domain = None
-            for d in ["worldofmerino.com", "merinouniversity.com", "perfectmerinoshirt.com", "albeni1905.com"]:
+            for d in ["worldofmerino.com", "merinouniversity.com", "perfectmerinoshirt.com", "micron-e.com"]:
                 if d.split(".")[0] in cmd_lower:
                     domain = d
                     break
@@ -5436,8 +5437,8 @@ Se la domanda non riguarda nessun agente specifico, rispondi comunque con una ri
                 result = {"error": "Specifica una keyword, es: 'keyword lana merino benefici'"}
 
         elif endpoint == "semrush_backlinks":
-            domain = "albeni1905.com"
-            for d in ["worldofmerino.com", "merinouniversity.com", "perfectmerinoshirt.com", "albeni1905.com"]:
+            domain = "micron-e.com"
+            for d in ["worldofmerino.com", "merinouniversity.com", "perfectmerinoshirt.com", "micron-e.com"]:
                 if d.split(".")[0] in cmd_lower:
                     domain = d
                     break

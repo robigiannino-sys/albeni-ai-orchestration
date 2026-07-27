@@ -1,12 +1,12 @@
 """
 Content Validation Agent - AI Orchestration Layer
-Albeni 1905 - Invisible Luxury Ecosystem
+micron-è — Invisible Luxury Ecosystem
 
 Validates AI-generated content BEFORE it is written to Notion.
 Based on the original specification documents:
 - AI_orchestartion.docx: CQS >= 76, modello 70/30, HITL
 - manuale_procedure_AI Orchestration: CQS threshold, 85/15 SEO balance
-- Albeni 1905_control_tower.docx: CQS 79/100 target, AI Routing Accuracy >85%
+- control_tower.docx: CQS 79/100 target, AI Routing Accuracy >85%
 - 13 — SEO STRATEGIC FRAMEWORK: cluster-keyword alignment, cannibalization <6%
 - ARCHITETTURA MULTI DOMINIO: domain-funnel mapping, semantic shielding
 - protocolli di resilienza: fallback logic, QA protocols
@@ -62,8 +62,9 @@ BRAND_AXIOM = "Same Silhouette, Superior Substance"
 
 # Protected terms — NEVER translate, alter, or omit
 PROTECTED_TERMS = [
-    "Albeni 1905", "Reda 1865", "CompACT", "ZQ",
-    "Cut & Sewn", "Material Science", "Invisible Luxury",
+    # Pivot micron-è: Albeni/Reda/CompACT/ZQ erano qui dentro come termini
+    # da preservare — sono invece VIETATI dal guardrail copy. Rimossi.
+    "micron-è", "Cut & Sewn", "Material Science", "Invisible Luxury",
     "Merino", "Super 120's"
 ]
 
@@ -86,7 +87,7 @@ TECHNICAL_FACTS = {
     "weights": ["150g", "190g"],  # Only these two weights
     "certifications": ["ZQ"],
     "construction": "Cut & Sewn",  # Never "knit" or "knitted"
-    "heritage_years": "270",       # 270+ years (Albeni 1905 + Reda 1865)
+    "heritage_years": "",          # claim ritirato col pivot (era 270+ anni)
 }
 
 # Cluster-specific validation rules (from AI_orchestartion.docx)
@@ -101,7 +102,7 @@ CLUSTER_VALIDATION = {
         "required_themes": ["heritage", "quality", "investment", "tradition", "270"],
         "tone": "elegant, cultured, deep",
         "forbidden_themes": ["trendy", "modern", "minimalist", "capsule"],
-        "target_domain": "albeni1905.com",
+        "target_domain": "micron-e.com",
     },
     "conscious_premium": {
         "required_themes": ["sustainability", "ZQ", "ethical", "transparent", "environment"],
@@ -119,7 +120,7 @@ CLUSTER_VALIDATION = {
         "required_themes": ["Italy", "made in Italy", "artisan", "thermal", "comfort"],
         "tone": "warm, authentic, proud",
         "forbidden_themes": ["clinical", "cold", "technical only"],
-        "target_domain": "albeni1905.com",
+        "target_domain": "micron-e.com",
     },
 }
 
@@ -140,7 +141,7 @@ DOMAIN_FUNNEL_MAP = {
         "role": "educational + MOFU orientato all'acquisto",
         "forbidden_content": [],
     },
-    "albeni1905.com": {
+    "micron-e.com": {
         "allowed_stages": ["BOFU"],
         "role": "commerciale, heritage, conversione",
         "forbidden_content": [],
@@ -271,12 +272,12 @@ class ContentValidator:
             logger.debug(f"Data Hub context not available for validator: {e}")
         # --- END CONTEXT INJECTION ---
 
-        validation_prompt = f"""{hub_context}Sei il Quality Assurance Agent di Albeni 1905.
+        validation_prompt = f"""{hub_context}Sei il Quality Assurance Agent di micron-è.
 Analizza il seguente contenuto generato dall'AI e verifica:
 
-1. ACCURATEZZA TECNICA: Il micronaggio è SEMPRE 17 micron? Le grammature sono solo 150g o 190g? La costruzione Albeni è Cut & Sewn (MAI "knit"). ECCEZIONE: in articoli comparativi (es. "Cut & Sew vs Knit") l'uso di "knit" per contrasto è ammesso.
+1. ACCURATEZZA TECNICA: Il micronaggio è SEMPRE 17 micron? Le grammature sono solo 150g o 190g? La costruzione micron-è è Cut & Sewn (MAI "knit"). ECCEZIONE: in articoli comparativi (es. "Cut & Sew vs Knit") l'uso di "knit" per contrasto è ammesso.
 2. COERENZA BRAND: Il tono rispetta "Same Silhouette, Superior Substance"? Non ci sono riferimenti a sportswear, underwear, fast fashion?
-3. TERMINI PROTETTI: Albeni 1905, Reda 1865, ZQ, Cut & Sewn, Material Science, Invisible Luxury sono presenti e corretti?
+3. TERMINI PROTETTI: Cut & Sewn, Material Science, Invisible Luxury sono presenti e corretti? (Albeni, Reda, 1905, 1865, ZQ, HeiQ sono VIETATI: se compaiono è un errore bloccante)
 4. HALLUCINATION CHECK: Ci sono affermazioni inventate, statistiche false, o claim non verificabili?
 5. CLUSTER CHECK: Il contenuto è coerente con il cluster "{cluster}"?
 
@@ -360,7 +361,7 @@ Rispondi SOLO con un JSON valido:
             else:
                 # Not all terms need to be in every piece of content
                 # But key ones like brand names should be
-                if term in ["Albeni 1905", "Merino"]:
+                if term in ["micron-è", "Merino"]:
                     score -= 2
                     details["warnings"].append(f"Termine protetto mancante: {term}")
                 details["missing"].append(term)

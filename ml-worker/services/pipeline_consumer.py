@@ -1,6 +1,6 @@
 """
 Pipeline Consumer (downstream batch processor).
-Albeni 1905 — added 2026-05-06.
+micron-è — added 2026-05-06.
 
 Why this exists
 ---------------

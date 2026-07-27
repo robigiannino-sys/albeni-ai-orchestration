@@ -1,6 +1,6 @@
 """
 Semrush Data Library - AI Orchestration Layer
-Albeni 1905 - Invisible Luxury Ecosystem
+micron-è — Invisible Luxury Ecosystem
 
 Imports, stores, and indexes Semrush CSV/XLSX exports to power
 the SEO agents with historical and research data.

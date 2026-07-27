@@ -120,7 +120,7 @@ class SEOMonitor:
     - behavioral_expansion_pct / semantic_defense_pct: real ratio of in-rank keywords
       matching the SEMANTIC_DEFENSE_KEYWORDS list
     - cannibalization_score: % of in-rank keywords that also appear in another
-      Albeni domain's in-rank set
+      domain's in-rank set
     - topical_authority_score: SEMrush authority_score from backlinks_overview
 
     Fallback policy: if SEMrush returns 0 keywords or errors out for a domain,
@@ -238,7 +238,7 @@ class SEOMonitor:
             behavioral_pct, defense_pct = self._compute_balance_from_static_map(domain)
 
         # 2) Cannibalization: % di keyword in rank che compaiono ANCHE nel rank
-        #    di un altro dominio Albeni (con posizione utile, <= 30).
+        #    di un altro dominio dell'ecosistema (con posizione utile, <= 30).
         cann_score, conflicts = self._compute_cannibalization(domain, per_domain_data)
 
         # 3) Alert level
@@ -403,7 +403,7 @@ class SEOMonitor:
         return behavioral_pct, defense_pct
 
     def _compute_cannibalization(self, domain: str, per_domain_data: Dict[str, Dict]) -> Tuple[float, List[str]]:
-        """Cross-domain overlap: keyword in rank presenti su >1 dominio Albeni (top 30)."""
+        """Cross-domain overlap: keyword in rank presenti su >1 dominio dell'ecosistema (top 30)."""
         my_kws = {
             (k.get("keyword") or "").lower().strip()
             for k in per_domain_data.get(domain, {}).get("keywords", [])

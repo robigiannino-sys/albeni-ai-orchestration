@@ -1,6 +1,6 @@
 """
 Bot Shield — Anti-Competitor Click Fraud Detection
-Albeni 1905 — Invisible Luxury Ecosystem
+micron-è — Invisible Luxury Ecosystem
 
 Rileva e blocca traffico fraudolento/bot dai competitor:
 1. Behavioral Analysis: dwell time, mouse events, scroll depth
@@ -69,7 +69,7 @@ class BotShield:
         self._exclusion_list: Dict[str, Dict] = {}  # IP/fingerprint → exclusion details
         self._blocked_count: int = 0
         self._estimated_savings_eur: float = 0.0
-        self._avg_cpc_eur: float = 1.20  # Average CPC estimate for Albeni's niche
+        self._avg_cpc_eur: float = 1.20  # Average CPC estimate per la nicchia
 
     def analyze_visitor(
         self,

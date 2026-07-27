@@ -1,5 +1,5 @@
 /**
- * Albeni 1905 — Customer Care Chat Widget (WPCode Snippet)
+ * micron-è — Customer Care Chat Widget (WPCode Snippet)
  * ============================================================
  * Embed this via WPCode on all 4 ecosystem domains.
  *
@@ -29,7 +29,7 @@
   var DEBUG = AI.debug || false;
 
   function log() {
-    if (DEBUG) console.log.apply(console, ['[Albeni Chat]'].concat(Array.from(arguments)));
+    if (DEBUG) console.log.apply(console, ['[micron-è Chat]'].concat(Array.from(arguments)));
   }
 
   // ── DETECT LANGUAGE (same logic as unified tracker) ─────
@@ -54,6 +54,7 @@
     if (h.indexOf('worldofmerino') !== -1)      DOMAIN_TYPE = 'tofu';
     else if (h.indexOf('merinouniversity') !== -1) DOMAIN_TYPE = 'mofu';
     else if (h.indexOf('perfectmerino') !== -1)    DOMAIN_TYPE = 'bofu_tech';
+    else if (h.indexOf('micron-e') !== -1)         DOMAIN_TYPE = 'bofu_heritage';
     else                                            DOMAIN_TYPE = 'bofu_heritage';
   }
 
@@ -90,11 +91,11 @@
       footerText: 'Perfect Merino Shirt \u2014 Engineered Comfort'
     },
     bofu_heritage: {
-      name: 'Albeni 1905',
+      name: 'micron-è',
       initials: 'A',
       tagline: { it: 'Come posso aiutarti?', en: 'How can I help?', de: 'Wie kann ich helfen?', fr: 'Comment puis-je aider ?' },
       accentColor: '#b8860b',  // heritage gold
-      footerText: 'Albeni 1905 \u2014 Invisible Luxury'
+      footerText: 'micron-\u00e8 \u2014 Invisible Luxury'
     }
   };
 
@@ -105,34 +106,34 @@
   // Each domain surfaces the actions most relevant to its funnel role
   // ================================================================
   var DOMAIN_QUICK_ACTIONS = {
-    // TOFU: Discovery & inspiration → push to MU and Albeni
+    // TOFU: Discovery & inspiration → push to MU e allo store
     tofu: {
       it: [
         { l: 'Cos\u2019\u00e8 il merino?', m: 'Cos\u2019\u00e8 la fibra merino e perch\u00e9 \u00e8 speciale?' },
         { l: 'Merino vs cotone', m: 'Quali sono le differenze tra merino e cotone?' },
         { l: 'Sostenibilit\u00e0', m: 'Il merino \u00e8 sostenibile? Come viene prodotto?' },
-        { l: 'Scopri i prodotti', m: 'Dove posso vedere i prodotti in merino Albeni?' }
+        { l: 'Scopri i prodotti', m: 'Dove posso vedere i prodotti in merino micron-\u00e8?' }
       ],
       en: [
         { l: 'What is merino?', m: 'What is merino fiber and why is it special?' },
         { l: 'Merino vs cotton', m: 'What are the differences between merino and cotton?' },
         { l: 'Sustainability', m: 'Is merino sustainable? How is it produced?' },
-        { l: 'See products', m: 'Where can I see Albeni merino products?' }
+        { l: 'See products', m: 'Where can I see micron-\u00e8 merino products?' }
       ],
       de: [
         { l: 'Was ist Merino?', m: 'Was ist Merinofaser und warum ist sie besonders?' },
         { l: 'Merino vs Baumwolle', m: 'Was sind die Unterschiede zwischen Merino und Baumwolle?' },
         { l: 'Nachhaltigkeit', m: 'Ist Merino nachhaltig? Wie wird es hergestellt?' },
-        { l: 'Produkte entdecken', m: 'Wo kann ich Albeni Merino-Produkte sehen?' }
+        { l: 'Produkte entdecken', m: 'Wo kann ich micron-\u00e8 Merino-Produkte sehen?' }
       ],
       fr: [
         { l: 'Qu\u2019est-ce que le m\u00e9rinos ?', m: 'Qu\u2019est-ce que la fibre m\u00e9rinos et pourquoi est-elle sp\u00e9ciale ?' },
         { l: 'M\u00e9rinos vs coton', m: 'Quelles sont les diff\u00e9rences entre le m\u00e9rinos et le coton ?' },
         { l: 'Durabilit\u00e9', m: 'Le m\u00e9rinos est-il durable ? Comment est-il produit ?' },
-        { l: 'Voir les produits', m: 'O\u00f9 puis-je voir les produits Albeni en m\u00e9rinos ?' }
+        { l: 'Voir les produits', m: 'O\u00f9 puis-je voir les produits micron-\u00e8 en m\u00e9rinos ?' }
       ]
     },
-    // MOFU: Technical education → push to perfectmerinoshirt or albeni1905
+    // MOFU: Technical education → push to perfectmerinoshirt o allo store
     mofu: {
       it: [
         { l: 'Cut & Sew vs Knit', m: 'Qual \u00e8 la differenza tra Cut & Sew e maglia?' },
@@ -186,7 +187,7 @@
         { l: 'Livraison & retours', m: 'Comment fonctionnent la livraison et les retours ?' }
       ]
     },
-    // BOFU Heritage (albeni1905.com): CONVERSION — sizing, purchase, post-purchase
+    // BOFU store (micron-e.com): CONVERSION — sizing, purchase, post-purchase
     bofu_heritage: {
       it: [
         { l: 'Trova la tua taglia', m: 'Aiutami a trovare la mia taglia' },

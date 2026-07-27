@@ -1,5 +1,5 @@
 /**
- * Albeni 1905 — Unified AI Orchestration Layer Tracker (Layer 1)
+ * micron-è — Unified AI Orchestration Layer Tracker (Layer 1)
  *
  * CONSOLIDATED SCRIPT - Merges albeni-ai-tracker.js + tracking.js
  *
@@ -20,7 +20,7 @@
  * - worldofmerino.com (TOFU)
  * - merinouniversity.com (MOFU)
  * - perfectmerinoshirt.com (BOFU Tech)
- * - albeni1905.com (BOFU Heritage)
+ * - micron-e.com (BOFU store)
  *
  * Configuration (in <head> before this script):
  *   window.ALBENI_AI = {
@@ -45,13 +45,13 @@
     'worldofmerino.com',
     'merinouniversity.com',
     'perfectmerinoshirt.com',
-    'albeni1905.com'
+    'micron-e.com'
   ];
 
   const SUPPORTED_LANGS = ['it', 'en', 'fr', 'de', 'es'];
 
   function log(...args) {
-    if (DEBUG) console.log('[Albeni AI]', ...args);
+    if (DEBUG) console.log('[micron-è AI]', ...args);
   }
 
   // ================================================================
@@ -574,7 +574,7 @@
   // ================================================================
   // INITIALIZATION LOG
   // ================================================================
-  log('Albeni AI Unified Tracker initialized', {
+  log('micron-è AI Unified Tracker initialized', {
     version: '2.0-merged',
     domain: window.location.hostname,
     domain_type: DOMAIN_TYPE,
@@ -586,7 +586,7 @@
   });
 
   console.debug(
-    `[Albeni AI] Tracker active | Visitor: ${visitorId} | Lang: ${currentLang} | Domain: ${window.location.hostname}`
+    `[micron-è AI] Tracker active | Visitor: ${visitorId} | Lang: ${currentLang} | Domain: ${window.location.hostname}`
   );
 
 })();

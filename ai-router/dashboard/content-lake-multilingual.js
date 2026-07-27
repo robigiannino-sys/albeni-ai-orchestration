@@ -1,5 +1,5 @@
 /**
- * Albeni 1905 — Content Lake Multilingual
+ * micron-è — Content Lake Multilingual
  * 108 variants × 4 languages = 432 personalization strings
  * Generated: 2026-03-31
  *
@@ -21,7 +21,7 @@ const CONTENT_LAKE = {
       heritage_mature: {
         headline: "Dal 1905. La lana che racconta una storia vera.",
         subheadline: "Filiera italiana verificata. Artigianalità che si vede e si sente.",
-        cta_primary: "Scopri l'eredità Albeni →",
+        cta_primary: "Scopri i capi micron-è →",
         cta_secondary: "Filiera e certificazioni",
         value_prop: "270 anni di storia tessile combinata.",
         trust_signal: "Produzione italiana verificata."
@@ -174,7 +174,7 @@ const CONTENT_LAKE = {
       heritage_mature: {
         headline: "Since 1905. The wool that tells a true story.",
         subheadline: "Verified Italian supply chain. Craftsmanship you can see and feel.",
-        cta_primary: "Discover the Albeni heritage →",
+        cta_primary: "Discover micron-è →",
         cta_secondary: "Supply chain & certifications",
         value_prop: "270 years of combined textile history.",
         trust_signal: "Verified Italian production."
@@ -327,7 +327,7 @@ const CONTENT_LAKE = {
       heritage_mature: {
         headline: "Seit 1905. Die Wolle, die eine wahre Geschichte erzählt.",
         subheadline: "Verifizierte italienische Lieferkette. Handwerkskunst, die man sieht und fühlt.",
-        cta_primary: "Albeni-Erbe entdecken →",
+        cta_primary: "micron-è entdecken →",
         cta_secondary: "Lieferkette und Zertifizierungen",
         value_prop: "270 Jahre kombinierte Textilgeschichte.",
         trust_signal: "Verifizierte italienische Herstellung."
@@ -480,7 +480,7 @@ const CONTENT_LAKE = {
       heritage_mature: {
         headline: "Depuis 1905. La laine qui raconte une histoire vraie.",
         subheadline: "Chaîne d'approvisionnement italienne vérifiée. Savoir-faire que vous voyez et ressentez.",
-        cta_primary: "Découvrez l'héritage Albeni →",
+        cta_primary: "Découvrez micron-è →",
         cta_secondary: "Chaîne d'approvisionnement et certifications",
         value_prop: "270 ans d'histoire textile combinée.",
         trust_signal: "Production italienne vérifiée."
