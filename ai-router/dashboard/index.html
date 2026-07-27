@@ -4662,13 +4662,17 @@ function ExecutivePage() {
                     const state = orgPct === null ? 'sy' : orgPct >= 70 ? 'sg' : orgPct >= 50 ? 'sy' : 'sr';
                     const badge = orgPct === null ? 'y' : state === 'sg' ? 'g' : state === 'sy' ? 'y' : 'r';
                     const window = aggregates?.org_paid_mix_7d?.window || '7d';
+                    // Fallback all_time = nessuna attribuzione nella finestra: i numeri
+                    // sono storici, non live. Va detto, altrimenti il badge mente.
+                    const isStale = window === 'all_time';
+                    const ageDays = aggregates?.org_paid_mix_7d?.data_age_days ?? null;
                     return (
-                        <div className={`exec-tile ${state}`}>
+                        <div className={`exec-tile ${isStale ? 'sy' : state}`}>
                             <div className="exec-thead">
                                 <p className="exec-ttitle">Org / Paid Mix</p>
                                 <span className="exec-tnum">02</span>
                             </div>
-                            <span className={`exec-sbadge ${badge}`}>● {orgPct === null ? 'Parziale' : 'Live'}</span>
+                            <span className={`exec-sbadge ${isStale ? 'y' : badge}`}>● {orgPct === null ? 'Parziale' : isStale ? 'Storico' : 'Live'}</span>
                             <div className="exec-metric">
                                 <span className="exec-mval">{orgPct !== null ? `${orgPct}%` : '—'}</span>
                                 <span className="exec-munit">organico</span>
@@ -4688,7 +4692,11 @@ function ExecutivePage() {
                                     </div>
                                 </>
                             )}
-                            <div style={{fontSize:'9px',color:'#71717a',marginTop:'2px'}}>window: {window}</div>
+                            <div style={{fontSize:'9px',color: isStale ? '#b45309' : '#71717a',marginTop:'2px'}}>
+                                {isStale
+                                    ? `⚠ dati storici — nessuna attribuzione negli ultimi 7g${ageDays !== null ? ` (ultima ${ageDays}g fa)` : ''}`
+                                    : `window: ${window}`}
+                            </div>
                             <div className="exec-threshold">
                                 <div className="exec-tlabel">Soglie</div>
                                 <div className="exec-tbar"><div className="sr"></div><div className="sy"></div><div className="sg"></div></div>

@@ -3724,6 +3724,15 @@ async def executive_aggregates(
         rows = db.execute(text(sql_mix_all)).fetchall()
         used_window = "all_time"
 
+    # Età del dato: con il fallback all_time la tile mostra attribuzioni che possono
+    # essere vecchie di mesi (nessuna campagna attiva). Esporla evita che il pannello
+    # spacci dati storici per live.
+    latest_attr_row = db.execute(text(
+        "SELECT MAX(created_at) FROM marketing_attributions"
+    )).fetchone()
+    latest_attr_at = latest_attr_row[0] if latest_attr_row else None
+    data_age_days = (now - latest_attr_at.replace(tzinfo=now.tzinfo)).days if latest_attr_at else None
+
     mix = {"organic": 0, "paid": 0, "unknown": 0}
     conv_by_bucket = {"organic": 0, "paid": 0, "unknown": 0}
     for bucket, attr, conv in rows:
@@ -3734,6 +3743,8 @@ async def executive_aggregates(
     org_paid_payload = {
         "window": used_window,
         "computed_at": now.isoformat(),
+        "latest_attribution_at": latest_attr_at.isoformat() if latest_attr_at else None,
+        "data_age_days": data_age_days,
         "value": None if total == 0 else {
             "organic_pct": round(mix["organic"]   / total * 100, 1) if total else 0,
             "paid_pct":    round(mix["paid"]      / total * 100, 1) if total else 0,

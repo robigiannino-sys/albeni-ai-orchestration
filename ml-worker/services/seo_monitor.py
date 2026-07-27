@@ -88,6 +88,12 @@ SEMANTIC_DEFENSE_KEYWORDS = [
 # Redis cache TTL: SEMrush API units are limited; data SEO non cambia per minuti
 SEO_HEALTH_CACHE_TTL = 3600  # 1 hour
 SEO_HEALTH_CACHE_KEY_PREFIX = "seo_health:v2:"
+# Negative cache: quando SEMrush è a zero unità (piano sospeso) ogni chiamata a
+# /v1/seo/health rifà 4 request per dominio destinate a fallire. La dashboard fa
+# polling ogni 60s → 16 request bruciate al minuto. Con questo TTL corto si
+# ritenta comunque ogni 15 min, così alla riattivazione del piano il live
+# riparte da solo senza intervento.
+SEO_HEALTH_FALLBACK_CACHE_TTL = 900  # 15 minutes
 
 
 class SEOMonitor:
@@ -139,7 +145,9 @@ class SEOMonitor:
                 cached_raw = await self.redis.get(cache_key)
                 if cached_raw:
                     data = json.loads(cached_raw)
-                    data["_source"] = "cached"
+                    # Un hit sul negative cache resta "fallback": il compile deve
+                    # ripiegare su snapshot/euristica, non trattarlo come dato buono.
+                    data["_source"] = "fallback" if data.get("_source") == "fallback" else "cached"
                     return data
             except Exception as e:
                 logger.warning(f"Redis cache read failed for {domain}: {e}")
@@ -187,10 +195,13 @@ class SEOMonitor:
             "_source": source,
         }
 
-        # Cache (skip if fallback so we re-try next time API quota recovers)
-        if self.redis and source == "live":
+        # Cache: 1h sui dati buoni, 15 min sul fallback (negative cache) — così le
+        # unità SEMrush esaurite non generano una raffica di 403 a ogni poll della
+        # dashboard, ma il live riparte da solo entro un quarto d'ora.
+        if self.redis:
+            ttl = SEO_HEALTH_CACHE_TTL if source == "live" else SEO_HEALTH_FALLBACK_CACHE_TTL
             try:
-                await self.redis.setex(cache_key, SEO_HEALTH_CACHE_TTL, json.dumps(data))
+                await self.redis.setex(cache_key, ttl, json.dumps(data))
             except Exception as e:
                 logger.warning(f"Redis cache write failed for {domain}: {e}")
         return data
