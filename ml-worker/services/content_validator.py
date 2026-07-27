@@ -14,7 +14,7 @@ Based on the original specification documents:
 Validation checks:
 1. Brand Compliance — tone of voice, forbidden terms, brand axiom
 2. Protected Terms — never translate or alter protected terms
-3. Technical Accuracy — micronage (17 micron), weights (150g/190g), certifications
+3. Technical Accuracy — micronage (17,6 micron), weights (150g/195g), certifications
 4. Cluster Alignment — tone, pain points, key messages match target cluster
 5. SEO Check — keyword presence in title/meta, domain-funnel coherence
 6. Anti-hallucination — Gemini second-pass verification
@@ -69,23 +69,31 @@ PROTECTED_TERMS = [
 ]
 
 # Forbidden terms — NEVER appear in content (from AI_orchestartion.docx)
+# Guardrail di brand (10/07/2026): valgono in OGNI lingua e sono bloccanti.
+# Prima non c'erano: la lista copriva solo il registro commerciale, quindi una
+# landing zeppa di "Albeni 1905 + Reda 1865 = 270 anni" passava senza un errore.
+BRAND_FORBIDDEN = [
+    "albeni", "reda", "1905", "1865", "270 anni", "270 years", "270 jahre", "270 ans",
+    "heiq", " zq", "zq ", "zqrx", "compact", "finissaggio", "superfine", "ultrafein",
+]
+
 FORBIDDEN_TERMS = {
-    "it": ["abbigliamento sportivo", "underwear", "fast fashion", "sconto", "saldi",
+    "it": BRAND_FORBIDDEN + ["abbigliamento sportivo", "underwear", "fast fashion", "sconto", "saldi",
            "economico", "low cost", "cheap", "offerta speciale", "promozione aggressiva",
            "lana fresca"],
-    "en": ["sportswear", "underwear", "fast fashion", "discount", "sale",
+    "en": BRAND_FORBIDDEN + ["sportswear", "underwear", "fast fashion", "discount", "sale",
            "cheap", "low cost", "budget", "bargain", "fresh wool"],
-    "de": ["Sportbekleidung", "Unterwäsche", "Fast Fashion", "Rabatt", "Schlussverkauf",
+    "de": BRAND_FORBIDDEN + ["Sportbekleidung", "Unterwäsche", "Fast Fashion", "Rabatt", "Schlussverkauf",
            "billig", "günstig", "frische Wolle"],
-    "fr": ["vêtement de sport", "sous-vêtement", "fast fashion", "soldes", "remise",
+    "fr": BRAND_FORBIDDEN + ["vêtement de sport", "sous-vêtement", "fast fashion", "soldes", "remise",
            "pas cher", "bon marché", "laine fraîche"],
 }
 
 # Technical facts that MUST be accurate (from manuale_procedure)
 TECHNICAL_FACTS = {
-    "micronage": "17",          # Always 17 micron, never other values
-    "weights": ["150g", "190g"],  # Only these two weights
-    "certifications": ["ZQ"],
+    "micronage": "17,6",        # scheda D0371 (era "17" secco)
+    "weights": ["150g", "195g"],  # 195 g/m² dichiarato dal 10/07 (PDP store ancora a 190)
+    "certifications": ["RWS"],  # ZQ ritirato dal guardrail 10/07
     "construction": "Cut & Sewn",  # Never "knit" or "knitted"
     "heritage_years": "",          # claim ritirato col pivot (era 270+ anni)
 }
@@ -105,7 +113,7 @@ CLUSTER_VALIDATION = {
         "target_domain": "micron-e.com",
     },
     "conscious_premium": {
-        "required_themes": ["sustainability", "ZQ", "ethical", "transparent", "environment"],
+        "required_themes": ["sustainability", "RWS", "ethical", "transparent", "environment"],
         "tone": "conscious, informed, empathetic",
         "forbidden_themes": ["luxury excess", "status symbol", "exclusive"],
         "target_domain": "worldofmerino.com",
@@ -387,12 +395,14 @@ Rispondi SOLO con un JSON valido:
         details = {"errors": [], "warnings": [], "suggestions": []}
 
         # Check micronage — must be 17, never other values
-        micron_pattern = r'(\d+)\s*micron'
+        # Il decimale va catturato: con r'(\d+)\s*micron' la stringa "17,6 micron"
+        # matchava "6" e veniva bocciata come micronaggio errato.
+        micron_pattern = r'(\d+(?:[.,]\d+)?)\s*micron'
         micron_matches = re.findall(micron_pattern, content_str)
         for match in micron_matches:
-            if match != "17":
+            if match.replace(".", ",") not in ("17", "17,6"):
                 score -= 8
-                details["errors"].append(f"Micronaggio errato: {match} micron (deve essere 17 micron)")
+                details["errors"].append(f"Micronaggio errato: {match} micron (deve essere 17,6 micron)")
 
         if "17" in content_str and "micron" in content_str:
             pass  # Correct
@@ -404,9 +414,12 @@ Rispondi SOLO con un JSON valido:
         weight_pattern = r'(\d+)\s*g(?:ramm|/)'
         weight_matches = re.findall(weight_pattern, content_str)
         for match in weight_matches:
-            if match not in ["150", "190"]:
+            if match == "190":
+                details["warnings"].append(
+                    "Grammatura 190g: dal 10/07 si dichiara 195 g/m² (scheda D0371) — allineare")
+            elif match not in ["150", "195"]:
                 score -= 5
-                details["errors"].append(f"Grammatura errata: {match}g (solo 150g o 190g)")
+                details["errors"].append(f"Grammatura errata: {match}g (solo 150g o 195g)")
 
         # Check construction — must be Cut & Sewn, not knit
         # EXCEPTION: comparative content (e.g. "Cut & Sew vs Knit") may legitimately mention knit
@@ -427,14 +440,9 @@ Rispondi SOLO con un JSON valido:
                 details["errors"].append(
                     f"Costruzione errata: trovato '{', '.join(found_knit)}' — deve essere 'Cut & Sewn'")
 
-        # Check heritage years
-        heritage_pattern = r'(\d+)\+?\s*(?:anni|years|jahre|ans)'
-        heritage_matches = re.findall(heritage_pattern, content_str)
-        for match in heritage_matches:
-            if int(match) < 250 or int(match) > 300:
-                if int(match) not in [120, 160, 161]:  # Allow individual brand ages
-                    score -= 3
-                    details["warnings"].append(f"Heritage errato: {match} anni (dovrebbe essere 270+)")
+        # Check heritage: il claim "270+ anni" è stato ritirato col pivot ed è ora un
+        # termine vietato. Il controllo che penalizzava chi NON lo citava è rimosso —
+        # premiava l'esatto opposto del guardrail.
 
         return max(0, score), details
 
