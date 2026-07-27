@@ -194,7 +194,7 @@ class ContentValidator:
         content_str = json.dumps(content, ensure_ascii=False).lower()
 
         # 1. Brand Compliance (max 20 points)
-        brand_score, brand_details = self._check_brand_compliance(content_str, language)
+        brand_score, brand_details, brand_hard_fail = self._check_brand_compliance(content_str, language)
         result.checks["brand_compliance"] = {"score": brand_score, "max": 20, **brand_details}
 
         # 2. Protected Terms (max 10 points)
@@ -235,7 +235,8 @@ class ContentValidator:
         total_score = brand_score + protected_score + tech_score + cluster_score + seo_score + domain_score + lang_score + voice_score
         result.overall_score = round(max(0, total_score), 1)
         # Voice HARD FAIL forces passed=False regardless of score
-        result.passed = (total_score >= settings.CONTENT_QUALITY_MIN) and (not voice_hard_fail)
+        result.passed = ((total_score >= settings.CONTENT_QUALITY_MIN)
+                        and (not voice_hard_fail) and (not brand_hard_fail))
 
         # Collect all errors and warnings
         for check_name, check_data in result.checks.items():
@@ -328,14 +329,23 @@ Rispondi SOLO con un JSON valido:
     # INDIVIDUAL VALIDATION CHECKS
     # ===================================================================
 
-    def _check_brand_compliance(self, content_str: str, language: str) -> Tuple[float, Dict]:
-        """Check brand axiom, forbidden terms, tone of voice."""
+    def _check_brand_compliance(self, content_str: str, language: str) -> Tuple[float, Dict, bool]:
+        """Check brand axiom, forbidden terms, tone of voice. Terzo valore: hard fail."""
         score = 20.0
         details = {"errors": [], "warnings": [], "suggestions": []}
+        hard_fail = False
 
         # Check forbidden terms
         forbidden = FORBIDDEN_TERMS.get(language, FORBIDDEN_TERMS["it"])
         found_forbidden = [term for term in forbidden if term.lower() in content_str]
+        # I termini del guardrail di brand sono BLOCCANTI, non una penalità: con lo
+        # sconto a punti un testo poteva citare Albeni, Reda e "270 anni" e passare
+        # comunque la soglia. È esattamente quello che era successo il 14/05.
+        found_brand = [t for t in found_forbidden if t in BRAND_FORBIDDEN]
+        if found_brand:
+            hard_fail = True
+            details["errors"].append(
+                f"HARD FAIL guardrail di brand — termini vietati: {', '.join(t.strip() for t in found_brand)}")
         if found_forbidden:
             penalty = min(10, len(found_forbidden) * 3)
             score -= penalty
@@ -356,7 +366,8 @@ Rispondi SOLO con un JSON valido:
             details["errors"].append(f"Menzione competitor: {', '.join(found_competitors)}")
 
         details["found_forbidden"] = found_forbidden
-        return max(0, score), details
+        details["hard_fail"] = hard_fail
+        return max(0, score), details, hard_fail
 
     def _check_protected_terms(self, content: Dict, content_str: str) -> Tuple[float, Dict]:
         """Check that protected terms are present and not altered."""
