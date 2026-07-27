@@ -284,7 +284,7 @@ class ContentValidator:
         validation_prompt = f"""{hub_context}Sei il Quality Assurance Agent di micron-è.
 Analizza il seguente contenuto generato dall'AI e verifica:
 
-1. ACCURATEZZA TECNICA: Il micronaggio è SEMPRE 17 micron? Le grammature sono solo 150g o 190g? La costruzione micron-è è Cut & Sewn (MAI "knit"). ECCEZIONE: in articoli comparativi (es. "Cut & Sew vs Knit") l'uso di "knit" per contrasto è ammesso.
+1. ACCURATEZZA TECNICA: Il micronaggio è 17,6 micron (scheda D0371)? Le grammature sono 150 g/m² (Cool) e 195 g/m² (Adaptive)? La costruzione micron-è è Cut & Sewn (MAI "knit"). ECCEZIONE: in articoli comparativi (es. "Cut & Sew vs Knit") l'uso di "knit" per contrasto è ammesso.
 2. COERENZA BRAND: Il tono rispetta "Same Silhouette, Superior Substance"? Non ci sono riferimenti a sportswear, underwear, fast fashion?
 3. TERMINI PROTETTI: Cut & Sewn, Material Science, Invisible Luxury sono presenti e corretti? (Albeni, Reda, 1905, 1865, ZQ, HeiQ sono VIETATI: se compaiono è un errore bloccante)
 4. HALLUCINATION CHECK: Ci sono affermazioni inventate, statistiche false, o claim non verificabili?
