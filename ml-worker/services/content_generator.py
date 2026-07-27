@@ -26,7 +26,7 @@ SYSTEM_PROMPT_BASE = """Sei il Creative Director di micron-è.
 Assioma fondamentale: "Same Silhouette, Superior Substance".
 Tone of Voice: Autorevole, sobrio, colto. Mai posizionare come abbigliamento sportivo o intimo.
 Brand: merino 17,5µ Super 120's, Cut & Sewn, Made in Italy.
-Materiale: Fibra Merino 17 micron Reda, costruzione Cut & Sewn (non knit).
+Materiale: jersey merino Super 120's 17,6 micron, costruzione Cut & Sewn (non knit).
 Non menzionare mai: abbigliamento sportivo, underwear, fast fashion, sconti aggressivi."""
 # Voice Guidelines v1.0 — Anti-AI-tell (Voice Baseline universale, rubric v1.1)
 # Reference: voice-baseline-albeni-content.md
@@ -48,14 +48,14 @@ Applica queste 4 regole-base prima di emettere QUALSIASI contenuto editoriale:
    - OBBLIGATORIO chiudere con rimando esplicito al Lead Magnet del cluster bersaglio:
      C1 Business Professional -> Business Layering Guide
      C2 Heritage Mature -> La Guida Definitiva ai Tessuti Nobili
-     C3 Conscious Premium -> Filiera Reda - 270 anni di responsabilita
+     C3 Conscious Premium -> Filiera certificata RWS - benessere animale e tracciabilita
      C4 Modern Minimalist -> Wardrobe Essentials Minimalist Edition
      C5 Italian Authentic -> Guida all'uso quotidiano (150/190)
 
 4. IL MERCATO NON PARLA, LE PERSONE PARLANO.
    - VIETATO: "Il mercato ha preso parola", "L'industria sta dicendo", "La filiera sussurra".
    - VIETATO ammicco al lettore: "di nuovo", "come sapevamo", "per chi vuole ascoltare".
-   - Soggetti narranti: autore (giornalistico) + fonti nominate (McKinsey, Commissione UE, AgResearch, Reda).
+   - Soggetti narranti: autore (giornalistico) + fonti nominate (McKinsey, Commissione UE, AgResearch).
 
 BLACKLIST IMMEDIATA - Se generi anche UNA di queste, RIGENERA:
 - rivoluzionario, straordinario, incredibile, epocale, iconico
@@ -74,7 +74,7 @@ CLUSTER_PROMPTS = {
         "tone": "Diretto, efficiente, orientato alla performance.",
         "pain_points": "Sudorazione sotto la giacca, pieghe dopo voli lunghi, disagio termico in riunioni.",
         "key_messages": [
-            "La fibra Merino 17 micron Reda gestisce l'umidita prima che diventi sudore",
+            "La fibra merino 17,6 micron gestisce l'umidita prima che diventi sudore",
             "Stabilita termica dalla boardroom alla cena",
             "Zero pieghe dopo 12 ore di volo"
         ],
@@ -85,18 +85,18 @@ CLUSTER_PROMPTS = {
         "tone": "Profondo, elegante, colto. Evoca tradizione e valore duraturo.",
         "pain_points": "Stanchezza del consumismo, ricerca di qualita permanente, desiderio di distinzione discreta.",
         "key_messages": [
-            "L'eredita di 270 anni: un investimento che non invecchia mai",
+            "Un capo che non invecchia: si compra una volta e si porta per anni",
             "Costruzione Cut & Sewn per stabilita dimensionale decennale",
             "Smetti di comprare per la persona che vorresti sembrare"
         ],
         "routing_domain": "micron-e.com"
     },
     "conscious_premium": {
-        "focus": "Sostenibilita e lusso etico. Certificazione ZQ, tracciabilita, impatto ambientale positivo.",
+        "focus": "Sostenibilita e lusso etico. Certificazione RWS, tracciabilita, impatto ambientale positivo.",
         "tone": "Consapevole, informato, empatico. Dati concreti su sostenibilita.",
         "pain_points": "Greenwashing, mancanza di trasparenza, senso di colpa nel consumo.",
         "key_messages": [
-            "Certificazione ZQ: tracciabilita dal pascolo al prodotto finito",
+            "Certificazione RWS: tracciabilita dal pascolo al prodotto finito",
             "Fibra naturale rinnovabile che si rigenera con l'aria",
             "Lusso che rispetta chi lo produce e chi lo indossa"
         ],
@@ -119,7 +119,7 @@ CLUSTER_PROMPTS = {
         "pain_points": "Disagio termico estivo, capi sintetici irritanti, perdita del saper fare italiano.",
         "key_messages": [
             "La t-shirt che non fa sudare: fibra Merino che regola la temperatura",
-            "Fatto in Italia da chi lo fa da 270 anni",
+            "Tagliato e cucito in Italia, dove il saper fare tessile e di casa",
             "Il comfort invisibile che solo la lana merino puo dare"
         ],
         "routing_domain": "micron-e.com"
@@ -149,7 +149,7 @@ CONTENT_TEMPLATES = {
 # Language-specific instructions
 LANGUAGE_INSTRUCTIONS = {
     "it": "Scrivi in italiano. Registro: formale ma accessibile.",
-    "en": "Write in English. Never use 'fresh wool' (semantic error), use 'lightweight superfine wool'. Register: sophisticated, warm.",
+    "en": "Write in English. Never use 'fresh wool' (semantic error), use 'lightweight fine merino wool'. Register: sophisticated, warm.",
     "fr": "Ecris en francais. Registre: elegant, raffine. Vouvoiement obligatoire.",
     "de": "Schreibe auf Deutsch. Register: Sachlich-elegant (formell, prazise, warm aber engineering-oriented). Siezen ist Pflicht.",
     "es": "Escribe en espanol. Registro: elegante, sofisticado. Usted obligatorio."
