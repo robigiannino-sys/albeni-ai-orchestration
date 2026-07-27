@@ -4017,6 +4017,10 @@ async def generate_from_notion(
                     "tokens_used": content_result.tokens_used,
                     "warnings": validation.warnings,
                     "ai_verdict": ai_validation.get("overall_verdict", "N/A"),
+                    # Senza il motivo, un ai_verdict FAIL non è azionabile: si sa
+                    # che qualcosa non va ma non cosa. Ora arriva col verdetto.
+                    "ai_issues": ai_validation.get("issues", []),
+                    "ai_hallucinations": ai_validation.get("hallucinations_found", []),
                 })
             else:
                 # FAILED: Do NOT write to Notion, keep "Da Fare" with error note
