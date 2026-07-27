@@ -203,6 +203,100 @@
         .sd-kw-pos { font-weight: 700; color: #93c5fd; }
         .sd-skel { color: #475569; font-style: italic; }
         .exec-skel { color: #52525b; font-style: italic; }
+
+        /* ── Copilota (intelligenza attiva di modulo) ── */
+        .coach { margin-bottom: 20px; }
+        .coach-bar { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: #111318; border: 1px solid #27272a; border-radius: 10px; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+        .coach-bar:hover { border-color: #3f3f46; background: #14161c; }
+        .coach-badge { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; color: #7dd3fc; text-transform: uppercase; white-space: nowrap; }
+        .coach-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+        .coach-verdict { font-size: 12.5px; color: #a1a1aa; flex: 1; }
+        .coach-toggle { font-size: 11px; color: #52525b; white-space: nowrap; }
+        .coach-panel { margin-top: -1px; border: 1px solid #27272a; border-top: 0; border-radius: 0 0 10px 10px; background: #0d0e12; }
+        .coach-tabs { display: flex; gap: 2px; padding: 6px 8px 0; border-bottom: 1px solid #1f1f23; }
+        .coach-tab { position: relative; padding: 8px 14px; font-size: 12px; color: #71717a; cursor: pointer; border-radius: 6px 6px 0 0; }
+        .coach-tab:hover { color: #d4d4d8; background: #141519; }
+        .coach-tab.active { color: #7dd3fc; background: #141a22; font-weight: 600; }
+        .coach-tabdot { position: absolute; top: 5px; right: 5px; width: 6px; height: 6px; border-radius: 50%; background: #f87171; }
+        .coach-body { padding: 14px 16px 16px; }
+        .coach-empty { font-size: 12px; color: #52525b; font-style: italic; }
+        .coach-row { display: flex; gap: 10px; padding: 9px 0; border-bottom: 1px solid #17171a; }
+        .coach-row:last-of-type { border-bottom: 0; }
+        .coach-row .coach-dot { margin-top: 6px; }
+        .coach-rowmain { flex: 1; min-width: 0; }
+        .coach-rowhead { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+        .coach-rowlabel { font-size: 12.5px; font-weight: 600; color: #e4e4e7; }
+        .coach-rowval { font-size: 12.5px; font-weight: 700; font-variant-numeric: tabular-nums; }
+        .coach-rowstate { font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.06em; padding: 2px 6px; border-radius: 4px; font-weight: 700; }
+        .coach-rowwhy { font-size: 12px; line-height: 1.55; color: #8b8b93; margin-top: 3px; }
+        .coach-src { margin-top: 12px; font-size: 10.5px; color: #3f3f46; }
+        .coach-src code { color: #52525b; background: #141519; padding: 1px 5px; border-radius: 3px; }
+        .coach-act { padding: 12px 14px; background: #131419; border: 1px solid #1f1f23; border-left: 2px solid #3f3f46; border-radius: 6px; margin-bottom: 10px; }
+        .coach-act.urgent { border-left-color: #f87171; background: #16111400; background: #151013; }
+        .coach-acthead { font-size: 12.5px; font-weight: 600; color: #e4e4e7; }
+        .coach-actwhy { font-size: 12px; line-height: 1.55; color: #8b8b93; margin-top: 4px; }
+        .coach-actprompt { margin-top: 9px; padding: 9px 11px; background: #0a0b0e; border: 1px solid #1f1f23; border-radius: 5px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; line-height: 1.6; color: #a5b4c4; white-space: pre-wrap; }
+        .coach-copy { margin-top: 8px; padding: 5px 12px; background: #1e3a5f; color: #93c5fd; border: 0; border-radius: 5px; font-size: 11px; font-weight: 600; cursor: pointer; }
+        .coach-copy:hover { background: #1e4a7f; }
+        .coach-hint { margin-top: 12px; font-size: 11px; color: #52525b; line-height: 1.5; }
+        .coach-block { margin-bottom: 14px; }
+        .coach-block:last-child { margin-bottom: 0; }
+        .coach-blabel { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: #52525b; margin-bottom: 5px; }
+        .coach-block p { font-size: 12.5px; line-height: 1.6; color: #a1a1aa; }
+        .coach-trap { font-size: 12.5px; line-height: 1.6; color: #8b8b93; padding: 9px 0 9px 14px; border-left: 2px solid #27272a; margin-bottom: 8px; }
+
+        /* ── Piano d'Azione ── */
+        .plan-intro { font-size: 13px; line-height: 1.6; color: #a1a1aa; background: #111318; border: 1px solid #27272a; border-radius: 10px; padding: 14px 16px; margin-bottom: 18px; }
+        .plan-intro strong { color: #e4e4e7; }
+        .plan-summary { display: flex; align-items: stretch; gap: 18px; flex-wrap: wrap; padding: 14px 18px; background: #0d0e12; border: 1px solid #27272a; border-radius: 10px; margin-bottom: 22px; }
+        .plan-kpi { text-align: center; padding: 0 6px; }
+        .plan-kpin { font-size: 26px; font-weight: 700; color: #e4e4e7; line-height: 1.1; font-variant-numeric: tabular-nums; }
+        .plan-kpil { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #52525b; margin-top: 3px; }
+        .plan-modstrip { flex: 1; display: flex; flex-wrap: wrap; gap: 6px; align-content: center; min-width: 260px; }
+        .plan-modchip { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: #a1a1aa; background: #141519; border: 1px solid #1f1f23; border-radius: 20px; padding: 3px 10px; }
+        .plan-stage { margin-bottom: 26px; }
+        .plan-stagehead { display: flex; align-items: baseline; gap: 10px; }
+        .plan-stagen { width: 22px; height: 22px; border-radius: 50%; background: #1e3a5f; color: #93c5fd; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; flex: none; }
+        .plan-stagelabel { font-size: 15px; font-weight: 600; color: #fafafa; }
+        .plan-stagecount { font-size: 11px; color: #52525b; margin-left: auto; }
+        .plan-stagerule { font-size: 12px; line-height: 1.55; color: #71717a; margin: 5px 0 12px 32px; padding-left: 10px; border-left: 2px solid #1f1f23; }
+        .plan-item { display: flex; gap: 12px; padding: 13px 15px; background: #111318; border: 1px solid #1f1f23; border-radius: 8px; margin-bottom: 9px; margin-left: 32px; }
+        .plan-item.urgent { border-color: #7f1d1d; background: #150f11; }
+        .plan-rank { width: 24px; height: 24px; border-radius: 6px; background: #18181b; color: #71717a; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex: none; font-variant-numeric: tabular-nums; }
+        .plan-item.urgent .plan-rank { background: #2e0505; color: #f87171; }
+        .plan-main { flex: 1; min-width: 0; }
+        .plan-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+        .plan-title { font-size: 13px; font-weight: 600; color: #e4e4e7; }
+        .plan-mod { font-size: 10.5px; color: #71717a; background: #141519; border-radius: 4px; padding: 2px 7px; }
+        .plan-also { font-size: 10.5px; color: #52525b; font-style: italic; }
+        .plan-why { font-size: 12px; line-height: 1.55; color: #8b8b93; margin-top: 4px; }
+        .plan-foot { font-size: 11px; line-height: 1.6; color: #52525b; border-top: 1px solid #1f1f23; padding-top: 12px; margin-top: 8px; }
+        .plan-cta { padding: 8px 16px; background: #166534; color: #bbf7d0; border: 0; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; }
+        .plan-cta:hover { background: #15803d; }
+        .plan-btns { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+        .plan-run { margin-top: 8px; padding: 5px 12px; background: #14161c; color: #93c5fd; border: 1px solid #1e3a5f; border-radius: 5px; font-size: 11px; font-weight: 600; cursor: pointer; }
+        .plan-run:hover:enabled { background: #1e3a5f; }
+        .plan-run:disabled { opacity: 0.5; cursor: default; }
+        .plan-donebtn { margin-top: 8px; padding: 5px 12px; background: #14161c; color: #86efac; border: 1px solid #166534; border-radius: 5px; font-size: 11px; font-weight: 600; cursor: pointer; }
+        .plan-donebtn:hover { background: #14532d; }
+        .plan-exec { margin-top: 9px; padding: 10px 12px; background: #0a0b0e; border: 1px solid #1e3a5f; border-radius: 6px; }
+        .plan-exec.err { border-color: #7f1d1d; }
+        .plan-execmeta { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #52525b; margin-bottom: 5px; }
+        .plan-exectext { font-size: 12px; line-height: 1.6; color: #a1a1aa; white-space: pre-wrap; max-height: 320px; overflow-y: auto; }
+        .plan-item.resurfaced { border-color: #78350f; }
+        .plan-reopen { font-size: 10.5px; color: #fbbf24; background: #2e1f05; border-radius: 4px; padding: 2px 7px; }
+        .plan-clear { font-size: 13px; color: #4ade80; background: #0d1a10; border: 1px solid #14532d; border-radius: 10px; padding: 14px 16px; margin-bottom: 20px; }
+        .plan-donebox { border: 1px solid #1f1f23; border-radius: 10px; background: #0d0e12; margin-bottom: 20px; }
+        .plan-donehead { display: flex; justify-content: space-between; align-items: center; padding: 11px 15px; cursor: pointer; font-size: 12.5px; color: #a1a1aa; }
+        .plan-donehead:hover { color: #e4e4e7; }
+        .plan-donetoggle { font-size: 11px; color: #52525b; }
+        .plan-donebody { padding: 0 15px 14px; }
+        .plan-donerow { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; padding: 7px 0; border-top: 1px solid #17171a; }
+        .plan-donetitle { font-size: 12px; color: #a1a1aa; text-decoration: line-through; }
+        .plan-donerow.ok .plan-donetitle { text-decoration: none; color: #71717a; }
+        .plan-donemeta { font-size: 10.5px; color: #52525b; margin-left: auto; }
+        .plan-link { background: none; border: 0; color: #60a5fa; font-size: 11px; cursor: pointer; padding: 0; }
+        .plan-link:hover { text-decoration: underline; }
     </style>
 <!-- CONTENT_LIBRARY_DATA_START -->
 <!-- Blob dati rimosso il 27/07/2026: era un dump di marzo mai letto da nessun
@@ -261,6 +355,8 @@ function App() {
         <React.Fragment>
             <Sidebar page={page} setPage={setPage} health={health} pendingCount={pendingCount} />
             <div className="main">
+                <Coach page={page} />
+                {page === 'plan' && <PlanPage />}
                 {page === 'executive' && <ExecutivePage />}
                 {page === 'dashboard' && <DashboardPage health={health} notionStats={notionStats} />}
                 {page === 'notion' && <NotionPage onStatsUpdate={setNotionStats} />}
@@ -277,6 +373,1082 @@ function App() {
                 {page === 'adv-budget' && <ADVBudgetPage />}
                 {page === 'logs' && <LogsPage health={health} />}
             </div>
+        </React.Fragment>
+    );
+}
+
+// ============================================================
+// COPILOTA — intelligenza attiva di modulo (v1, 27/07/2026)
+// ------------------------------------------------------------
+// Ogni modulo della tower espone 4 risposte:
+//   1. Cos'è      → che cosa sto guardando e da dove viene il numero
+//   2. Oggi dice  → lettura del dato LIVE contro soglie dichiarate PRIMA
+//   3. Cosa faccio→ azione condizionata allo stato + istruzione copiabile
+//   4. Trappole   → gli errori di lettura tipici di QUESTO dato
+//
+// Il layer è data-autonomo: rilegge gli stessi endpoint della pagina,
+// quindi non tocca nessun componente esistente (mount unico in <main>).
+// Le soglie sono scritte nel codice: il verdetto non dipende da come
+// il grafico "sembra" oggi.
+// ============================================================
+
+const CST = {
+    ok:    { c: '#4ade80', bg: '#052e16', l: 'in linea' },
+    watch: { c: '#fbbf24', bg: '#2e1f05', l: 'da osservare' },
+    bad:   { c: '#f87171', bg: '#2e0505', l: 'fuori soglia' },
+    na:    { c: '#71717a', bg: '#1c1c1f', l: 'dato assente' },
+};
+
+// helper: riga di lettura
+const R = (label, value, state, why) => ({ label, value, state, why });
+const num = (v) => (v === null || v === undefined || Number.isNaN(v) ? null : Number(v));
+const pct = (v) => (v === null || v === undefined ? '—' : `${Number(v).toFixed(1)}%`);
+const band = (v, okMax, watchMax) => (v === null ? 'na' : v <= okMax ? 'ok' : v <= watchMax ? 'watch' : 'bad');
+const bandUp = (v, okMin, watchMin) => (v === null ? 'na' : v >= okMin ? 'ok' : v >= watchMin ? 'watch' : 'bad');
+const daysAgo = (iso) => { if (!iso) return null; const t = new Date(iso.length <= 10 ? iso + 'T00:00:00Z' : iso).getTime(); return Math.floor((Date.now() - t) / 864e5); };
+
+// ─────────────────────────────────────────────────────────────
+// KNOWLEDGE BASE — un'entrata per modulo
+// ─────────────────────────────────────────────────────────────
+const COACH = {
+
+// ══════════════ OVERVIEW ══════════════
+executive: {
+    what: "Otto tile che riassumono lo stato dell'ecosistema per una lettura da board. Non è un modulo operativo: qui non si agisce, si decide DOVE guardare. Ogni tile ha una soglia dichiarata e un endpoint sorgente scritto sotto al numero.",
+    decides: "Su cosa concentrare la settimana: acquisizione (traffico/IDS), contenuto (CQS/pipeline) o conversione (CPA/mix organic-paid).",
+    cadence: "Una lettura a settimana. Più spesso amplifica il rumore.",
+    sources: [
+        { k: 'metrics', p: '/v1/dashboard/metrics' },
+        { k: 'agg',     p: '/v1/executive/aggregates?window_days=7' },
+        { k: 'an',      p: '/v1/anomaly/alerts?days=7' },
+        { k: 'seo',     p: '/v1/seo/health' },
+        { k: 'lake',    p: '/v1/content/lake/stats/summary' },
+    ],
+    read: (d) => {
+        const rows = [];
+        const ids = num(d.metrics?.avg_ids_score);
+        rows.push(R('IDS medio', ids === null ? '—' : ids.toFixed(1), bandUp(ids, 45, 25),
+            "Quanto è 'caldo' il visitatore medio. Sotto 25 il traffico arriva ma non è qualificato: è un problema di sorgente (dove compri/attiri), non di sito."));
+
+        const cpa = d.agg?.cpa_7d;
+        const cpaV = num(cpa?.value);
+        rows.push(R('CPA finestra', cpaV === null ? `— (${cpa?.reason || 'nessun dato'})` : `€${cpaV}`,
+            cpaV === null ? 'na' : band(cpaV, 9, 15),
+            "Costo per conversione paid. Il modello regge fino a €17,92; €19,39 è il tetto. Se è '—' non significa buono: significa che non c'è spesa registrata in adv_spend."));
+
+        const mix = d.agg?.org_paid_mix_7d?.value;
+        const org = num(mix?.organic_pct);
+        rows.push(R('Mix organico', org === null ? '—' : pct(org), bandUp(org, 60, 35),
+            `L'obiettivo del sistema è che il paid faccia da ponte mentre l'organico sale. ${mix ? `Base: ${mix.total} attribuzioni.` : ''} Con meno di 10 attribuzioni la finestra 7g cade su all_time: leggi sempre il campo window.`));
+
+        const c = d.an?.counts || {};
+        const crit = num(c.CRITICAL) || 0, warn = num(c.WARNING) || 0;
+        rows.push(R('Alert aperti 7g', `${num(d.an?.total) ?? 0} (${crit} crit · ${warn} warn)`,
+            crit > 0 ? 'bad' : warn > 0 ? 'watch' : 'ok',
+            "Scostamenti rilevati dal cron anomalie (04:15 UTC) su cpa_7d, organic_pct, heritage_mature_cr. Un CRITICAL va guardato oggi, non lunedì."));
+
+        const doms = d.seo?.domains || [];
+        const cann = doms.length ? Math.max(...doms.map(x => num(x.cannibalization_score) || 0)) : null;
+        rows.push(R('Cannibalizzazione max', cann === null ? '—' : pct(cann), band(cann, 4, 6),
+            "Percentuale di keyword per cui due tuoi domini competono fra loro. Sopra il 6% stai pagando due volte per la stessa posizione."));
+
+        const cqs = num(d.lake?.avg_quality_score);
+        rows.push(R('Content Quality Score', cqs === null ? '—' : cqs.toFixed(1), bandUp(cqs, 80, 76),
+            "Qualità media dei contenuti generati. Sotto 76 il problema è a monte (brief/prompt), non nella revisione."));
+        return rows;
+    },
+    actions: (d, rows) => {
+        const a = [];
+        const bad = rows.filter(r => r.state === 'bad');
+        const crit = num(d.an?.counts?.CRITICAL) || 0;
+        if (crit > 0) a.push({
+            urgent: true, stage: 1, key: 'alert-critical', title: `Chiudi i ${crit} alert CRITICAL prima di ogni altra cosa`,
+            why: "Un CRITICAL è uno scostamento che il sistema non sa spiegare da solo: finché è aperto ogni altra lettura è inaffidabile.",
+            prompt: "Apri albeni-master. Recupera gli alert CRITICAL degli ultimi 7 giorni da /v1/anomaly/alerts, per ognuno dimmi: metrica, valore osservato vs atteso, quale modulo della tower lo genera e quale azione lo chiude. Poi proponi l'ordine di intervento.",
+        });
+        if (rows.find(r => r.label === 'Mix organico' && r.state !== 'ok')) a.push({
+            stage: 4, key: 'paid-organic', title: "Riequilibra il ponte paid → organico",
+            why: "Se l'organico non sale mentre il paid gira, stai comprando traffico senza costruire l'asset.",
+            prompt: "Apri adv-budget-allocator. Fammi il report di allocazione corrente e dimmi quali pagine sono ancora sotto copertura paid dopo 30+ giorni: sono i casi in cui l'handoff a organico non è avvenuto. Per ognuna indica se il problema è indicizzazione, contenuto o keyword.",
+        });
+        if (rows.find(r => r.label === 'Cannibalizzazione max' && r.state !== 'ok')) a.push({
+            stage: 4, key: 'cannibalizzazione', title: "Sciogli le sovrapposizioni fra domini",
+            why: "Due domini sulla stessa keyword si tolgono posizione a vicenda: è l'unico problema SEO che peggiora facendo più contenuto.",
+            prompt: "Apri semrush-specialist. Estrai le keyword in conflitto fra worldofmerino.com, merinouniversity.com e micron-e.com. Per ognuna dimmi quale dominio deve tenerla secondo il ruolo di funnel (WoM=TOFU, MU=MOFU, micron-e=BOFU) e cosa fare sull'altra pagina (de-ottimizzare, canonical o riscrivere l'intento).",
+        });
+        if (!a.length) a.push({
+            stage: 5, key: 'espansione', title: "Nessuna emergenza: usa la settimana per costruire",
+            why: "Quando tutti i tile sono in linea la mossa giusta non è ottimizzare, è aggiungere superficie (contenuto nuovo, mercati nuovi).",
+            prompt: "Apri albeni-master. Tutti i tile executive sono in soglia. Dimmi qual è il prossimo blocco di lavoro a maggior impatto sui 90 giorni, con le decisioni ancora aperte che lo bloccano.",
+        });
+        if (bad.length > 1) a.push({
+            stage: 1, key: 'verifica-misurazione', title: `Attenzione: ${bad.length} indicatori fuori soglia insieme`,
+            why: "Più indicatori rossi contemporaneamente sono quasi sempre un unico problema a monte (tracking, ingestion, deploy), non tre problemi separati.",
+            prompt: "Apri albeni-master. Ho più indicatori executive fuori soglia contemporaneamente. Verifica prima le cause comuni: health ml-worker/Redis, ingestion behavioral_signals, tracker attivo sui 4 domini. Dimmi se è un problema di misurazione o di performance reale.",
+        });
+        return a;
+    },
+    traps: [
+        "**Grigio non è rosso.** Un tile senza valore dice «non lo sto misurando», non «va male». Prima di reagire leggi il campo `reason` dell'endpoint.",
+        "**La finestra si sposta da sola.** Sotto 10 attribuzioni la finestra 7g cade su `all_time`: un numero che «migliora» può essere solo un campione diverso. Controlla `meta.window_actually_used`.",
+        "**Otto tile insieme creano una storia che non esiste.** Il cervello collega numeri vicini nello spazio. Leggili uno alla volta e chiediti per ognuno: quale decisione cambierebbe se fosse il doppio?",
+    ],
+},
+
+dashboard: {
+    what: "I KPI comportamentali in tempo reale: chi sta navigando adesso sui 4 domini, quanto è qualificato (IDS), in che cluster viene classificato e a che punto del funnel si trova. La fonte è la tabella behavioral_signals alimentata dal tracker.",
+    decides: "Se il tracking sta funzionando e se il traffico che arriva assomiglia al pubblico per cui hai scritto.",
+    cadence: "Sguardo quotidiano di 30 secondi: serve a intercettare i buchi di misurazione, non a valutare le performance.",
+    sources: [
+        { k: 'metrics', p: '/v1/dashboard/metrics' },
+        { k: 'traffic', p: '/v1/dashboard/traffic?hours=24' },
+    ],
+    read: (d) => {
+        const rows = [];
+        const doms = d.traffic?.domains || [];
+        const ev24 = doms.reduce((s, x) => s + (num(x.events_window) || 0), 0);
+        const live = doms.filter(x => x.last_event && (Date.now() - new Date(x.last_event + 'Z').getTime()) < 864e5).length;
+        rows.push(R('Domini che trasmettono', `${live}/4`, live >= 4 ? 'ok' : live >= 2 ? 'watch' : 'bad',
+            "Domini con almeno un evento nelle ultime 24h. Un dominio a zero è quasi sempre il tracker o l'ingestion, non un calo di traffico: verifica prima l'health, poi il marketing."));
+        rows.push(R('Eventi 24h', String(ev24), ev24 > 50 ? 'ok' : ev24 > 0 ? 'watch' : 'bad',
+            "Volume grezzo di segnali. Serve come denominatore: sotto qualche decina di eventi ogni percentuale in questa pagina è rumore statistico."));
+        rows.push(R('Visitatori 7g', String(doms.reduce((s, x) => s + (num(x.visitors_7d) || 0), 0)),
+            'na', "Utenti distinti sui 7 giorni. È il campione su cui poggiano cluster e funnel: sotto ~100 le distribuzioni non sono leggibili."));
+        const ids = num(d.metrics?.avg_ids_score);
+        rows.push(R('IDS medio', ids === null ? '—' : ids.toFixed(1), bandUp(ids, 45, 25),
+            "Intent Detection Score: quanto il visitatore medio mostra segnali d'acquisto. Sale con la qualità della sorgente, non con il numero di pagine."));
+        const cd = d.metrics?.cluster_distribution || {};
+        const top = Object.entries(cd).sort((a, b) => b[1] - a[1])[0];
+        const tot = Object.values(cd).reduce((s, x) => s + x, 0);
+        rows.push(R('Cluster dominante', top ? `${top[0]} (${tot ? Math.round(top[1] / tot * 100) : 0}%)` : '—', 'na',
+            "Il cluster più rappresentato nel traffico. Dice a chi stai parlando di fatto — che spesso non è il cluster per cui hai scritto la pagina."));
+        return rows;
+    },
+    actions: (d, rows) => {
+        const a = [];
+        const doms = d.traffic?.domains || [];
+        const muti = doms.filter(x => !x.last_event || (Date.now() - new Date(x.last_event + 'Z').getTime()) > 2592e5).map(x => x.domain);
+        if (muti.length) a.push({
+            urgent: true, stage: 1, key: 'tracker-muto', title: `Domini muti da 3+ giorni: ${muti.join(', ')}`,
+            why: "Ogni giorno di silenzio è un buco permanente nel dataset: cluster e funnel dei prossimi 30 giorni nasceranno storti.",
+            prompt: `Apri albeni-railway-operator. I domini ${muti.join(', ')} non inviano eventi da più di 72h. Verifica in quest'ordine: 1) snippet tracker presente e non bloccato dal CMP, 2) health del ml-worker e di Redis, 3) ingestion in behavioral_signals. Dimmi dove si interrompe la catena.`,
+        });
+        const ids = num(d.metrics?.avg_ids_score);
+        if (ids !== null && ids < 25) a.push({
+            stage: 4, key: 'ids-sorgente', title: "IDS basso: il traffico non è qualificato",
+            why: "Con IDS sotto 25 stai attirando persone che non comprerebbero comunque. Ottimizzare le pagine non sposta niente: si sposta la sorgente.",
+            prompt: "Apri albeni-seo-agent. L'IDS medio è sotto 25. Analizza da quali keyword e canali arriva il traffico attuale e dimmi quali stanno portando visitatori fuori target. Proponi come spostare budget e contenuto verso query a intento più alto, restando nell'envelope EU (DE/IT/FR).",
+        });
+        a.push({
+            stage: 4, key: 'cluster-mismatch', title: "Confronta il cluster che arriva con il cluster per cui scrivi",
+            why: "È il controllo anti-bias più utile di questa pagina: la distribuzione reale smentisce spesso l'assunzione di partenza.",
+            prompt: "Apri albeni-master. Confronta la distribuzione cluster reale del traffico (da /v1/dashboard/metrics) con la distribuzione dei contenuti pubblicati per cluster. Dove c'è disallineamento dimmi se conviene adattare il contenuto o correggere l'acquisizione.",
+        });
+        return a;
+    },
+    traps: [
+        "**Il cluster più numeroso non è il più redditizio.** Il volume misura chi passa, non chi compra: incrocia sempre con il CR per cluster (Executive, tile 6) prima di riallocare contenuto.",
+        "**Zero eventi ≈ problema tecnico.** Nell'esperienza di questo sistema il traffico non crolla a zero: si interrompe la misurazione. Cerca la causa tecnica prima della spiegazione di marketing.",
+        "**24 ore su volumi bassi sono rumore.** Con poche decine di eventi al giorno la variazione giornaliera è casuale. Se devi confrontare, confronta 7g su 7g.",
+    ],
+},
+
+// ══════════════ MODULI ══════════════
+notion: {
+    what: "La coda editoriale: ogni riga è un contenuto in uno stato (Da Fare → In Produzione → Pubblicato). La tower legge il database Notion e lo usa come sorgente della pipeline di generazione.",
+    decides: "Quanto lavoro è fermo e in quale punto si accumula.",
+    cadence: "Due volte a settimana, o quando il badge rosso in sidebar supera la tua capacità reale di revisione.",
+    sources: [{ k: 'st', p: '/v1/notion/pipeline/stats' }],
+    read: (d) => {
+        const st = d.st?.by_status || {};
+        const g = (k) => num(st[k]) || 0;
+        const tot = num(d.st?.total) || 0;
+        const daFare = g('Da Fare'), inProd = g('In Produzione');
+        const pub = g('Pubblicato') || g('Pubblicati');
+        return [
+            R('In coda (Da Fare)', String(daFare), daFare <= 10 ? 'ok' : daFare <= 25 ? 'watch' : 'bad',
+                "Contenuti pianificati e non iniziati. Oltre ~25 la coda non è un piano: è un elenco di intenzioni che invecchiano."),
+            R('In produzione', String(inProd), inProd <= 8 ? 'ok' : 'watch',
+                "Work in progress. Più WIP contemporaneo = più tempo di attraversamento per ogni singolo pezzo, non più output."),
+            R('Pubblicati', String(pub), 'na', "Il solo numero che genera traffico. Tutto il resto è inventario."),
+            R('Tasso di completamento', tot ? pct(pub / tot * 100) : '—', tot ? bandUp(pub / tot * 100, 50, 25) : 'na',
+                "Pubblicati sul totale. Sotto il 25% la pipeline sta producendo debito editoriale invece che pubblicazioni."),
+        ];
+    },
+    actions: (d, rows) => {
+        const daFare = num(d.st?.by_status?.['Da Fare']) || 0;
+        const a = [];
+        if (daFare > 25) a.push({
+            stage: 3, key: 'coda-editoriale', title: "Sfoltisci la coda prima di aggiungere brief",
+            why: "Una coda lunga fa sembrare il sistema produttivo mentre sta solo accumulando. Il costo è invisibile: i brief invecchiano e vanno riscritti.",
+            prompt: "Apri albeni-master. Ho più di 25 contenuti in stato 'Da Fare'. Ordinali per impatto atteso (cluster, mercato, stadio funnel, keyword target) e dimmi quali 5 tenere, quali archiviare e quali riscrivere perché il contesto è cambiato dal pivot micron-è.",
+        });
+        a.push({
+            stage: 3, key: 'coda-genera', title: "Genera il prossimo lotto dalla coda",
+            why: "La pipeline è già cablata: da qui parte generazione + validazione automatica.",
+            prompt: "Apri merino-rassegna e mostrami la coda di approvazione: cosa è pronto per la revisione, cosa posso deployare oggi e cosa va rigenerato.",
+        });
+        return a;
+    },
+    traps: [
+        "**Il conteggio non pesa il valore.** Dieci pezzi TOFU non valgono una pagina BOFU indicizzata. Chiediti sempre quale riga sposterebbe una vendita.",
+        "**La coda che cresce sembra progresso.** È debito: ogni brief non eseguito perde validità man mano che cambia il posizionamento.",
+    ],
+},
+
+klaviyo: {
+    what: "Il ponte fra il comportamento sui domini e il CRM: quando un visitatore lascia un contatto, cluster e IDS lo seguono dentro Klaviyo, così i flussi email parlano la lingua del suo cluster.",
+    decides: "Se i lead che raccogli arrivano al CRM completi di contesto comportamentale — o se arrivano nudi, e la mail parte generica.",
+    cadence: "Al primo lead di ogni nuova campagna, e dopo ogni modifica al tracker o al consenso CMP.",
+    sources: [],
+    read: () => [R('Stato modulo', 'test manuale', 'na',
+        "Questo modulo non ha metriche passive: si verifica lanciando una sincronizzazione di prova dalla pagina. Un sync che fallisce silenziosamente è il modo più comune di perdere il contesto cluster sui lead.")],
+    actions: () => ([
+        { stage: 1, key: 'klaviyo-props', title: "Verifica che il cluster arrivi davvero in Klaviyo", why: "Se la proprietà cluster non è popolata, i flussi segmentati girano ma trattano tutti allo stesso modo: l'errore non produce alcun errore visibile.", prompt: "Apri albeni-master. Verifica la catena lead → Klaviyo: quali proprietà comportamentali (cluster, IDS, dominio di origine, lingua) vengono scritte sul profilo e quali flussi le usano davvero come condizione di ingresso. Segnala le proprietà scritte ma mai usate e i flussi che dovrebbero usarle." },
+        { stage: 1, key: 'consenso-tracking', title: "Controlla l'effetto del consenso sul tracking", why: "Dal 23/07 il CMP blocca i tracker finché non c'è consenso: i lead raccolti prima del consenso arrivano senza cluster.", prompt: "Apri albeni-master. Con il CMP Complianz attivo, dimmi quale percentuale di lead arriva a Klaviyo senza proprietà comportamentali e se il punto di raccolta va spostato dopo il consenso." },
+    ]),
+    traps: [
+        "**Il silenzio non è successo.** Una sync fallita non genera errori a schermo: genera profili poveri. Verifica sul profilo, non sul log.",
+        "**Segmentare senza dati è peggio che non segmentare.** Un flusso «heritage mature» che riceve tutti indistintamente peggiora la deliverability e ti convince che la segmentazione non funziona.",
+    ],
+},
+
+seo: {
+    what: "Lo stato competitivo dei domini con dati SEMrush live: keyword in rank, traffico organico stimato, authority score e il bilanciamento 85/15 fra espansione comportamentale e difesa semantica. Il campo `data_source` dice se il numero è live, da cache Redis o fallback.",
+    decides: "Quale dominio spinge, quale difende e dove i tuoi domini si stanno rubando posizioni fra loro.",
+    cadence: "Settimanale. I dati SEMrush hanno cache 1h per risparmiare unità API: aggiornare più spesso non porta numeri nuovi.",
+    sources: [{ k: 'seo', p: '/v1/seo/health' }],
+    read: (d) => {
+        const doms = d.seo?.domains || [];
+        if (!doms.length) return [R('Domini analizzati', '—', 'na', "Nessun dato SEMrush disponibile: probabile esaurimento unità API o chiave non configurata.")];
+        const rows = doms.map(x => R(
+            x.domain,
+            `${num(x.keywords_in_rank) || 0} kw · AS ${num(x.authority_score) || 0} · cann ${pct(num(x.cannibalization_score))}`,
+            band(num(x.cannibalization_score), 4, 6),
+            `Ruolo ${x.funnel_stage || '—'} · mercato ${x.semrush_database || '—'} · fonte dato: ${x.data_source || '—'}. Le keyword in rank sono la superficie reale di questo dominio; la cannibalizzazione è quanta di quella superficie si sovrappone a un altro tuo dominio.`
+        ));
+        const worst = doms.reduce((w, x) => (num(x.cannibalization_score) || 0) > (num(w.cannibalization_score) || 0) ? x : w, doms[0]);
+        rows.push(R('Peggiore sovrapposizione', `${worst.domain} · ${pct(num(worst.cannibalization_score))}`, band(num(worst.cannibalization_score), 4, 6),
+            "Sopra il 6% due tuoi domini competono sulla stessa query: Google ne sceglie uno, l'altro lavoro è speso a vuoto."));
+        return rows;
+    },
+    actions: (d) => {
+        const doms = d.seo?.domains || [];
+        const cannBad = doms.filter(x => (num(x.cannibalization_score) || 0) > 6).map(x => x.domain);
+        const a = [];
+        if (cannBad.length) a.push({
+            urgent: true, stage: 4, key: 'cannibalizzazione', title: `Cannibalizzazione sopra soglia: ${cannBad.join(', ')}`,
+            why: "È l'unico problema SEO che peggiora producendo più contenuto: ogni pagina nuova sullo stesso intento aggrava la sovrapposizione.",
+            prompt: `Apri semrush-specialist. Estrai le keyword in conflitto per ${cannBad.join(', ')}. Per ognuna: volume, posizione per dominio, intento. Assegna la keyword al dominio corretto secondo il ruolo di funnel e dimmi cosa fare sulla pagina perdente (de-ottimizzare, canonical, riscrivere l'intento o unire).`,
+        });
+        a.push({
+            stage: 2, key: 'pesi-cluster', title: "Rimetti i pesi cluster dell'allocator sui mercati veri",
+            why: "I pesi in uso sono stati calcolati su US/UK, fuori dall'envelope EU attuale: ogni allocazione di budget parte da una foto sbagliata.",
+            prompt: "Apri semrush-specialist. Ricalcola i pesi cluster dell'ADV allocator sui mercati DE/IT/FR (i pesi attuali sono pre-pivot, calcolati su US/UK). Dammi i nuovi pesi per i cluster A–F con il volume e la difficoltà media che li giustificano, pronti da inserire nella config dell'allocator.",
+        });
+        a.push({
+            stage: 4, key: 'perimetro-semantico', title: "Verifica il perimetro semantico da difendere",
+            why: "La difesa dei termini proprietari (Invisible Luxury, merino wool t-shirt, cut & sew, 17 micron) è ciò che rende il traffico non replicabile dai competitor.",
+            prompt: "Apri semrush-specialist. Verifica la posizione attuale sui termini del perimetro semantico micron-è: brand defense (micron-è, Invisible Luxury) e semantic moat (merino wool t-shirt, cut & sew, 17 micron, Super 120's, base layer). Dimmi dove sono entrati competitor e quali pagine devono difendere ciascun termine.",
+        });
+        return a;
+    },
+    traps: [
+        "**`data_source: fallback` vuol dire che stai leggendo un numero inventato dal sistema, non da SEMrush.** Controlla sempre il campo prima di trarre conclusioni su una variazione.",
+        "**Authority score alto ≠ vendite.** L'AS misura la forza del profilo link, non la propensione all'acquisto di chi arriva. Un dominio BOFU può convertire meglio con AS più basso.",
+        "**Più keyword in rank non è meglio.** Le keyword fuori perimetro portano traffico che abbassa l'IDS e sporca i cluster. La superficie va difesa, non allargata a caso.",
+    ],
+},
+
+content_library: {
+    what: "L'archivio di tutto il contenuto generato dal sistema, con punteggio di qualità (CQS), cluster target, lingua e stato di revisione umana. È la memoria di cosa è già stato detto e a chi.",
+    decides: "Se la qualità in uscita è stabile e se stai coprendo tutti i cluster/lingue o solo quelli comodi.",
+    cadence: "Prima di ogni nuovo lotto di contenuti: serve a non riscrivere quello che esiste già.",
+    sources: [{ k: 'lake', p: '/v1/content/lake/stats/summary' }],
+    read: (d) => {
+        const l = d.lake || {};
+        const cqs = num(l.avg_quality_score);
+        const tot = num(l.total) || 0, pend = num(l.pending) || 0, rej = num(l.rejected) || 0;
+        const langs = Object.keys(l.by_language || {}).length;
+        return [
+            R('Contenuti in archivio', String(tot), 'na', "Volume complessivo generato. Da solo non dice nulla: conta insieme al tasso di approvazione."),
+            R('CQS medio', cqs === null ? '—' : cqs.toFixed(1), bandUp(cqs, 80, 76),
+                "Qualità media. Sotto 76 il problema è nel brief o nel prompt, non nella revisione: correggere a valle costa dieci volte tanto."),
+            R('In attesa di revisione', String(pend), pend <= 5 ? 'ok' : pend <= 15 ? 'watch' : 'bad',
+                "Contenuti generati che aspettano un occhio umano. È il collo di bottiglia più costoso del sistema, perché blocca l'unico passaggio che non si può automatizzare."),
+            R('Tasso di scarto', tot ? pct(rej / tot * 100) : '—', tot ? band(rej / tot * 100, 10, 25) : 'na',
+                "Sopra il 25% stai spendendo token per produrre lavoro da buttare: si corregge il prompt di generazione, non il testo."),
+            R('Lingue coperte', String(langs), bandUp(langs, 4, 2),
+                "L'ecosistema è progettato su IT/EN/DE/FR. Una lingua scoperta è un mercato che vede il sito ma non trova il contenuto."),
+        ];
+    },
+    actions: (d) => {
+        const a = [];
+        const l = d.lake || {};
+        const cqs = num(l.avg_quality_score);
+        if (cqs !== null && cqs < 76) a.push({
+            stage: 2, key: 'cqs-a-monte', title: "CQS sotto soglia: correggi a monte",
+            why: "Un CQS basso e diffuso non è un problema di singoli testi: è il brief che non contiene abbastanza vincoli.",
+            prompt: "Apri albeni-mt-validator. Analizza i contenuti con CQS sotto 76: dimmi quali criteri falliscono più spesso (glossario, keyword, tono, lunghezza) e riscrivi le istruzioni di generazione per prevenirli invece di correggerli dopo.",
+        });
+        if ((num(l.pending) || 0) > 15) a.push({
+            stage: 3, key: 'revisione-umana', title: "Sblocca la revisione umana",
+            why: "Il contenuto non revisionato non esiste: occupa spazio e token senza generare una singola visita.",
+            prompt: "Apri merino-rassegna. Mostrami la coda di revisione ordinata per impatto: quali pezzi approvo e deployo subito, quali richiedono modifica e quali archivio.",
+        });
+        a.push({
+            stage: 5, key: 'copertura-contenuti', title: "Trova i buchi di copertura",
+            why: "Le distribuzioni per cluster e lingua mostrano dove il sistema si è mosso per inerzia invece che per strategia.",
+            prompt: "Apri albeni-master. Confronta la distribuzione dei contenuti per cluster e lingua con la priorità dei mercati EU (DE/IT/FR). Dimmi quali combinazioni cluster×lingua sono scoperte e quali valgono un brief questa settimana.",
+        });
+        return a;
+    },
+    traps: [
+        "**Il CQS misura la conformità, non l'efficacia.** Un testo può stare a 90 e non vendere: incrocia con il funnel prima di dichiarare vinta la partita del contenuto.",
+        "**L'archivio pieno crea l'illusione di copertura.** Chiediti quanti di quei pezzi sono indicizzati e ricevono traffico: il numero è sempre molto più basso di quanto sembri.",
+    ],
+},
+
+content: {
+    what: "Il banco di generazione: da qui si producono testi su un cluster e una lingua, passando dai guardrail di copy micron-è (termini vietati, tono, perimetro semantico) prima di finire nel Content Lake.",
+    decides: "Se un contenuto nasce già conforme o se andrà rilavorato a mano.",
+    cadence: "Su richiesta.",
+    sources: [],
+    read: () => [R('Modulo operativo', 'generazione on-demand', 'na',
+        "Nessuna metrica passiva: la qualità di ciò che esce da qui si legge nel Content Lake (CQS) e nel validator. Il punto di controllo vero è il brief che dai in ingresso.")],
+    actions: () => ([
+        { stage: 5, key: 'modo-generazione', plan: false, title: "Genera con il guardrail attivo", why: "Il costo maggiore non è generare: è accorgersi dopo la pubblicazione che un termine vietato è finito online su 4 lingue.", prompt: "Apri albeni-mt-translator per la traduzione e albeni-mt-validator per il gate. Genera il contenuto e passalo dal validator prima di qualsiasi deploy: voglio il punteggio 0-100 e l'esito sui termini vietati." },
+        { stage: 5, key: 'modo-generazione-news', plan: false, title: "Parti dal fatto del giorno invece che dal foglio bianco", why: "Il contenuto ancorato a un fatto reale si difende meglio nelle SERP e nelle risposte AI di quello puramente evergreen.", prompt: "Apri merino-news-scanner. Dammi il fatto del giorno con i due angoli (lifestyle WoM e tecnico MU), il cluster di riferimento e le keyword DE/IT/FR da usare." },
+    ]),
+    traps: [
+        "**La fluidità inganna.** Un testo che si legge bene passa il controllo umano più facilmente di uno goffo ma corretto. Il validator serve proprio a non fidarti della sensazione di scorrevolezza.",
+        "**Generare è la parte facile e visibile.** Indicizzare, interlinkare e difendere quel contenuto è il lavoro che produce risultati — ed è quello che si rimanda.",
+    ],
+},
+
+semrush_data: {
+    what: "Il magazzino dei dati importati (export SEMrush, crawl map, file esterni) con la tassonomia che li rende consultabili dagli agenti. È ciò che trasforma un CSV scaricato in contesto riutilizzabile.",
+    decides: "Su quali dati stanno ragionando gli agenti — e quanto sono vecchi.",
+    cadence: "Dopo ogni import, e prima di ogni analisi che dovrà reggere una decisione di budget.",
+    sources: [{ k: 'ctx', p: '/v1/context/summary' }],
+    read: (d) => {
+        const c = d.ctx || {};
+        const tot = num(c.total_imports_in_hub);
+        const tagged = num(c.tagged_imports);
+        const untagged = num(c.untagged_imports);
+        const catUse = num(c.categories_in_use), catAll = num(c.categories_available);
+        return [
+            R('Import in archivio', tot === null ? '—' : String(tot), tot ? 'ok' : 'watch',
+                "Dataset caricati e disponibili agli agenti. A zero, ogni analisi 'basata sui dati' sta in realtà usando solo la conoscenza generica del modello."),
+            R('Dataset classificati', tagged === null ? '—' : `${tagged}${untagged ? ` (${untagged} non classificati)` : ''}`,
+                tot ? (tot && tagged / tot > 0.8 ? 'ok' : 'watch') : 'na',
+                "Un dataset non classificato è invisibile agli agenti: c'è, occupa spazio, ma nessuna analisi lo userà mai."),
+            R('Categorie di contesto in uso', catAll === null ? '—' : `${catUse ?? 0}/${catAll}`,
+                catAll ? bandUp((catUse || 0) / catAll * 100, 50, 20) : 'na',
+                "Tone of voice, glossario, profili cluster, dati competitor: sono le categorie che rendono coerenti gli agenti. Quelle vuote vengono rimpiazzate da assunzioni implicite."),
+        ];
+    },
+    actions: () => ([
+        { stage: 2, key: 'dataset-classificazione', title: "Classifica tutto prima di analizzare", why: "Gli agenti leggono solo ciò che è taggato: un'analisi 'completa' su archivio non classificato è completa solo in apparenza.", prompt: "Apri semrush-specialist. Lancia la classificazione automatica dei dataset non taggati nel Data Hub e dimmi quali coprono i mercati DE/IT/FR e quali sono ancora dati pre-pivot su US/UK da archiviare." },
+        { stage: 2, key: 'dataset-eta', title: "Controlla l'età dei dati prima di decidere il budget", why: "Un export di tre mesi fa descrive un mercato che nel frattempo si è mosso: l'errore si propaga silenziosamente in ogni allocazione.", prompt: "Apri semrush-specialist. Elenca i dataset presenti con data di import e mercato. Segnala quelli più vecchi di 60 giorni che vengono ancora usati come base per keyword e budget." },
+    ]),
+    traps: [
+        "**Un dato caricato non è un dato usato.** Il valore si crea al momento della classificazione, non del download.",
+        "**I dati pre-pivot sono i più pericolosi.** Sono coerenti, completi e descrivono un'azienda che non esiste più (US/UK, marchio precedente). Vanno archiviati, non lasciati «per riferimento».",
+    ],
+},
+
+// ══════════════ ADVERTISING ══════════════
+adv: {
+    what: "Il livello di intelligenza sul paid: routing degli annunci per cluster, protezione dai bot che bruciano budget e statistiche di instradamento. Qui si vede se ogni euro sta arrivando a una persona reale del segmento giusto.",
+    decides: "Se il budget viene consumato da traffico umano e pertinente, o disperso.",
+    cadence: "Settimanale in campagna, quotidiana nei primi 7 giorni di ogni nuova campagna.",
+    sources: [{ k: 'st', p: '/v1/adv/stats' }],
+    read: (d) => {
+        const bs = d.st?.bot_shield || {};
+        const rt = d.st?.routing || {};
+        const fl = d.st?.intelligence?.feedback_loop || {};
+        const cf = d.st?.intelligence?.config || {};
+        const analyzed = num(bs.total_visitors_analyzed);
+        const blockRate = num(bs.block_rate);
+        const routed = num(rt.total_routed);
+        const signals = num(fl.total_signals);
+        return [
+            R('Visitatori analizzati dal bot shield', analyzed === null ? '—' : String(analyzed), analyzed ? 'ok' : 'watch',
+                "Quante sessioni sono passate dal filtro anti-bot. Se il numero è irrisorio rispetto al traffico, il filtro non è sulla strada del paid e il budget non è protetto."),
+            R('Tasso di blocco', blockRate === null ? '—' : `${blockRate}%`, blockRate === null ? 'na' : band(blockRate, 25, 40),
+                `Traffico non umano intercettato prima di consumare budget${bs.estimated_savings_eur ? ` (risparmio stimato €${bs.estimated_savings_eur})` : ''}. Oltre il 40% il problema è la sorgente, non il filtro: quella campagna sta comprando bot.`),
+            R('Assegnazioni di routing', routed === null ? '—' : String(routed), routed ? 'ok' : 'watch',
+                "Quante volte il sistema ha instradato un visitatore sulla variante del suo cluster. A zero, il paid sta portando tutti sulla stessa esperienza generica: stai pagando la segmentazione senza usarla."),
+            R('Segnali di qualità rimandati alle piattaforme', signals === null ? '—' : String(signals), signals ? 'ok' : 'watch',
+                `Senza segnali di ritorno Google e Meta ottimizzano al buio sul clic invece che sulla conversione${cf.google_ads_configured === false ? ' — Google Ads risulta non configurato' : ''}${cf.meta_capi_configured === false ? ', Meta CAPI non configurato' : ''}.`),
+        ];
+    },
+    actions: () => ([
+        { stage: 4, key: 'spesa-varianza', title: "Verifica dove finisce davvero la spesa", why: "Il CPA medio nasconde la varianza: quasi sempre poche combinazioni bruciano la maggior parte del budget.", prompt: "Apri albeni-seo-agent. Analizza la spesa ADV corrente per cluster e mercato: dimmi quali combinazioni cluster×mercato hanno CPA sopra €17,92 (soglia di sostenibilità) e quali sotto €9. Proponi lo spostamento di budget e quanto vale in conversioni attese." },
+        { stage: 4, key: 'paid-organic', title: "Controlla la transizione paid → organico", why: "Il paid in questo sistema è un ponte temporaneo: se una pagina resta coperta dal paid oltre 30 giorni, il ponte è diventato una stampella.", prompt: "Apri adv-budget-allocator. Elencami le pagine con copertura paid attiva da più di 30 giorni e dimmi per ognuna perché l'handoff a organico non è avvenuto (non indicizzata, indicizzata ma senza posizione, contenuto debole)." },
+    ]),
+    traps: [
+        "**Il CPA medio è la media fra chi converte a €5 e chi a €80.** La decisione sta nella coda, non nella media.",
+        "**Il paid dà gratificazione immediata.** Vedi il traffico salire lo stesso giorno: per questo è la leva su cui si torna sempre, anche quando l'organico avrebbe ROI superiore. Decidi l'allocazione a mente fredda, non guardando la curva.",
+    ],
+},
+
+'adv-budget': {
+    what: "L'allocatore automatico: distribuisce il budget ADV sulle pagine non ancora indicizzate, cluster per cluster, e libera spesa man mano che le pagine vengono indicizzate. È il meccanismo che rende il paid un ponte verso l'organico invece che un costo fisso.",
+    decides: "Dove va il prossimo euro e quale spesa può essere liberata perché l'organico ha preso il posto.",
+    cadence: "Dopo ogni scansione GSC (giorno 28) e a inizio mese per la configurazione del budget.",
+    sources: [{ k: 'rep', p: '/v1/adv/allocate' }],
+    read: (d) => {
+        const g = d.rep?.global || d.rep?.summary || {};
+        const cfg = d.rep?.config || {};
+        const idx = num(g.globalIndexRate);
+        const util = num(g.budgetUtilization);
+        return [
+            R('Budget effettivo', cfg.effectiveBudget !== undefined ? `€${cfg.effectiveBudget}` : '—', 'na',
+                `Base €${cfg.baseBudget ?? '—'} + €${cfg.freedBudget ?? 0} liberati dalle pagine ormai indicizzate. Il budget liberato è il segnale che il sistema sta funzionando.`),
+            R('Tasso di indicizzazione', idx === null ? '—' : `${idx}%`, bandUp(idx, 70, 45),
+                "Quota di pagine che Google ha indicizzato. È il denominatore di tutta la logica: sotto il 45% il paid sta coprendo un sito che Google in gran parte ignora."),
+            R('Pagine non indicizzate', g.totalNonIndexed !== undefined ? String(g.totalNonIndexed) : '—', 'na',
+                "Le pagine che oggi esistono solo se le paghi. Ognuna è un costo ricorrente finché non viene indicizzata."),
+            R('Utilizzo budget', util === null ? '—' : `${util}%`, util === null ? 'na' : bandUp(util, 80, 50),
+                "Quanto del budget disponibile è effettivamente allocato. Un utilizzo basso non è prudenza: è copertura che non stai dando a pagine che ne avrebbero bisogno."),
+        ];
+    },
+    actions: () => ([
+        { urgent: true, stage: 2, key: 'pesi-cluster', title: "I pesi cluster in uso sono pre-pivot", why: "Sono stati calcolati su US/UK, mercati fuori dall'envelope attuale: ogni allocazione parte da una distribuzione di domanda sbagliata. È il punto aperto più costoso del modulo.", prompt: "Apri semrush-specialist. Ricalcola i pesi dei cluster A–F dell'ADV allocator sui mercati DE/IT/FR. Per ogni cluster dammi volume di ricerca, difficoltà media e peso normalizzato, nel formato pronto per la config dell'allocator. Poi mostrami come cambia l'allocazione rispetto ai pesi attuali." },
+        { stage: 4, key: 'paid-organic', title: "Rivedi le transizioni paid → organico", why: "Ogni pagina che passa a organico libera budget permanente: è l'unico modo in cui questo sistema diventa più economico nel tempo.", prompt: "Apri adv-budget-allocator. Mostrami le pagine passate da paid a organico nell'ultimo ciclo, il budget liberato e le pagine candidate alla prossima transizione. Segnala quelle bloccate da più di 30 giorni con la causa." },
+    ]),
+    traps: [
+        "**L'automatismo dà fiducia sproporzionata.** L'allocatore esegue bene una regola: se i pesi in ingresso sono sbagliati, distribuisce l'errore con grande precisione su tutti i cluster.",
+        "**Il budget liberato non è un risparmio.** È capacità da rimettere sulle pagine ancora scoperte: se lo togli e basta, fermi il ponte a metà.",
+        "**Utilizzo al 100% non è un obiettivo.** Se stai allocando tutto su pagine che non convertono, il numero perfetto misura solo la velocità con cui spendi.",
+    ],
+},
+
+// ══════════════ ORCHESTRAZIONE ══════════════
+agents: {
+    what: "La mappa degli agenti attivi e dei loro endpoint: cluster prediction, intent scoring, routing, generazione contenuti, ricerca SEMrush, customer care. Da qui si prova ogni agente in isolamento.",
+    decides: "Quale pezzo della catena si è rotto quando un risultato a valle è strano.",
+    cadence: "Quando un numero altrove non torna. È un modulo diagnostico, non di monitoraggio.",
+    sources: [],
+    read: () => [R('Uso previsto', 'diagnostica', 'na',
+        "Serve a isolare la causa: se il funnel è strano, provi qui l'intent scoring; se i cluster sembrano sbagliati, provi il cluster predict. Testare l'agente singolo separa il problema di dato dal problema di logica.")],
+    actions: () => ([
+        { stage: 1, key: 'diagnostica-infra', title: "Isola il problema prima di correggerlo", why: "In una catena di agenti l'errore si manifesta lontano da dove nasce: correggere dove si vede il sintomo è il modo più veloce di rompere altro.", prompt: "Apri albeni-master. Ho un risultato anomalo a valle. Aiutami a risalire la catena agente per agente (tracking → cluster → intent → routing → contenuto) e dimmi in quale passaggio il dato smette di essere coerente." },
+    ]),
+    traps: [
+        "**Un agente che risponde non è un agente che risponde bene.** Lo status 200 dice che il servizio è vivo, non che la classificazione sia corretta.",
+        "**Testare con dati inventati conferma le tue attese.** Usa un visitatore reale recente, non `test_user_1`.",
+    ],
+},
+
+terminal: {
+    what: "L'interfaccia in linguaggio naturale sopra gli agenti: scrivi una domanda, il sistema sceglie l'agente e risponde con dati reali della tower.",
+    decides: "Niente da solo: è la via più rapida per interrogare i dati senza sapere quale endpoint chiamare.",
+    cadence: "Su richiesta.",
+    sources: [],
+    read: () => [R('Uso previsto', 'interrogazione libera', 'na',
+        "Utile quando hai una domanda ma non sai in quale modulo vive la risposta. Le risposte vengono dai dati reali, non da conoscenza generica.")],
+    actions: () => ([
+        { stage: 5, key: 'modo-terminale', plan: false, title: "Chiedi il 'perché', non il 'quanto'", why: "Il quanto è già in ogni pagina di questa tower. Il valore del terminale è mettere in relazione due numeri che stanno in moduli diversi.", prompt: "Nel terminale della tower chiedi: «Confronta il tasso di indicizzazione per dominio con la spesa ADV allocata sugli stessi domini e dimmi dove sto pagando per pagine che Google ignora da più di 30 giorni»." },
+    ]),
+    traps: [
+        "**Una risposta in prosa suona più autorevole di una tabella.** Chiedi sempre da quale endpoint arriva il numero prima di usarlo per decidere.",
+    ],
+},
+
+// ══════════════ MONITORAGGIO ══════════════
+gsc: {
+    what: "Lo storico delle scansioni di indicizzazione: per ogni sito quante URL Google ha indicizzato, quante ha scansionato scartandole e quante non ha mai visitato. È la fotografia di quanto del tuo sito esiste davvero per Google.",
+    decides: "Quali pagine hanno bisogno di supporto paid, quali di lavoro tecnico e quali di contenuto migliore.",
+    cadence: "Mensile (scansione schedulata il giorno 28, review alle 12:30).",
+    sources: [{ k: 'h', p: '/v1/gsc/history' }],
+    read: (d) => {
+        const scans = d.h?.scans || [];
+        if (!scans.length) return [R('Scansioni disponibili', '0', 'na', "Nessuna scansione registrata: il monitor GSC non ha ancora inviato dati.")];
+        const bySite = {};
+        scans.forEach(s => { if (!bySite[s.site] || (s.date || '') > (bySite[s.site].date || '')) bySite[s.site] = s; });
+        const rows = Object.values(bySite).map(s => {
+            const rate = s.total_urls ? (s.indexed / s.total_urls * 100) : null;
+            return R(s.site, `${pct(rate)} indicizzate · ${s.not_crawled} mai viste`, bandUp(rate, 70, 45),
+                `Su ${s.total_urls} URL: ${s.indexed} indicizzate, ${s.crawled_not_indexed} scansionate e scartate, ${s.not_crawled} mai visitate. «Scansionata e scartata» è un giudizio di qualità: Google l'ha letta e non l'ha ritenuta utile. «Mai visitata» è un giudizio di priorità: non è arrivata in fondo alla coda.`);
+        });
+        const last = Object.values(bySite).map(s => daysAgo(s.date)).filter(x => x !== null).sort((a, b) => a - b)[0];
+        rows.push(R('Età dell\'ultima scansione', last === null ? '—' : `${last} giorni`, last === null ? 'na' : band(last, 35, 60),
+            "Oltre 35 giorni la foto non descrive più il sito di oggi: le decisioni di budget prese su questi numeri sono decisioni su un sito passato."));
+        return rows;
+    },
+    actions: (d) => {
+        const scans = d.h?.scans || [];
+        const a = [];
+        const bySite = {};
+        scans.forEach(s => { if (!bySite[s.site] || (s.date || '') > (bySite[s.site].date || '')) bySite[s.site] = s; });
+        const scarti = Object.values(bySite).filter(s => s.total_urls && s.crawled_not_indexed / s.total_urls > 0.2);
+        if (scarti.length) a.push({
+            urgent: true, stage: 4, key: 'contenuto-scartato', title: `Contenuto scartato da Google: ${scarti.map(s => s.site).join(', ')}`,
+            why: "Oltre il 20% di pagine scansionate e non indicizzate è un giudizio esplicito di qualità o duplicazione: aggiungere pagine peggiora il rapporto.",
+            prompt: `Apri albeni-wp-operator. Su ${scarti.map(s => s.site).join(', ')} oltre il 20% delle URL è 'crawled but not indexed'. Analizza i pattern comuni (thin content, duplicazione fra lingue, canonical, pagine di archivio) e dammi la lista degli interventi in ordine di impatto.`,
+        });
+        a.push({
+            stage: 4, key: 'gsc-allocator', title: "Copri con il paid solo ciò che Google ancora non vede",
+            why: "È l'anello che chiude il ciclo: la scansione GSC è l'input dell'allocatore di budget.",
+            prompt: "Apri adv-budget-allocator. Usa l'ultima scansione GSC per rigenerare l'allocazione: budget sulle pagine non indicizzate, rilascio su quelle che nel frattempo sono state indicizzate. Mostrami il delta rispetto al ciclo precedente.",
+        });
+        a.push({
+            stage: 1, key: 'gsc-freschezza', title: "Riesegui la scansione se la foto è vecchia",
+            why: "Decidere su una scansione di 40 giorni fa significa allocare budget su pagine che potrebbero essere già indicizzate.",
+            prompt: "Esegui la routine gsc-index-monitor: nuova scansione per worldofmerino.com e merinouniversity.com, push della crawl map e aggiornamento della tower. Poi dimmi cosa è cambiato rispetto all'ultima scansione.",
+        });
+        return a;
+    },
+    traps: [
+        "**«Non indicizzata» non è un errore da correggere: è un giudizio da capire.** Mai vista = priorità bassa (lavora su link interni e sitemap). Vista e scartata = qualità o duplicazione (lavora sul contenuto). Sono due problemi opposti con la stessa faccia.",
+        "**La media nasconde la distribuzione.** Un 80% di indicizzazione può significare che tutte le pagine vecchie sono dentro e tutte le nuove sono fuori — cioè che il lavoro degli ultimi due mesi è invisibile.",
+        "**Il numero si muove con settimane di ritardo.** Cercare l'effetto di una modifica il giorno dopo porta a concludere che «non ha funzionato» e a cambiare di nuovo, azzerando l'esperimento.",
+    ],
+},
+
+funnel: {
+    what: "Il percorso reale degli utenti in 6 stadi (visita → engaged → interesse → lead → pre-conversione → conversione), ricostruito dagli eventi comportamentali. Ogni stadio conta utenti distinti, non eventi.",
+    decides: "Dove si perde più valore, e quindi quale singola correzione vale più di dieci ottimizzazioni sparse.",
+    cadence: "Ogni 2 settimane su finestra 30 giorni. Su 7 giorni il campione è quasi sempre troppo piccolo.",
+    sources: [{ k: 'f', p: '/v1/funnel/journey?period=30d' }],
+    read: (d) => {
+        const f = d.f || {};
+        const stages = f.stages || [];
+        if (!stages.length) return [R('Dati funnel', '—', 'na', "Nessun evento nella finestra: verifica tracker e ingestion prima di interpretare.")];
+        const rows = [];
+        const cr = num(f.overall_conversion_pct);
+        rows.push(R('Conversion rate', cr === null ? '—' : `${cr}%`, bandUp(cr, 1, 0.3),
+            "checkout_complete su page_view. Nel D2C abbigliamento l'1% è una soglia di normalità: sotto lo 0,3% il problema è a monte della pagina prodotto."));
+        rows.push(R('Stadi attivi', `${stages.filter(s => s.users > 0).length}/6`,
+            bandUp(stages.filter(s => s.users > 0).length, 5, 3),
+            "Uno stadio vuoto è quasi sempre un evento non tracciato, non un comportamento assente: prima di riprogettare il sito, verifica che l'evento venga inviato."));
+        const withDrop = stages.map((s, i) => ({ s, i })).filter(x => x.i > 0 && num(x.s.drop_off_pct) > 0);
+        if (withDrop.length) {
+            const worst = withDrop.reduce((w, x) => num(x.s.drop_off_pct) > num(w.s.drop_off_pct) ? x : w);
+            const prev = stages[worst.i - 1];
+            const persi = (num(prev.users) || 0) - (num(worst.s.users) || 0);
+            rows.push(R('Drop-off maggiore', `${prev.label} → ${worst.s.label}: −${worst.s.drop_off_pct}%`,
+                band(num(worst.s.drop_off_pct), 30, 60),
+                `Percentuale più alta di abbandono. In valore assoluto sono ${persi} utenti persi: è questo il numero che decide se vale la pena intervenire, non la percentuale.`));
+        }
+        rows.push(R('Eventi nella finestra', String(num(f.total_events_in_window) ?? '—'),
+            (num(f.total_events_in_window) || 0) > 500 ? 'ok' : 'watch',
+            "Sotto ~500 eventi le percentuali di questo funnel oscillano troppo per guidare una decisione."));
+        return rows;
+    },
+    actions: (d) => {
+        const f = d.f || {};
+        const stages = f.stages || [];
+        const a = [];
+        const withDrop = stages.map((s, i) => ({ s, i })).filter(x => x.i > 0 && num(x.s.drop_off_pct) > 0);
+        if (withDrop.length) {
+            const worst = withDrop.reduce((w, x) => num(x.s.drop_off_pct) > num(w.s.drop_off_pct) ? x : w);
+            const prev = stages[worst.i - 1];
+            a.push({
+                stage: 4, key: 'funnel-collo', title: `Lavora sul passaggio ${prev.label} → ${worst.s.label}`,
+                why: "È il collo di bottiglia misurato: qualunque altro miglioramento a valle riceve comunque il flusso ridotto da questo punto.",
+                prompt: `Apri albeni-master. Nel funnel il drop-off maggiore è fra "${prev.label}" e "${worst.s.label}" (−${worst.s.drop_off_pct}%, ${(num(prev.users) || 0) - (num(worst.s.users) || 0)} utenti persi in 30 giorni). Dimmi quali pagine e quali cluster contribuiscono di più a questa perdita e proponi 3 interventi in ordine di rapporto impatto/sforzo.`,
+            });
+        }
+        a.push({
+            stage: 4, key: 'funnel-segmenta', title: "Segmenta prima di concludere",
+            why: "Il funnel aggregato mescola cluster e domini con comportamenti opposti: la media descrive un utente che non esiste.",
+            prompt: "Apri albeni-master. Confronta il funnel per cluster e per dominio (endpoint /v1/funnel/journey/by-cluster e by-domain, 30 giorni). Dimmi dove i comportamenti divergono di più e quale segmento merita un percorso dedicato.",
+        });
+        return a;
+    },
+    traps: [
+        "**La percentuale più alta non è il problema più grande.** Un −70% su 20 utenti pesa meno di un −25% su 900. Guarda sempre gli utenti persi in valore assoluto.",
+        "**Uno stadio vuoto sembra un problema di prodotto ed è quasi sempre un evento non tracciato.** Verifica la strumentazione prima di riprogettare qualcosa.",
+        "**Gli eventi di test sono esclusi per default.** Se un numero sembra troppo bello, controlla di non aver attivato `include_test`.",
+    ],
+},
+
+logs: {
+    what: "Salute dei servizi, catalogo degli endpoint e log di sistema. È il posto dove si verifica se un dato mancante altrove è un problema di infrastruttura.",
+    decides: "Se ciò che vedi altrove è un fatto o un guasto.",
+    cadence: "Quando un numero altrove è zero o assente.",
+    sources: [{ k: 'metrics', p: '/v1/dashboard/metrics' }],
+    read: () => [R('Uso previsto', 'verifica infrastruttura', 'na',
+        "Regola pratica del sistema: prima di spiegare un calo con il marketing, escludi ingestion, Redis e tracker. Nella storia di questo progetto la causa è stata tecnica molto più spesso che commerciale.")],
+    actions: () => ([
+        { stage: 1, key: 'diagnostica-infra', title: "Escludi il guasto prima di cercare la spiegazione", why: "Una spiegazione di marketing costruita su un dato rotto sopravvive per settimane e orienta decisioni reali.", prompt: "Apri albeni-railway-operator. Verifica lo stato completo della catena: ml-worker, Redis, ingestion behavioral_signals e tracker sui 4 domini. Dimmi quale anello è degradato e da quando." },
+    ]),
+    traps: [
+        "**Un servizio 'healthy' può ricevere zero dati.** L'health check dice che il processo è vivo, non che il flusso arrivi.",
+    ],
+},
+
+};
+
+// ─────────────────────────────────────────────────────────────
+// COMPONENTE
+// ─────────────────────────────────────────────────────────────
+function CoachRow({ r }) {
+    const st = CST[r.state] || CST.na;
+    return (
+        <div className="coach-row">
+            <span className="coach-dot" style={{ background: st.c }}></span>
+            <div className="coach-rowmain">
+                <div className="coach-rowhead">
+                    <span className="coach-rowlabel">{r.label}</span>
+                    <span className="coach-rowval" style={{ color: st.c }}>{r.value}</span>
+                    <span className="coach-rowstate" style={{ color: st.c, background: st.bg }}>{st.l}</span>
+                </div>
+                <div className="coach-rowwhy">{r.why}</div>
+            </div>
+        </div>
+    );
+}
+
+function CoachAction({ a }) {
+    const [copied, setCopied] = useState(false);
+    const copy = () => {
+        navigator.clipboard.writeText(a.prompt).then(() => {
+            setCopied(true); setTimeout(() => setCopied(false), 2000);
+        }).catch(() => {});
+    };
+    return (
+        <div className={`coach-act ${a.urgent ? 'urgent' : ''}`}>
+            <div className="coach-acthead">{a.urgent ? '⚠︎ ' : '→ '}{a.title}</div>
+            <div className="coach-actwhy">{a.why}</div>
+            <div className="coach-actprompt">{a.prompt}</div>
+            <button className="coach-copy" onClick={copy}>{copied ? '✓ Copiato' : '⧉ Copia istruzione'}</button>
+        </div>
+    );
+}
+
+// Grassetto minimale **così** dentro le trappole
+function coachRich(t) {
+    const parts = String(t).split(/\*\*(.+?)\*\*/g);
+    return parts.map((p, i) => i % 2 ? <strong key={i} style={{ color: '#e4e4e7' }}>{p}</strong> : <React.Fragment key={i}>{p}</React.Fragment>);
+}
+
+function Coach({ page }) {
+    const cfg = COACH[page];
+    // Aperto di default: un assistente che va scoperto non assiste. Si chiude e resta chiuso.
+    const [open, setOpen] = useState(() => localStorage.getItem('coach_open') !== '0');
+    const [tab, setTab] = useState(() => localStorage.getItem('coach_tab') || 'now');
+    const [data, setData] = useState(null);
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => { localStorage.setItem('coach_open', open ? '1' : '0'); }, [open]);
+    useEffect(() => { localStorage.setItem('coach_tab', tab); }, [tab]);
+
+    useEffect(() => {
+        if (!cfg || !open) return;
+        const srcs = cfg.sources || [];
+        if (!srcs.length) { setData({}); return; }
+        let alive = true;
+        setLoading(true); setData(null);
+        Promise.all(srcs.map(s => api(s.p)))
+            .then(res => {
+                if (!alive) return;
+                const d = {}; srcs.forEach((s, i) => { d[s.k] = res[i]; });
+                setData(d); setLoading(false);
+            })
+            .catch(() => { if (alive) { setData({}); setLoading(false); } });
+        return () => { alive = false; };
+    }, [page, open, cfg]);
+
+    if (!cfg) return null;
+
+    let rows = [], actions = [];
+    if (data) {
+        try { rows = cfg.read(data) || []; } catch (e) { rows = [R('Lettura non disponibile', '—', 'na', 'Il modulo ha restituito dati in un formato inatteso: leggi i numeri direttamente in pagina.')]; }
+        try { actions = cfg.actions ? (cfg.actions(data, rows) || []) : []; } catch (e) { actions = []; }
+    }
+
+    const worst = rows.some(r => r.state === 'bad') ? 'bad'
+        : rows.some(r => r.state === 'watch') ? 'watch'
+        : rows.some(r => r.state === 'ok') ? 'ok' : 'na';
+    const nBad = rows.filter(r => r.state === 'bad').length;
+    const nWatch = rows.filter(r => r.state === 'watch').length;
+    const verdict = !open ? 'Apri per la lettura guidata di questo modulo'
+        : loading ? 'Lettura in corso…'
+        : worst === 'bad' ? `${nBad} ${nBad > 1 ? 'indicatori' : 'indicatore'} fuori soglia — c'è un'azione da prendere`
+        : worst === 'watch' ? `${nWatch} ${nWatch > 1 ? 'indicatori' : 'indicatore'} da osservare — nessuna emergenza`
+        : worst === 'ok' ? 'Tutti gli indicatori in soglia'
+        : 'Modulo operativo — nessuna metrica passiva da leggere';
+
+    const dotColor = CST[worst]?.c || CST.na.c;
+
+    return (
+        <div className="coach">
+            <div className="coach-bar" onClick={() => setOpen(!open)}>
+                <span className="coach-badge">🧭 Copilota</span>
+                <span className="coach-dot" style={{ background: dotColor }}></span>
+                <span className="coach-verdict">{verdict}</span>
+                <span className="coach-toggle">{open ? 'chiudi ▲' : 'apri ▼'}</span>
+            </div>
+            {open && (
+                <div className="coach-panel">
+                    <div className="coach-tabs">
+                        {[['now', 'Cosa dice oggi'], ['do', 'Cosa faccio'], ['what', "Cos'è"], ['traps', 'Trappole']].map(([k, l]) => (
+                            <div key={k} className={`coach-tab ${tab === k ? 'active' : ''}`} onClick={() => setTab(k)}>
+                                {l}{k === 'do' && actions.filter(a => a.urgent).length ? <span className="coach-tabdot"></span> : null}
+                            </div>
+                        ))}
+                    </div>
+
+                    {tab === 'now' && (
+                        <div className="coach-body">
+                            {loading && <div className="coach-empty">Lettura degli endpoint del modulo…</div>}
+                            {!loading && !rows.length && <div className="coach-empty">Nessun dato leggibile in questo momento.</div>}
+                            {!loading && rows.map((r, i) => <CoachRow key={i} r={r} />)}
+                            {!loading && !!(cfg.sources || []).length && (
+                                <div className="coach-src">Fonte: {(cfg.sources || []).map(s => <code key={s.p}>{s.p}</code>).reduce((acc, x, i) => i ? [...acc, ' · ', x] : [x], [])}</div>
+                            )}
+                        </div>
+                    )}
+
+                    {tab === 'do' && (
+                        <div className="coach-body">
+                            {!actions.length && <div className="coach-empty">Nessuna azione suggerita: apri "Cosa dice oggi" per la lettura del dato.</div>}
+                            {actions.map((a, i) => <CoachAction key={i} a={a} />)}
+                            <div className="coach-hint">Le istruzioni sono scritte per essere incollate in una sessione Claude Code: nominano già la skill giusta e il contesto necessario.</div>
+                        </div>
+                    )}
+
+                    {tab === 'what' && (
+                        <div className="coach-body">
+                            <div className="coach-block"><div className="coach-blabel">Che cosa stai guardando</div><p>{cfg.what}</p></div>
+                            <div className="coach-block"><div className="coach-blabel">A quale decisione serve</div><p>{cfg.decides}</p></div>
+                            <div className="coach-block"><div className="coach-blabel">Ogni quanto guardarlo</div><p>{cfg.cadence}</p></div>
+                        </div>
+                    )}
+
+                    {tab === 'traps' && (
+                        <div className="coach-body">
+                            <div className="coach-hint" style={{ marginTop: 0, marginBottom: 12 }}>Errori di lettura tipici di questo dato. Sono qui perché è più facile evitarli sapendo che esistono che accorgersene dopo.</div>
+                            {(cfg.traps || []).map((t, i) => <div className="coach-trap" key={i}>{coachRich(t)}</div>)}
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ─────────────────────────────────────────────────────────────
+// PIANO D'AZIONE — consolida i consigli di tutti i moduli
+// ------------------------------------------------------------
+// Ogni azione del Copilota porta uno `stage` (1-5) che dice in
+// quale punto della catena va eseguita, e una `key` che permette
+// di riconoscere lo stesso intervento suggerito da più moduli.
+// L'ordine non è per gravità: è per DIPENDENZA. Ottimizzare prima
+// di aver sistemato la misurazione significa ottimizzare rumore.
+// ─────────────────────────────────────────────────────────────
+const PLAN_STAGES = [
+    { n: 1, label: 'Misurare', rule: "Rendere affidabile il dato. Una decisione presa su una misurazione rotta sopravvive per settimane e nessuno la mette più in discussione." },
+    { n: 2, label: 'Correggere le fondamenta', rule: "Parametri e dataset sbagliati non fanno rumore: si propagano con precisione in tutto ciò che sta a valle, compresi i consigli di questa stessa pagina." },
+    { n: 3, label: 'Sbloccare', rule: "Colli di bottiglia sul lavoro già fatto. Non costano lavoro nuovo: liberano valore che è già stato prodotto e sta fermo." },
+    { n: 4, label: 'Ottimizzare', rule: "Recuperare valore misurabile su ciò che già gira. Ha senso solo dopo i primi tre stadi, altrimenti si ottimizza contro numeri sbagliati." },
+    { n: 5, label: 'Espandere', rule: "Aggiungere superficie nuova. È la parte più gratificante e per questo tende a saltare la fila: su fondamenta storte moltiplica l'errore invece del risultato." },
+];
+
+const MODULE_META = {
+    executive: { icon: '📈', label: 'Dashboard Executive' },
+    dashboard: { icon: '📊', label: 'Dashboard KPI' },
+    notion: { icon: '📝', label: 'Notion Pipeline' },
+    klaviyo: { icon: '📧', label: 'Klaviyo CRM' },
+    seo: { icon: '🔍', label: 'SEO & Semrush' },
+    content_library: { icon: '🗄️', label: 'Content Lake' },
+    content: { icon: '🤖', label: 'Content AI' },
+    semrush_data: { icon: '📂', label: 'Data Hub' },
+    adv: { icon: '📣', label: 'ADV Intelligence' },
+    agents: { icon: '🧠', label: 'Agenti AI' },
+    terminal: { icon: '💬', label: 'Terminale AI' },
+    gsc: { icon: '📊', label: 'GSC Indexing' },
+    funnel: { icon: '🎯', label: 'User Journey Funnel' },
+    logs: { icon: '🔧', label: 'System & Logs' },
+    'adv-budget': { icon: '💰', label: 'ADV Allocator' },
+};
+
+const SEV_RANK = { bad: 0, watch: 1, ok: 2, na: 3 };
+
+function buildPlan(byPath) {
+    const modules = [];
+    const raw = [];
+    Object.entries(COACH).forEach(([mod, cfg]) => {
+        const d = {};
+        (cfg.sources || []).forEach(s => { d[s.k] = byPath[s.p]; });
+        let rows = [], acts = [];
+        try { rows = cfg.read(d) || []; } catch (e) { rows = []; }
+        try { acts = cfg.actions ? (cfg.actions(d, rows) || []) : []; } catch (e) { acts = []; }
+        const sev = rows.some(r => r.state === 'bad') ? 'bad'
+            : rows.some(r => r.state === 'watch') ? 'watch'
+            : rows.some(r => r.state === 'ok') ? 'ok' : 'na';
+        modules.push({ mod, sev, nBad: rows.filter(r => r.state === 'bad').length, nWatch: rows.filter(r => r.state === 'watch').length });
+        acts.forEach(a => { if (a.plan !== false) raw.push({ ...a, mod, sev, stage: a.stage || 4 }); });
+    });
+
+    // Stesso intervento suggerito da più moduli → una voce sola, con l'elenco di dove ricorre.
+    const byKey = new Map();
+    raw.forEach(it => {
+        const k = it.key || (it.mod + '|' + it.title);
+        const cur = byKey.get(k);
+        if (!cur) { byKey.set(k, { ...it, also: [] }); return; }
+        const curWins = cur.urgent !== it.urgent ? cur.urgent : SEV_RANK[cur.sev] <= SEV_RANK[it.sev];
+        const win = curWins ? cur : it, lose = curWins ? it : cur;
+        byKey.set(k, { ...win, also: [...(cur.also || []), lose.mod].filter(m => m !== win.mod) });
+    });
+
+    const list = [...byKey.values()].sort((a, b) =>
+        a.stage - b.stage
+        || (b.urgent ? 1 : 0) - (a.urgent ? 1 : 0)
+        || SEV_RANK[a.sev] - SEV_RANK[b.sev]
+        || a.title.localeCompare(b.title)
+    );
+    list.forEach((it, i) => { it.rank = i + 1; });
+    return { list, modules };
+}
+
+// Stato di avanzamento: le voci segnate come fatte escono dalla lista attiva.
+// Non è una to-do list: se dopo RESURFACE_DAYS i dati continuano a generare
+// la stessa voce, torna in lista marcata "riaperta" — perché segnarla fatta
+// non è la prova che sia stata risolta. La prova è che il dato smetta di chiederla.
+const PLAN_DONE_KEY = 'plan_done';
+const RESURFACE_DAYS = 7;
+const loadDone = () => { try { return JSON.parse(localStorage.getItem(PLAN_DONE_KEY) || '{}'); } catch (e) { return {}; } };
+const saveDone = (d) => { try { localStorage.setItem(PLAN_DONE_KEY, JSON.stringify(d)); } catch (e) {} };
+const dateIt = (iso) => { try { return new Date(iso).toLocaleDateString('it-IT', { day: '2-digit', month: 'short' }); } catch (e) { return '—'; } };
+
+function PlanItem({ it, onDone }) {
+    const [copied, setCopied] = useState(false);
+    const [exec, setExec] = useState(null);
+    const meta = MODULE_META[it.mod] || { icon: '•', label: it.mod };
+
+    const copy = () => {
+        navigator.clipboard.writeText(it.prompt).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }).catch(() => {});
+    };
+
+    // L'esecuzione non è una simulazione: gli agenti della tower possono avviare
+    // scansioni, ricalcoli e sincronizzazioni reali. Quindi si conferma prima.
+    const run = async () => {
+        const ok = window.confirm(
+            "Questa istruzione viene eseguita ORA sugli agenti della tower e puo avere effetti reali "
+            + "(avviare una scansione, un ricalcolo, una sincronizzazione).\n\n"
+            + it.prompt.slice(0, 300) + (it.prompt.length > 300 ? '…' : '') + "\n\nProcedo?"
+        );
+        if (!ok) return;
+        setExec({ loading: true });
+        try {
+            const res = await fetch(`${ML_API}/v1/terminal/execute?command=${encodeURIComponent(it.prompt)}`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}',
+            });
+            const raw = await res.text();
+            let d;
+            try { d = JSON.parse(raw); } catch (e) { setExec({ error: `Risposta non JSON (HTTP ${res.status}): ${raw.slice(0, 200)}` }); return; }
+            if (d.error) { setExec({ error: d.error, agent: d.agent }); return; }
+            const text = d.result || d.response || (d.data ? JSON.stringify(d.data, null, 2) : '');
+            setExec({
+                text: text || 'La risposta non contiene testo. Payload: ' + JSON.stringify(d).slice(0, 400),
+                agent: d.agent, action: d.action, latency: d.latency_ms,
+            });
+        } catch (e) { setExec({ error: e.message }); }
+    };
+
+    return (
+        <div className={`plan-item ${it.urgent ? 'urgent' : ''} ${it.resurfaced ? 'resurfaced' : ''}`}>
+            <div className="plan-rank">{it.rank}</div>
+            <div className="plan-main">
+                <div className="plan-head">
+                    <span className="plan-title">{it.urgent ? '⚠︎ ' : ''}{it.title}</span>
+                    <span className="plan-mod">{meta.icon} {meta.label}</span>
+                    {!!(it.also || []).length && (
+                        <span className="plan-also">segnalato anche in {it.also.map(m => (MODULE_META[m] || {}).label || m).join(', ')}</span>
+                    )}
+                    {it.resurfaced && <span className="plan-reopen">riaperta — segnata fatta il {dateIt(it.resurfaced)}, il dato la chiede ancora</span>}
+                </div>
+                <div className="plan-why">{it.why}</div>
+                <div className="coach-actprompt">{it.prompt}</div>
+                <div className="plan-btns">
+                    <button className="coach-copy" onClick={copy}>{copied ? '✓ Copiato' : '⧉ Copia istruzione'}</button>
+                    <button className="plan-run" onClick={run} disabled={exec && exec.loading} title="Esegue l'istruzione sugli agenti interni della tower — con conferma, perché può avere effetti reali">
+                        {exec && exec.loading ? '… in esecuzione' : '▶ Esegui nel Terminale AI'}
+                    </button>
+                    <button className="plan-donebtn" onClick={() => onDone(it.key, it.title)}>✓ Segna come fatta</button>
+                </div>
+                {exec && !exec.loading && (
+                    <div className={`plan-exec ${exec.error ? 'err' : ''}`}>
+                        <div className="plan-execmeta">{exec.error ? 'Errore' : `Risposta · ${exec.agent || 'sistema'}`}{exec.action ? ` · azione: ${exec.action}` : ''}{exec.latency ? ` · ${exec.latency}ms` : ''}</div>
+                        <div className="plan-exectext">{exec.error || exec.text}</div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
+function PlanPage() {
+    const [byPath, setByPath] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [done, setDone] = useState(loadDone);
+    const [showDone, setShowDone] = useState(false);
+    const [copiedAll, setCopiedAll] = useState(false);
+
+    const load = useCallback(() => {
+        const paths = [...new Set(Object.values(COACH).flatMap(c => (c.sources || []).map(s => s.p)))];
+        setLoading(true);
+        Promise.all(paths.map(p => api(p))).then(res => {
+            const m = {}; paths.forEach((p, i) => { m[p] = res[i]; });
+            setByPath(m); setLoading(false);
+        }).catch(() => { setByPath({}); setLoading(false); });
+    }, []);
+    useEffect(() => { load(); }, [load]);
+
+    const markDone = (k, title) => { const d = { ...done, [k]: { at: new Date().toISOString(), title } }; setDone(d); saveDone(d); };
+    const reopen = (k) => { const d = { ...done }; delete d[k]; setDone(d); saveDone(d); };
+    const clearConfirmed = () => {
+        const stillGenerated = new Set(all.map(i => i.key));
+        const d = {}; Object.entries(done).forEach(([k, v]) => { if (stillGenerated.has(k)) d[k] = v; });
+        setDone(d); saveDone(d);
+    };
+
+    const { list: all, modules } = byPath ? buildPlan(byPath) : { list: [], modules: [] };
+
+    // 3 stati: attive · segnate fatte ma ancora generate dai dati · confermate (sparite dai dati)
+    const nowMs = Date.now();
+    const active = [], completed = [];
+    all.forEach(it => {
+        const rec = done[it.key];
+        if (!rec) { active.push(it); return; }
+        const days = (nowMs - new Date(rec.at).getTime()) / 864e5;
+        if (days >= RESURFACE_DAYS) active.push({ ...it, resurfaced: rec.at });
+        else completed.push({ ...it, doneAt: rec.at });
+    });
+    active.forEach((it, i) => { it.rank = i + 1; });
+    const generatedKeys = new Set(all.map(i => i.key));
+    const confirmed = Object.entries(done).filter(([k]) => !generatedKeys.has(k));
+    const urgent = active.filter(i => i.urgent).length;
+
+    const planText = () => {
+        const head = `PIANO D'AZIONE micron-è — ${new Date().toLocaleString('it-IT', { dateStyle: 'medium', timeStyle: 'short' })}\n`
+            + `Ordine di esecuzione: misurare → fondamenta → sbloccare → ottimizzare → espandere\n`
+            + `${active.length} interventi aperti${urgent ? `, di cui ${urgent} urgenti` : ''}`
+            + `${completed.length ? ` · ${completed.length} segnati come fatti` : ''}.\n`
+            + `Eseguili nell'ordine: ogni stadio presuppone il precedente.\n`;
+        const body = active.map(it => {
+            const st = PLAN_STAGES.find(s => s.n === it.stage);
+            const meta = MODULE_META[it.mod] || { label: it.mod };
+            return `\n${it.rank}. [${st ? st.label : '—'} · ${meta.label}]${it.urgent ? ' ⚠ URGENTE' : ''} ${it.title}\n   Perché: ${it.why}\n   Istruzione: ${it.prompt}`;
+        }).join('\n');
+        return head + body;
+    };
+    const copyAll = () => {
+        navigator.clipboard.writeText(planText()).then(() => { setCopiedAll(true); setTimeout(() => setCopiedAll(false), 2500); }).catch(() => {});
+    };
+
+    return (
+        <React.Fragment>
+            <div className="page-header">
+                <h2>Piano d'Azione</h2>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                    <button className="plan-cta" onClick={copyAll}>{copiedAll ? '✓ Piano copiato negli appunti' : `⧉ Copia il piano completo (${active.length})`}</button>
+                    <button className="refresh-btn" onClick={load}>↻ Ricalcola</button>
+                </div>
+            </div>
+
+            <div className="plan-intro">
+                Tutti i consigli dei moduli della tower, deduplicati e messi in <strong>ordine di esecuzione</strong>, non di gravità.
+                L'ordine segue la catena di dipendenza: non si ottimizza ciò che non si misura, e non si espande su fondamenta sbagliate.
+                Il piano è ricalcolato dai dati correnti a ogni apertura — quando segni una voce come fatta esce dalla lista, ma se dopo {RESURFACE_DAYS} giorni
+                i dati continuano a chiederla torna marcata <em>riaperta</em>: la prova che un intervento è chiuso non è la spunta, è che il dato smetta di generarlo.
+            </div>
+
+            {loading && <div className="coach-empty" style={{ padding: '20px 0' }}>Lettura di tutti i moduli in corso…</div>}
+
+            {!loading && (
+                <React.Fragment>
+                    <div className="plan-summary">
+                        <div className="plan-kpi">
+                            <div className="plan-kpin">{active.length}</div>
+                            <div className="plan-kpil">interventi aperti</div>
+                        </div>
+                        <div className="plan-kpi">
+                            <div className="plan-kpin" style={{ color: urgent ? '#f87171' : '#4ade80' }}>{urgent}</div>
+                            <div className="plan-kpil">urgenti</div>
+                        </div>
+                        <div className="plan-kpi">
+                            <div className="plan-kpin" style={{ color: '#4ade80' }}>{confirmed.length}</div>
+                            <div className="plan-kpil">chiusi e confermati</div>
+                        </div>
+                        <div className="plan-modstrip">
+                            {modules.map(m => {
+                                const meta = MODULE_META[m.mod] || { icon: '•', label: m.mod };
+                                return (
+                                    <span className="plan-modchip" key={m.mod} title={`${m.nBad} fuori soglia · ${m.nWatch} da osservare`}>
+                                        <span className="coach-dot" style={{ background: (CST[m.sev] || CST.na).c }}></span>
+                                        {meta.label}
+                                    </span>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    {!active.length && (
+                        <div className="plan-clear">Nessun intervento aperto: i moduli non stanno segnalando nulla che richieda un'azione.</div>
+                    )}
+
+                    {PLAN_STAGES.map(st => {
+                        const items = active.filter(i => i.stage === st.n);
+                        if (!items.length) return null;
+                        return (
+                            <div className="plan-stage" key={st.n}>
+                                <div className="plan-stagehead">
+                                    <span className="plan-stagen">{st.n}</span>
+                                    <span className="plan-stagelabel">{st.label}</span>
+                                    <span className="plan-stagecount">{items.length} intervent{items.length > 1 ? 'i' : 'o'}</span>
+                                </div>
+                                <div className="plan-stagerule">{st.rule}</div>
+                                {items.map(it => <PlanItem key={it.key} it={it} onDone={markDone} />)}
+                            </div>
+                        );
+                    })}
+
+                    {(completed.length > 0 || confirmed.length > 0) && (
+                        <div className="plan-donebox">
+                            <div className="plan-donehead" onClick={() => setShowDone(!showDone)}>
+                                <span>✓ Segnate come fatte ({completed.length}){confirmed.length ? ` · confermate dai dati (${confirmed.length})` : ''}</span>
+                                <span className="plan-donetoggle">{showDone ? 'nascondi ▲' : 'mostra ▼'}</span>
+                            </div>
+                            {showDone && (
+                                <div className="plan-donebody">
+                                    {completed.map(it => (
+                                        <div className="plan-donerow" key={it.key}>
+                                            <span className="plan-donetitle">{it.title}</span>
+                                            <span className="plan-donemeta">
+                                                segnata il {dateIt(it.doneAt)} · il dato la genera ancora, torna in lista fra {Math.max(0, Math.ceil(RESURFACE_DAYS - (nowMs - new Date(it.doneAt).getTime()) / 864e5))} g
+                                            </span>
+                                            <button className="plan-link" onClick={() => reopen(it.key)}>riapri</button>
+                                        </div>
+                                    ))}
+                                    {confirmed.map(([k, v]) => (
+                                        <div className="plan-donerow ok" key={k}>
+                                            <span className="plan-donetitle">{v.title}</span>
+                                            <span className="plan-donemeta">segnata il {dateIt(v.at)} · <strong style={{ color: '#4ade80' }}>confermata</strong>: i dati non la segnalano più</span>
+                                        </div>
+                                    ))}
+                                    {!!confirmed.length && <button className="plan-link" style={{ marginTop: '8px' }} onClick={clearConfirmed}>pulisci le confermate dallo storico</button>}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    <div className="plan-foot">
+                        Il piano legge {[...new Set(Object.values(COACH).flatMap(c => (c.sources || []).map(s => s.p)))].length} endpoint e applica le stesse soglie del Copilota.
+                        Quando lo stesso intervento è suggerito da più moduli compare una volta sola, sotto il modulo che lo motiva meglio.
+                        <br />
+                        <strong style={{ color: '#a1a1aa' }}>Esegui nel Terminale AI</strong> lancia l'istruzione sugli agenti interni della tower (dati reali, risposta in pagina).
+                        Le istruzioni che nominano una skill — semrush-specialist, adv-budget-allocator, albeni-wp-operator — vivono invece in Claude Code: lì il pulsante di copia è la via giusta,
+                        perché la tower non può aprire una sessione Claude Code.
+                    </div>
+                </React.Fragment>
+            )}
         </React.Fragment>
     );
 }
@@ -300,6 +1472,9 @@ function Sidebar({ page, setPage, health, pendingCount }) {
                     </div>
                     <div className={`nav-item ${page==='dashboard'?'active':''}`} onClick={()=>setPage('dashboard')}>
                         <span className="icon">📊</span> Dashboard KPI
+                    </div>
+                    <div className={`nav-item ${page==='plan'?'active':''}`} onClick={()=>setPage('plan')}>
+                        <span className="icon">🧭</span> Piano d'Azione
                     </div>
                 </div>
                 <div className="nav-section">
