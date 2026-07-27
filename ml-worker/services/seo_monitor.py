@@ -78,11 +78,14 @@ DOMAIN_KEYWORD_MAP = {
 }
 
 # Semantic Defense keywords (15% focus — usate per matching contro le keyword in rank reali)
+# Pivot micron-è (lug 2026): rimossi reda/albeni/compact/superfine — territorio
+# non più difeso dal brand e in parte vietato dal guardrail copy. Il semantic_defense_pct
+# misurava quote di un perimetro che non esiste più.
 SEMANTIC_DEFENSE_KEYWORDS = [
-    "cut & sewn", "cut and sewn", "17 micron", "reda 1865", "reda merino",
-    "compact technology", "invisible luxury", "superfine merino",
-    "albeni 1905", "albeni merino", "made in italy merino",
-    "italian merino", "italian luxury",
+    "cut & sewn", "cut and sewn", "17 micron", "super 120s",
+    "micron-e", "micron è", "invisible luxury",
+    "made in italy merino", "italian merino", "italian luxury",
+    "merino italiano", "lana merino italiana",
 ]
 
 # Redis cache TTL: SEMrush API units are limited; data SEO non cambia per minuti

@@ -2212,17 +2212,27 @@ async def adv_spend_summary(
 # ===================================================================
 
 # Keyword C6 Semantic Defense — override via env SEMANTIC_DEFENSE_KEYWORDS (CSV)
+# Pivot micron-è (lug 2026): fuori "reda 1865" (territorio non più nostro) e
+# "merino superfine" (termine vietato dal guardrail copy). Le keyword IT servono
+# ai domini su database "it" (MU, micron-e), le EN a quelli su "us" (WoM, PMS).
+# DE/FR non sono coperti: DOMAIN_KEYWORD_MAP mappa un solo database per dominio,
+# quindi una keyword tedesca non verrebbe mai trovata — serve una decisione a parte.
 _SEM_DEFENSE_KEYWORDS_DEFAULT = [
-    "merino wool t-shirt", "wool t-shirt men", "cut and sew t-shirt",
-    "17 micron merino", "super 120s merino", "reda 1865",
+    # EN — database "us"
+    "merino wool t-shirt", "merino t-shirt men", "cut and sewn t-shirt",
+    "17 micron merino", "super 120s merino", "merino wool shirt",
     "italian merino fabric", "premium merino t-shirt",
-    "merino t-shirt herren", "merino wool shirt",
-    "t-shirt lana merino", "merino superfine",
+    "made in italy merino", "luxury merino t-shirt",
+    # IT — database "it"
+    "t-shirt lana merino", "t-shirt merino uomo", "maglia lana merino uomo",
+    "lana merino 17 micron", "tessuto merino italiano", "t-shirt merino italia",
 ]
-# Domini Albeni target — override via env SEMANTIC_DEFENSE_DOMAINS (CSV)
+# Domini target — override via env SEMANTIC_DEFENSE_DOMAINS (CSV).
+# albeni1905.com rimosso (partnership decaduta), micron-e.com aggiunto: è lo
+# store D2C, senza di lui il cluster C6 non misurava il dominio che conta.
 _SEM_DEFENSE_DOMAINS_DEFAULT = [
     "merinouniversity.com", "worldofmerino.com",
-    "perfectmerinoshirt.com", "albeni1905.com"
+    "perfectmerinoshirt.com", "micron-e.com"
 ]
 # Soglia DR per backlinks "authority"
 _SEM_DEFENSE_DR_THRESHOLD = int(os.environ.get("SEMANTIC_DEFENSE_DR_THRESHOLD", "40"))
@@ -2278,10 +2288,14 @@ async def _compute_semantic_defense_snapshot(db: DBSession,
     # SemrushAgent ha già cache Redis 1h, va bene chiamare in loop
     try:
         from services.semrush_agent import SemrushAgent
+        from services.seo_monitor import DOMAIN_KEYWORD_MAP
         agent = SemrushAgent()
         for dom in domains:
             try:
-                result = await agent.get_organic_keywords(dom, database="us", limit=100)
+                # Database per dominio, non "us" fisso: MU e micron-e sono mercato
+                # "it", con "us" le loro keyword italiane non uscivano mai.
+                db_market = DOMAIN_KEYWORD_MAP.get(dom, {}).get("semrush_database", "us")
+                result = await agent.get_organic_keywords(dom, database=db_market, limit=100)
                 rows = (result or {}).get("keywords", []) or []
                 for row in rows:
                     kw = (row.get("keyword") or row.get("Keyword") or "").strip().lower()
