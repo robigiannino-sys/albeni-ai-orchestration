@@ -49,7 +49,7 @@ from services.ids_calculator import IDSCalculator
 from services.cluster_predictor import ClusterPredictor
 from services.content_generator import ContentGenerator
 from services.klaviyo_sync import KlaviyoService
-from services.seo_monitor import SEOMonitor
+from services.seo_monitor import SEOMonitor, DOMAIN_KEYWORD_MAP
 from services.notion_sync import NotionSync
 from services.content_validator import ContentValidator
 from services.semrush_agent import SemrushAgent
@@ -2213,19 +2213,25 @@ async def adv_spend_summary(
 
 # Keyword C6 Semantic Defense — override via env SEMANTIC_DEFENSE_KEYWORDS (CSV)
 # Pivot micron-è (lug 2026): fuori "reda 1865" (territorio non più nostro) e
-# "merino superfine" (termine vietato dal guardrail copy). Le keyword IT servono
-# ai domini su database "it" (MU, micron-e), le EN a quelli su "us" (WoM, PMS).
-# DE/FR non sono coperti: DOMAIN_KEYWORD_MAP mappa un solo database per dominio,
-# quindi una keyword tedesca non verrebbe mai trovata — serve una decisione a parte.
+# "merino superfine" (termine vietato dal guardrail copy).
+# Le 4 lingue sono tutte coperte: lo snapshot fa lo sweep dei mercati elencati in
+# DOMAIN_KEYWORD_MAP["semrush_databases"], quindi una keyword tedesca viene cercata
+# nel database "de" dei domini che pubblicano in tedesco.
 _SEM_DEFENSE_KEYWORDS_DEFAULT = [
-    # EN — database "us"
+    # EN — mercato "us"
     "merino wool t-shirt", "merino t-shirt men", "cut and sewn t-shirt",
     "17 micron merino", "super 120s merino", "merino wool shirt",
     "italian merino fabric", "premium merino t-shirt",
     "made in italy merino", "luxury merino t-shirt",
-    # IT — database "it"
+    # IT — mercato "it"
     "t-shirt lana merino", "t-shirt merino uomo", "maglia lana merino uomo",
     "lana merino 17 micron", "tessuto merino italiano", "t-shirt merino italia",
+    # DE — mercato "de"
+    "merino t-shirt herren", "merino wolle t-shirt", "merino shirt herren",
+    "17 mikron merino", "italienische merinowolle", "merino t-shirt italien",
+    # FR — mercato "fr"
+    "t-shirt laine mérinos", "t-shirt mérinos homme", "laine mérinos italienne",
+    "17 microns mérinos", "t-shirt merinos homme", "laine merinos italienne",
 ]
 # Domini target — override via env SEMANTIC_DEFENSE_DOMAINS (CSV).
 # albeni1905.com rimosso (partnership decaduta), micron-e.com aggiunto: è lo
@@ -2288,41 +2294,47 @@ async def _compute_semantic_defense_snapshot(db: DBSession,
     # SemrushAgent ha già cache Redis 1h, va bene chiamare in loop
     try:
         from services.semrush_agent import SemrushAgent
-        from services.seo_monitor import DOMAIN_KEYWORD_MAP
         agent = SemrushAgent()
         for dom in domains:
-            try:
-                # Database per dominio, non "us" fisso: MU e micron-e sono mercato
-                # "it", con "us" le loro keyword italiane non uscivano mai.
-                db_market = DOMAIN_KEYWORD_MAP.get(dom, {}).get("semrush_database", "us")
-                result = await agent.get_organic_keywords(dom, database=db_market, limit=100)
-                rows = (result or {}).get("keywords", []) or []
-                for row in rows:
-                    kw = (row.get("keyword") or row.get("Keyword") or "").strip().lower()
-                    if not kw or kw not in c6_kws:
-                        continue
-                    pos_raw = row.get("position") or row.get("Position") or row.get("Pos")
-                    try:
-                        pos = int(float(pos_raw)) if pos_raw is not None else None
-                    except (ValueError, TypeError):
-                        pos = None
-                    vol_raw = row.get("search_volume") or row.get("Search Volume") or row.get("Nq")
-                    try:
-                        vol = int(float(vol_raw)) if vol_raw is not None else None
-                    except (ValueError, TypeError):
-                        vol = None
-                    url = row.get("url") or row.get("URL") or ""
-                    if pos is not None:
-                        keywords_data.append({
-                            "keyword": kw, "domain": dom, "position": pos,
-                            "volume": vol, "url": url
-                        })
-                        if pos == 0:  # Featured snippet (alcune API mappano fs come pos 0)
-                            featured_snippets.append({
-                                "keyword": kw, "domain": dom, "url": url, "position": pos
+            # Sweep di tutti i mercati in cui il dominio pubblica. Un solo database
+            # per dominio lasciava DE e FR strutturalmente invisibili: le keyword
+            # tedesche non escono dal database "it" o "us". Costo: ~13 chiamate/giorno
+            # invece di 4, accettabile su un job che gira 1 volta al giorno.
+            cfg = DOMAIN_KEYWORD_MAP.get(dom, {})
+            markets = cfg.get("semrush_databases") or [cfg.get("semrush_database", "us")]
+            for market in markets:
+                try:
+                    result = await agent.get_organic_keywords(dom, database=market, limit=100)
+                    rows = (result or {}).get("keywords", []) or []
+                    for row in rows:
+                        kw = (row.get("keyword") or row.get("Keyword") or "").strip().lower()
+                        if not kw or kw not in c6_kws:
+                            continue
+                        pos_raw = row.get("position") or row.get("Position") or row.get("Pos")
+                        try:
+                            pos = int(float(pos_raw)) if pos_raw is not None else None
+                        except (ValueError, TypeError):
+                            pos = None
+                        vol_raw = row.get("search_volume") or row.get("Search Volume") or row.get("Nq")
+                        try:
+                            vol = int(float(vol_raw)) if vol_raw is not None else None
+                        except (ValueError, TypeError):
+                            vol = None
+                        url = row.get("url") or row.get("URL") or ""
+                        if pos is not None:
+                            # market nel payload: senza, una keyword in top3 in DE e
+                            # una in IT sono indistinguibili nel dettaglio del pannello.
+                            keywords_data.append({
+                                "keyword": kw, "domain": dom, "market": market,
+                                "position": pos, "volume": vol, "url": url
                             })
-            except Exception as e:
-                logger.warning(f"semrush organic failed for {dom}: {e}")
+                            if pos == 0:  # Featured snippet (alcune API mappano fs come pos 0)
+                                featured_snippets.append({
+                                    "keyword": kw, "domain": dom, "market": market,
+                                    "url": url, "position": pos
+                                })
+                except Exception as e:
+                    logger.warning(f"semrush organic failed for {dom} [{market}]: {e}")
     except ImportError:
         logger.warning("SemrushAgent unavailable — semantic defense degraded mode")
 
@@ -2421,6 +2433,18 @@ async def _compute_semantic_defense_snapshot(db: DBSession,
             "keywords_total_tracked": len(keywords_data),
             "keywords_total_in_set": len(c6_kws),
             "avg_position": round(avg_pos, 2) if avg_pos else None,
+            # Copertura per mercato: senza questo non si distingue "in DE non
+            # rankiamo" da "il mercato DE non è stato nemmeno interrogato".
+            "by_market": {
+                m: sum(1 for k in keywords_data if k.get("market") == m)
+                for m in sorted({k.get("market") for k in keywords_data if k.get("market")})
+            },
+            "markets_swept": sorted({
+                mk
+                for d in domains
+                for mk in (DOMAIN_KEYWORD_MAP.get(d, {}).get("semrush_databases")
+                           or [DOMAIN_KEYWORD_MAP.get(d, {}).get("semrush_database", "us")])
+            }),
             "top20": sorted(keywords_data, key=lambda x: x["position"])[:20],
         },
         "educational_engagement": {

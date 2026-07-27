@@ -29,11 +29,20 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 
 # Domain-role mapping (statico — definisce ruolo strategico e mercato SEMrush)
+#
+# `semrush_database` = mercato primario, usato dal check orario /v1/seo/health
+# (single-market di proposito: è in polling, moltiplicare i mercati moltiplica
+# il consumo di unità API ogni ora).
+# `semrush_databases` = tutti i mercati in cui il dominio pubblica, usato dallo
+# snapshot Semantic Defense giornaliero, che gira 1 volta al giorno e può
+# permettersi lo sweep completo. WoM e MU escono in 4 lingue, micron-e vende in
+# EU (IT/EN/DE/FR), PMS resta solo EN.
 DOMAIN_KEYWORD_MAP = {
     "worldofmerino.com": {
         "role": "TOFU - Lifestyle & Discovery",
         "funnel_stage": "TOFU",
         "semrush_database": "us",
+        "semrush_databases": ["us", "it", "de", "fr"],
         # legacy hint list (used as fallback se SEMrush ritorna 0 keyword)
         "primary_keywords": [
             "world of merino", "merino wool benefits", "natural fibers",
@@ -46,6 +55,7 @@ DOMAIN_KEYWORD_MAP = {
         "role": "MOFU - Technical Authority",
         "funnel_stage": "MOFU",
         "semrush_database": "it",
+        "semrush_databases": ["it", "us", "de", "fr"],
         "primary_keywords": [
             "merino wool properties", "17 micron fiber", "cut and sewn construction",
             "wool care guide", "merino vs synthetic", "thermal regulation wool",
@@ -57,6 +67,7 @@ DOMAIN_KEYWORD_MAP = {
         "role": "BOFU Technical - Product Conversion",
         "funnel_stage": "BOFU",
         "semrush_database": "us",
+        "semrush_databases": ["us"],
         "primary_keywords": [
             "best merino t-shirt", "merino undershirt blazer",
             "no sweat t-shirt", "wrinkle free merino", "travel t-shirt",
@@ -68,6 +79,7 @@ DOMAIN_KEYWORD_MAP = {
         "role": "BOFU Brand Store (micron-è)",
         "funnel_stage": "BOFU",
         "semrush_database": "it",
+        "semrush_databases": ["it", "us", "de", "fr"],
         "primary_keywords": [
             "micron-e", "micron-e merino", "merino super 120s t-shirt",
             "made in italy merino", "luxury merino t-shirt",
