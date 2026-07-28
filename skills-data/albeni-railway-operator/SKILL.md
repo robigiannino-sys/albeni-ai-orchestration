@@ -104,7 +104,7 @@ When migrating from Railway project A to Railway project B, **EVERY hardcoded re
 2. Repo snippet files: `ai-orchestration-layer/snippets/wordpress/snippet-*-{TOFU,MOFU,BOFU}.html`.
 3. Hostinger Horizons SPA `perfectmerinoshirt.com`: edit via Horizons editor, no API.
 4. Vercel `albeni1905.com`: TrackingProvider component in the Next.js repo (commit + push).
-5. Dashboard frontend `ai-router/dashboard/index.html` and `dashboard/index.html`: `ML_API` and `ROUTER_API` constants at lines 117-118 (use same-origin `''` in production, query string override for local dev).
+5. Dashboard frontend `ai-router/dashboard/index.html` (unica copia): `ML_API` and `ROUTER_API` constants at lines 117-118 (use same-origin `''` in production, query string override for local dev).
 
 Use `grep -rE "old-project-host" .` BEFORE the migration to find all references. Don't rely on memory.
 
@@ -822,6 +822,30 @@ la variabile `DATABASE_URL` su `albeni-ga4-sync` non contiene il template ma la 
 
 **Regola operativa**: per qualsiasi reference cross-service in Railway (`${{Service.VAR}}`), **usa SEMPRE la UI Railway** per il primo set. Solo modifiche successive di valori non-reference possono passare dalla CLI.
 
+---
+
+## Pattern 13 — Una sola copia del dashboard: il duplicato sincronizzato è una bomba a orologeria
+
+**Com'era (fino al 28/07/2026)**: il repo teneva due copie del frontend, `dashboard/` in root e `ai-router/dashboard/`, con `railway-prebuild.sh` che faceva `rsync -av --delete dashboard/ ai-router/dashboard/`. `railway-deploy.sh` lo invocava in automatico prima di ogni `git add -A && git commit && git push`.
+
+**Perché era pericoloso**: solo `ai-router/dashboard/` finisce nell'immagine (il Dockerfile di `ai-router` fa `COPY . .` dal proprio contesto). È quindi l'unica copia che qualcuno abbia mai avuto motivo di aggiornare — infatti il purge Albeni del 27/07 (`cc485de`) ha toccato solo quella. La copia di root era rimasta ferma al commit iniziale del 7 aprile, **pre-pivot**.
+
+Il risultato: lo script copiava la versione **vecchia** sopra quella **nuova**, con `--delete`. Un solo `./railway-deploy.sh` avrebbe:
+- riportato `albeni-ai-tracker.js`, `albeni-behavioral-engine.js`, `albeni-unified-tracker.js`, `content-lake-multilingual.js` alle versioni Albeni — reintroducendo `albeni1905.com` e CTA come "Scopri l'eredità Albeni →" nel tracker servito ai 4 domini, in violazione del purge;
+- cancellato `mu_crawl_map.json` e `wom_crawl_map.json`, che `ai-router/middleware/indexAwareRouter.js` legge a runtime da `dashboardPath`;
+- cancellato `adv-budget-page.jsx`;
+- e committato tutto con `git add -A`, senza che nessuno guardasse il diff.
+
+**Com'è ora**: copia unica in `ai-router/dashboard/`. `dashboard/` di root e `railway-prebuild.sh` rimossi, la chiamata tolta da `railway-deploy.sh`, `docker-compose.yml` monta `./ai-router/dashboard:/app/dashboard:ro` così locale e produzione servono gli stessi byte.
+
+**Regola**: non ricreare una seconda copia del dashboard, e diffidare di qualsiasi script di "sync" fra due directory versionate. Se due copie devono esistere, la sorgente dev'essere quella **deployata**, mai quella che sembra più in alto nell'albero. Un `rsync --delete` che gira dentro uno script di deploy automatico non ha nessuno che ne legge l'output.
+
+**Verifica rapida che la copia servita sia quella giusta**:
+```bash
+# Deve tornare identico
+diff <(curl -s https://tower.worldofmerino.com/) ai-router/dashboard/index.html && echo "allineati"
+```
+
 ### Bug 2 — Application Passwords disabled on Hostinger WP
 
 `/wp-json/wp/v2/users/me/application-passwords` returns 501 `application_passwords_disabled` on `merinouniversity.com` and `worldofmerino.com`. Cause: a security plugin or `WP_ENVIRONMENT_TYPE` override disables the feature.
@@ -836,7 +860,7 @@ la variabile `DATABASE_URL` su `albeni-ga4-sync` non contiene il template ma la 
 |---|---|---|
 | Fix backend Python logic (IDS, cluster predictor, ML) | `ml-worker/services/*.py` → push to GitHub | Auto-deploys to `albeni-ai-orchestration` service |
 | Fix routing logic, add new API endpoint | `ai-router/routes/*.js` → push | Auto-deploys to `creative-perfection` |
-| Fix dashboard frontend | `ai-router/dashboard/index.html` AND `dashboard/index.html` (keep them in sync via `railway-prebuild.sh`) → push | Both copies needed; build script ships the right one |
+| Fix dashboard frontend | `ai-router/dashboard/index.html` → push | Copia unica: è quella che il Dockerfile mette nell'immagine e che docker-compose monta in locale. NON ricreare una `dashboard/` di root né un `railway-prebuild.sh` che ci copi sopra — vedi Pattern 13 |
 | Add env var | Railway dashboard → service → Variables → New Variable | Don't put secrets in `.env` checked into Git |
 | Migrate DB schema | Edit `ml-worker/db/init.sql`, then write a migration script and run via `railway run --service Postgres bash -c 'psql ... -f /tmp/migration.sql'` | init.sql only runs on first DB creation |
 | Update WP snippet URL | `albeni-wp-operator` skill (CodeMirror in wp-admin) | Direct DB write to the WP_postmeta table where WPCode lives |

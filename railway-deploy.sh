@@ -17,10 +17,9 @@ MSG="${1:-deploy: update AI Orchestration Layer}"
 echo -e "${BLUE}━━━ ALBENI 1905 — Railway Deploy ━━━${NC}"
 echo ""
 
-# Sync dashboard to ai-router (needed for Railway monorepo build)
-if [ -f "./railway-prebuild.sh" ]; then
-    bash ./railway-prebuild.sh
-fi
+# Nessuna sincronizzazione dashboard: la cartella servita e ai-router/dashboard/,
+# unica copia. La vecchia ./dashboard e il railway-prebuild.sh che la copiava sopra
+# sono stati rimossi il 28/07/2026 (copiavano in avanti file fermi al pre-pivot).
 
 # Check for changes
 if git diff --quiet && git diff --cached --quiet && [ -z "$(git ls-files --others --exclude-standard)" ]; then

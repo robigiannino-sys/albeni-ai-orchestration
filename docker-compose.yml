@@ -31,7 +31,10 @@ services:
     env_file:
       - .env
     volumes:
-      - ./dashboard:/app/dashboard:ro
+      # Stessa cartella che il Dockerfile copia nell'immagine Railway: in locale e in
+      # produzione si serve un'unica copia. Prima qui c'era ./dashboard, una seconda
+      # copia che era rimasta indietro al pre-pivot.
+      - ./ai-router/dashboard:/app/dashboard:ro
     depends_on:
       redis:
         condition: service_healthy

@@ -5,7 +5,7 @@
 ### "Il dashboard è vuoto"
 Procedere in ordine:
 1. **Cache browser**: hard refresh `Cmd+Shift+R` o incognito
-2. **Frontend punta a localhost**: aprire DevTools → Network, controllare se le chiamate `/v1/*` vanno a `localhost:8000`. Se sì, fix `ML_API`/`ROUTER_API` in `dashboard/index.html` a empty string (same-origin)
+2. **Frontend punta a localhost**: aprire DevTools → Network, controllare se le chiamate `/v1/*` vanno a `localhost:8000`. Se sì, fix `ML_API`/`ROUTER_API` in `ai-router/dashboard/index.html` a empty string (same-origin)
 3. **API risponde ma DB vuoto**: `curl https://.../v1/dashboard/metrics` — se total_users=0 il DB è davvero vuoto, vedi sotto
 4. **DB non popolato**: lancia `seed_demo.sql` via `railway run --service Postgres bash -c 'python3 ...'` per dati demo
 5. **DB ha dati ma dashboard non li vede**: bug del frontend, oppure cache LiteSpeed sul WP che mostra una versione cachata del dashboard (ma il dashboard è su Railway, non WP — solo se un proxy intermedio)
@@ -87,7 +87,7 @@ Procedi in ordine, fermati al primo "no":
 1. `railway logs --service <svc> --filter build` per vedere l'errore
 2. Verifica `railway.toml` del service (path, builder)
 3. Verifica `Dockerfile` o `package.json`/`requirements.txt`
-4. `railway-prebuild.sh` deve essere eseguito? Il dashboard frontend viene copiato lì.
+4. Nessun passo di sync dashboard da eseguire: `ai-router/dashboard/` è la copia unica, il Dockerfile la porta dentro l'immagine con `COPY . .`. (`railway-prebuild.sh` e la vecchia `dashboard/` di root sono stati rimossi il 28/07/2026.)
 
 ### "Container in restart loop"
 - `railway logs --service <svc>` per vedere stack trace
