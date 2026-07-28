@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Smoke test CRO Engine — Step 7.1 + 7.2
-# Uso: API_KEY=albeni1905-internal-api-v1 ./smoke_test_cro.sh
+# Uso: API_KEY=$API_KEY ./smoke_test_cro.sh
 set -euo pipefail
 
 BASE="${BASE:-https://albeni-ai-orchestration-production.up.railway.app}"
-KEY="${API_KEY:-albeni1905-internal-api-v1}"
+KEY="${API_KEY:?API_KEY non impostata: esportala prima di lanciare}"
 SLOT_KEY="smoke_test_slot_$(date +%s)"
 pass=0; fail=0
 

@@ -542,7 +542,7 @@ function createRoutes(dashboardPath) {
   // Called when GSC scan detects a new PASS verdict
   router.post('/index-event', (req, res) => {
     const apiKey = req.headers['x-api-key'] || req.query.api_key;
-    if (apiKey !== (process.env.API_KEY || 'albeni-gsc-2026')) {
+    if (!process.env.API_KEY || apiKey !== process.env.API_KEY) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
@@ -578,7 +578,7 @@ function createRoutes(dashboardPath) {
   // Body: { events: [{ urlPath, site, cluster }, ...] }
   router.post('/index-events', (req, res) => {
     const apiKey = req.headers['x-api-key'] || req.query.api_key;
-    if (apiKey !== (process.env.API_KEY || 'albeni-gsc-2026')) {
+    if (!process.env.API_KEY || apiKey !== process.env.API_KEY) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
@@ -615,7 +615,7 @@ function createRoutes(dashboardPath) {
   // PUT /v1/adv/config
   router.put('/config', (req, res) => {
     const apiKey = req.headers['x-api-key'] || req.query.api_key;
-    if (apiKey !== (process.env.API_KEY || 'albeni-gsc-2026')) {
+    if (!process.env.API_KEY || apiKey !== process.env.API_KEY) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 

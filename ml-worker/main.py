@@ -1625,8 +1625,8 @@ async def gsc_report(
     from datetime import datetime as dt
 
     api_key = (request.headers.get("x-api-key") or request.query_params.get("api_key") or "").strip()
-    expected = (os.environ.get("API_KEY") or "albeni-gsc-2026").strip()
-    if api_key != expected:
+    expected = (os.environ.get("API_KEY") or "").strip()
+    if not expected or api_key != expected:
         logger.warning(f"GSC POST 401: api_key_len={len(api_key)} expected_len={len(expected)}")
         raise HTTPException(status_code=401, detail="Unauthorized")
 
@@ -1976,8 +1976,7 @@ async def adv_spend_report(
             "source": "google_ads_sync" | "meta_ads_sync" | "manual"
         }
 
-    Auth: header `x-api-key` o query `api_key` deve matchare env `API_KEY`
-          (effettivo su albeni-ai-orchestration: albeni1905-internal-api-v1).
+    Auth: header `x-api-key` o query `api_key` deve matchare env `API_KEY`.
     Idempotenza: UPSERT su (channel, date, campaign_id).
     """
     from models.database import AdvSpend
@@ -1986,8 +1985,8 @@ async def adv_spend_report(
 
     # ── Auth ──
     api_key = (request.headers.get("x-api-key") or request.query_params.get("api_key") or "").strip()
-    expected = (os.environ.get("API_KEY") or "albeni-gsc-2026").strip()
-    if api_key != expected:
+    expected = (os.environ.get("API_KEY") or "").strip()
+    if not expected or api_key != expected:
         logger.warning(f"ADV POST 401: api_key_len={len(api_key)} expected_len={len(expected)}")
         raise HTTPException(status_code=401, detail="Unauthorized")
 
@@ -2073,8 +2072,8 @@ async def adv_spend_batch(
     from decimal import Decimal, InvalidOperation
 
     api_key = (request.headers.get("x-api-key") or request.query_params.get("api_key") or "").strip()
-    expected = (os.environ.get("API_KEY") or "albeni-gsc-2026").strip()
-    if api_key != expected:
+    expected = (os.environ.get("API_KEY") or "").strip()
+    if not expected or api_key != expected:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     rows_in = payload.get("rows")
@@ -2516,8 +2515,8 @@ async def semantic_defense_snapshot(
     Risparmio via Redis cache 1h già attiva su SemrushAgent.
     """
     api_key = (request.headers.get("x-api-key") or request.query_params.get("api_key") or "").strip()
-    expected = (os.environ.get("API_KEY") or "albeni-gsc-2026").strip()
-    if api_key != expected:
+    expected = (os.environ.get("API_KEY") or "").strip()
+    if not expected or api_key != expected:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     from datetime import datetime as dt
@@ -2838,8 +2837,8 @@ async def cro_slot_upsert(
     from models.database import CROSlot
 
     api_key = (request.headers.get("x-api-key") or request.query_params.get("api_key") or "").strip()
-    expected = (os.environ.get("API_KEY") or "albeni-gsc-2026").strip()
-    if api_key != expected:
+    expected = (os.environ.get("API_KEY") or "").strip()
+    if not expected or api_key != expected:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     slot_key = (payload.get("slot_key") or "").strip()
@@ -2881,8 +2880,8 @@ async def cro_variant_upsert(
     from models.database import CROSlot, CROVariant
 
     api_key = (request.headers.get("x-api-key") or request.query_params.get("api_key") or "").strip()
-    expected = (os.environ.get("API_KEY") or "albeni-gsc-2026").strip()
-    if api_key != expected:
+    expected = (os.environ.get("API_KEY") or "").strip()
+    if not expected or api_key != expected:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     slot_key = (payload.get("slot_key") or "").strip()
@@ -2987,8 +2986,8 @@ async def cro_conversion(
     Idempotente: se l'exposure è già 'converted', non incrementa nuovamente.
     """
     api_key = (request.headers.get("x-api-key") or request.query_params.get("api_key") or "").strip()
-    expected = (os.environ.get("API_KEY") or "albeni-gsc-2026").strip()
-    if api_key != expected:
+    expected = (os.environ.get("API_KEY") or "").strip()
+    if not expected or api_key != expected:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     exposure_id = payload.get("exposure_id")
@@ -3140,8 +3139,8 @@ async def crawl_map_batch(
     from datetime import datetime as dt
 
     api_key = (request.headers.get("x-api-key") or request.query_params.get("api_key") or "").strip()
-    expected = (os.environ.get("API_KEY") or "albeni-gsc-2026").strip()
-    if api_key != expected:
+    expected = (os.environ.get("API_KEY") or "").strip()
+    if not expected or api_key != expected:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     site = (payload.get("site") or "").strip().lower()
@@ -3570,8 +3569,8 @@ async def anomaly_snapshot(
     Chiamato automaticamente dallo scheduler APScheduler (lifespan job).
     """
     api_key = (request.headers.get("x-api-key") or request.query_params.get("api_key") or "").strip()
-    expected = (os.environ.get("API_KEY") or "albeni-gsc-2026").strip()
-    if api_key != expected:
+    expected = (os.environ.get("API_KEY") or "").strip()
+    if not expected or api_key != expected:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     from datetime import datetime as dt
@@ -3682,8 +3681,8 @@ async def anomaly_alert_resolve(
     from datetime import datetime
 
     api_key = (request.headers.get("x-api-key") or request.query_params.get("api_key") or "").strip()
-    expected = (os.environ.get("API_KEY") or "albeni-gsc-2026").strip()
-    if api_key != expected:
+    expected = (os.environ.get("API_KEY") or "").strip()
+    if not expected or api_key != expected:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     alert = db.query(AnomalyAlert).filter(AnomalyAlert.id == alert_id).first()
@@ -5976,8 +5975,8 @@ async def klaviyo_index_sync_trigger(
     Response: {"updated": N, "failed": N, "coverage": "IT=15/22 | ...", "timestamp": "..."}
     """
     api_key = (request.headers.get("x-api-key") or request.query_params.get("api_key") or "").strip()
-    expected = (os.environ.get("API_KEY") or "albeni1905-internal-api-v1").strip()
-    if api_key != expected:
+    expected = (os.environ.get("API_KEY") or "").strip()
+    if not expected or api_key != expected:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     result = await _run_klaviyo_index_sync(db)

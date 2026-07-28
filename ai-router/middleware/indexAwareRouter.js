@@ -530,7 +530,7 @@ function createRoutes(dashboardPath) {
   router.post('/crawl-maps', (req, res) => {
     console.warn('[IndexRouter] DEPRECATED: POST /v1/router/crawl-maps — use ml-worker /v1/crawl-map/batch instead. Writes to ephemeral fs.');
     const apiKey = req.headers['x-api-key'] || req.query.api_key;
-    if (apiKey !== (process.env.API_KEY || 'albeni-gsc-2026')) {
+    if (!process.env.API_KEY || apiKey !== process.env.API_KEY) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 

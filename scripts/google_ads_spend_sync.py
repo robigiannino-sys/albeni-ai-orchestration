@@ -27,7 +27,7 @@ Env vars richieste (in .env o esportate):
     GOOGLE_ADS_REFRESH_TOKEN
     GOOGLE_ADS_CUSTOMER_ID            (es. "1234567890", senza dash)
     GOOGLE_ADS_LOGIN_CUSTOMER_ID      (opzionale, solo se l'account è sotto un MCC manager)
-    API_KEY                            (per autenticare al ml-worker: albeni1905-internal-api-v1)
+    API_KEY                            (per autenticare al ml-worker; vedi Railway)
     ML_WORKER_PUBLIC_URL               (default: https://albeni-ai-orchestration-production.up.railway.app)
 
 Setup guide: vedi scripts/GOOGLE_ADS_SETUP.md

@@ -10,7 +10,7 @@ Usage:
     python3 scripts/migrate_crawl_maps.py --site mu  # solo MU
 
 Env (riusa pattern recompute_pipeline.py):
-    API_KEY (default albeni1905-internal-api-v1)
+    API_KEY (obbligatoria, nessun default)
     ML_WORKER_PUBLIC_URL (default https://albeni-ai-orchestration-production.up.railway.app)
 
 Note:

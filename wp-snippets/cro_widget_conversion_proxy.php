@@ -18,7 +18,7 @@
  *   - Copia tutto il contenuto sotto l'<?php
  *
  * Env required (in wp-config.php oppure WPCode > Settings > Constants):
- *   define('ALBENI_API_KEY', 'albeni1905-internal-api-v1');
+ *   define('ALBENI_API_KEY', '<API_KEY dalle variabili Railway>');
  *   define('ALBENI_ML_WORKER_URL', 'https://albeni-ai-orchestration-production.up.railway.app');
  *
  * Rate limiting basico: 1 conversion / 5 secondi per IP (per evitare abuso).

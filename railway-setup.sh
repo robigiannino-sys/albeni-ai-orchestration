@@ -263,7 +263,7 @@ if [ -f ".env" ]; then
     echo "railway variables set DOMAIN_TOFU=https://worldofmerino.com"
     echo "railway variables set DOMAIN_MOFU=https://merinouniversity.com"
     echo "railway variables set DOMAIN_BOFU_TECH=https://perfectmerinoshirt.com"
-    echo "railway variables set DOMAIN_BOFU_HERITAGE=https://albeni1905.com"
+    echo "railway variables set DOMAIN_BOFU_HERITAGE=https://micron-e.com"
     echo ""
     echo "━━━ VARIABILI SPECIFICHE ml-worker ━━━"
     echo "DATABASE_URL → collegata automaticamente da PostgreSQL plugin"

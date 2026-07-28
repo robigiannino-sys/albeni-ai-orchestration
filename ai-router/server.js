@@ -99,6 +99,90 @@ app.get('/health', (req, res) => {
     });
 });
 
+// --- Controllo accessi della tower ---------------------------------------
+// Dallo stesso host escono due cose molto diverse: una API di ingestion che i
+// browser dei visitatori chiamano sui 4 domini WordPress (deve restare aperta,
+// non ha credenziali) e un cruscotto interno con i dati operativi. Fino al
+// 28/07/2026 era aperto tutto, e la dashboard portava in chiaro la API_KEY di
+// scrittura: chiunque aprisse la pagina poteva riscrivere il budget ADV.
+//
+// Regola: default-deny. Passano senza credenziali solo le famiglie che il
+// frontend pubblico chiama davvero — enumerate dai tracker in dashboard/*.js e
+// dagli snippet in wp-snippets/. Tutto il resto vuole la API_KEY (script e
+// server-to-server) oppure Basic auth (browser).
+const crypto = require('crypto');
+
+const PUBLIC_API_PREFIXES = [
+    '/v1/track/',           // ingestion eventi comportamentali
+    '/v1/intent/',          // calcolo IDS lato client
+    '/v1/cluster/',         // cluster prediction
+    '/v1/crm/',             // sync-lead dai form
+    '/v1/cro/',             // widget CRO sui siti WP
+    '/v1/cro-conversion',   // proxy conversioni (snippet WP)
+    '/v1/chat/',            // chatbot customer service
+    '/v1/adv/route',        // routing ADV
+    '/v1/adv/shield/',      // bot shield
+    '/v1/router/assign',    // assegnazione dominio cross-site
+    '/v1/router/status',
+];
+
+// Confronto a tempo costante che non trapela la lunghezza del segreto.
+function safeEqual(a, b) {
+    if (typeof a !== 'string' || typeof b !== 'string') return false;
+    const ha = crypto.createHash('sha256').update(a).digest();
+    const hb = crypto.createHash('sha256').update(b).digest();
+    return crypto.timingSafeEqual(ha, hb);
+}
+
+function hasValidApiKey(req) {
+    const expected = process.env.API_KEY;
+    if (!expected) return false; // nessun default hardcoded: senza API_KEY si chiude
+    const provided = req.headers['x-api-key'] || req.query.api_key;
+    return safeEqual(String(provided || ''), expected);
+}
+
+function hasValidBasicAuth(req) {
+    const user = process.env.DASHBOARD_USER;
+    const pass = process.env.DASHBOARD_PASSWORD;
+    if (!user || !pass) return false;
+    const header = req.headers.authorization || '';
+    if (!header.startsWith('Basic ')) return false;
+    let decoded;
+    try {
+        decoded = Buffer.from(header.slice(6), 'base64').toString('utf8');
+    } catch (e) {
+        return false;
+    }
+    const sep = decoded.indexOf(':');
+    if (sep < 0) return false;
+    return safeEqual(decoded.slice(0, sep), user) && safeEqual(decoded.slice(sep + 1), pass);
+}
+
+// I file davvero pubblici della cartella dashboard: gli script Layer 1
+// iniettati sui siti WordPress. index.html non e' piu' qui — il cruscotto
+// adesso sta dietro autenticazione.
+const PUBLIC_DASHBOARD_FILES = new Set([
+    'albeni-ai-tracker.js',
+    'albeni-behavioral-engine.js',
+    'albeni-unified-tracker.js',
+    'content-lake-multilingual.js',
+]);
+
+app.use((req, res, next) => {
+    let name;
+    try {
+        name = path.basename(decodeURIComponent(req.path));
+    } catch (e) {
+        return res.status(400).json({ error: 'Bad request' });
+    }
+    if (PUBLIC_DASHBOARD_FILES.has(name)) return next();
+    if (PUBLIC_API_PREFIXES.some(p => req.path === p || req.path.startsWith(p))) return next();
+    if (hasValidApiKey(req) || hasValidBasicAuth(req)) return next();
+
+    res.set('WWW-Authenticate', 'Basic realm="micron-e Control Tower", charset="UTF-8"');
+    return res.status(401).json({ error: 'Unauthorized' });
+});
+
 // API Routes
 app.use('/v1/track', trackingRoutes);
 app.use('/v1/router', routerRoutes);
@@ -115,18 +199,16 @@ app.use('/v1/router', createIndexRoutes(dashboardPath_early));
 const dashboardPath = process.env.DASHBOARD_PATH || path.join(__dirname, 'dashboard');
 app.use('/v1/content/priorities', createContentPriorityRoutes(dashboardPath));
 app.use('/v1/adv', createAdvBudgetRoutes(dashboardPath));
-// Only these files are meant to be world-readable: the Layer 1 tracking scripts
-// injected into the WordPress sites (they need CORS *) and the dashboard shell.
-// Everything else in this folder is internal data — crawl maps read by
-// indexAwareRouter/contentPrioritizer, adv_transitions.json written by
-// advBudgetAllocator, legacy dumps — and must stay off the public surface.
-// Allowlist, not denylist: a new file dropped in here is private by default.
-const PUBLIC_DASHBOARD_FILES = new Set([
+// Quali file di questa cartella express.static puo' materializzare: i tracker
+// pubblici piu' lo shell della dashboard, che a questo punto ha gia' superato
+// il controllo accessi qui sopra. Tutto il resto e' dato interno — crawl map
+// lette da indexAwareRouter/contentPrioritizer, adv_transitions.json scritto a
+// runtime da advBudgetAllocator, dump legacy — e non passa da qui nemmeno per
+// un utente autenticato. Allowlist e non denylist: un file nuovo lasciato
+// cadere in questa cartella nasce privato.
+const STATIC_SERVABLE_FILES = new Set([
     'index.html',
-    'albeni-ai-tracker.js',
-    'albeni-behavioral-engine.js',
-    'albeni-unified-tracker.js',
-    'content-lake-multilingual.js',
+    ...PUBLIC_DASHBOARD_FILES,
 ]);
 
 const dashboardStatic = express.static(dashboardPath, {
@@ -139,15 +221,13 @@ const dashboardStatic = express.static(dashboardPath, {
 });
 
 app.use((req, res, next) => {
-    // path.basename on the decoded path: anything not explicitly public falls
-    // through to the /v1 routes and, failing those, to a 404.
     let name;
     try {
         name = path.basename(decodeURIComponent(req.path));
     } catch (e) {
-        return next(); // malformed percent-encoding — never reaches the disk
+        return next(); // percent-encoding malformato — non tocca mai il disco
     }
-    if (!PUBLIC_DASHBOARD_FILES.has(name)) return next();
+    if (!STATIC_SERVABLE_FILES.has(name)) return next();
     return dashboardStatic(req, res, next);
 });
 

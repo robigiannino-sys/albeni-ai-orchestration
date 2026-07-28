@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # Smoke test Anomaly Detection v0 — Step 3b
-# Uso: API_KEY=albeni1905-internal-api-v1 ./smoke_test_anomaly.sh
+# Uso: API_KEY=$API_KEY ./smoke_test_anomaly.sh
 # Test locale: BASE=http://localhost:8000 ./smoke_test_anomaly.sh
 
 set -euo pipefail
 
 BASE="${BASE:-https://albeni-ai-orchestration-production.up.railway.app}"
-KEY="${API_KEY:-albeni1905-internal-api-v1}"
+KEY="${API_KEY:?API_KEY non impostata: esportala prima di lanciare}"
 
 pass=0; fail=0
 section() { echo; echo "── $1 ──"; }

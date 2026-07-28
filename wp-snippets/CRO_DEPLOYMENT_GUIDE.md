@@ -57,7 +57,7 @@ Su ognuno di **merinouniversity.com / worldofmerino.com / perfectmerinoshirt.com
 **Constants required** in `wp-config.php` (Hostinger File Manager):
 
 ```php
-define('ALBENI_API_KEY', 'albeni1905-internal-api-v1');
+define('ALBENI_API_KEY', '<API_KEY dalle variabili Railway>');
 define('ALBENI_ML_WORKER_URL', 'https://albeni-ai-orchestration-production.up.railway.app');
 ```
 
@@ -145,7 +145,7 @@ Da leggere:
 
 ```bash
 curl -X POST "https://albeni-ai-orchestration-production.up.railway.app/v1/cro/variant" \
-  -H "x-api-key: albeni1905-internal-api-v1" \
+  -H "x-api-key: $API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"slot_key":"homepage_hero_cta","variant_key":"generic_discover","active":false}'
 ```
