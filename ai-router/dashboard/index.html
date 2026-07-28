@@ -1368,13 +1368,24 @@ function PlanPage() {
         return () => { vivo = false; };
     }, [applica]);
 
+    // A gruppi di tre, non tutte insieme. Il pool di connessioni del ml-worker e'
+    // da 10 (pool_size 5 + overflow 5): una raffica di 12 richieste lo esaurisce e
+    // le letture scadono in timeout invece di tornare, lasciando il piano vuoto.
+    // Il piano si apre a mano: qualche secondo in piu' non si nota, una pagina vuota si.
     const load = useCallback(() => {
         const paths = [...new Set(Object.values(COACH).flatMap(c => (c.sources || []).map(s => s.p)))];
         setLoading(true);
-        Promise.all(paths.map(p => api(p))).then(res => {
-            const m = {}; paths.forEach((p, i) => { m[p] = res[i]; });
-            setByPath(m); setLoading(false);
-        }).catch(() => { setByPath({}); setLoading(false); });
+        (async () => {
+            const m = {};
+            const AMPIEZZA = 3;
+            for (let i = 0; i < paths.length; i += AMPIEZZA) {
+                const gruppo = paths.slice(i, i + AMPIEZZA);
+                const res = await Promise.all(gruppo.map(p => api(p)));
+                gruppo.forEach((p, k) => { m[p] = res[k]; });
+            }
+            setByPath(m);
+            setLoading(false);
+        })().catch(() => { setByPath({}); setLoading(false); });
     }, []);
     useEffect(() => { load(); }, [load]);
 
