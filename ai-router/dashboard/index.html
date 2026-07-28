@@ -430,16 +430,27 @@ executive: {
         rows.push(R('IDS medio', ids === null ? '—' : ids.toFixed(1), bandUp(ids, 45, 25),
             "Quanto è 'caldo' il visitatore medio. Sotto 25 il traffico arriva ma non è qualificato: è un problema di sorgente (dove compri/attiri), non di sito."));
 
+        // marketing_attributions non cresce senza click paid: fuori finestra le due righe
+        // qui sotto banderebbero numeri di mesi fa, producendo un'azione che non ha causa.
+        const attrAge = num(d.agg?.org_paid_mix_7d?.data_age_days);
+        const attrOld = d.agg?.org_paid_mix_7d?.window === 'all_time' || (attrAge !== null && attrAge > 7);
+        const preLaunch = attrAge !== null ? `Ultima attribuzione ${attrAge}g fa: l'ADV non è partito.` : "L'ADV non è partito.";
+
         const cpa = d.agg?.cpa_7d;
         const cpaV = num(cpa?.value);
-        rows.push(R('CPA finestra', cpaV === null ? `— (${cpa?.reason || 'nessun dato'})` : `€${cpaV}`,
+        rows.push(R('CPA finestra', cpaV === null ? (attrOld ? '— (pre-lancio ADV)' : `— (${cpa?.reason || 'nessun dato'})`) : `€${cpaV}`,
             cpaV === null ? 'na' : band(cpaV, 9, 15),
-            "Costo per conversione paid. Il modello regge fino a €17,92; €19,39 è il tetto. Se è '—' non significa buono: significa che non c'è spesa registrata in adv_spend."));
+            attrOld
+                ? `Costo per conversione paid. ${preLaunch} Il valore resta indisponibile per costruzione finché non c'è spend: non è un peggioramento da investigare.`
+                : "Costo per conversione paid. Il modello regge fino a €17,92; €19,39 è il tetto. Se è '—' non significa buono: significa che non c'è spesa registrata in adv_spend."));
 
         const mix = d.agg?.org_paid_mix_7d?.value;
         const org = num(mix?.organic_pct);
-        rows.push(R('Mix organico', org === null ? '—' : pct(org), bandUp(org, 60, 35),
-            `L'obiettivo del sistema è che il paid faccia da ponte mentre l'organico sale. ${mix ? `Base: ${mix.total} attribuzioni.` : ''} Con meno di 10 attribuzioni la finestra 7g cade su all_time: leggi sempre il campo window.`));
+        rows.push(R('Mix organico', attrOld ? '— (pre-lancio ADV)' : org === null ? '—' : pct(org),
+            attrOld ? 'na' : bandUp(org, 60, 35),
+            attrOld
+                ? `${preLaunch} La percentuale storica (${org === null ? 'n/d' : pct(org)}) descrive l'ultima campagna, non la settimana in corso: non va usata per decidere il mix.`
+                : `L'obiettivo del sistema è che il paid faccia da ponte mentre l'organico sale. ${mix ? `Base: ${mix.total} attribuzioni.` : ''} Con meno di 10 attribuzioni la finestra 7g cade su all_time: leggi sempre il campo window.`));
 
         const c = d.an?.counts || {};
         const crit = num(c.CRITICAL) || 0, warn = num(c.WARNING) || 0;
@@ -5782,6 +5793,21 @@ function ExecutivePage() {
     const maxCannib = domains.length ? Math.max(...domains.map(d => d.cannibalization_score || 0)) : null;
     const seoState = maxCannib === null ? 'sk' : (maxCannib <= 4 ? 'sg' : maxCannib <= 6 ? 'sy' : 'sr');
 
+    // ── Freschezza attribuzioni (tile 1, 2, 6) ──
+    // Le tile CPA / Org-Paid Mix / CR per cluster leggono tutte marketing_attributions,
+    // scritta SOLO quando arriva un click con gclid/fbclid (ads_intelligence._persist_attribution).
+    // Senza campagne paid attive la tabella non cresce e l'endpoint ripiega da 7d ad all_time:
+    // i numeri restano quelli dell'ultima campagna, vecchi di mesi. Mostrarli come "Live"
+    // significa spacciare storia per presente, quindi le tile degradano a "Pre-lancio ADV".
+    // data_age_days è esposto solo su org_paid_mix_7d, ma la sorgente è la stessa tabella:
+    // vale per tutte e tre.
+    const attrWindow = aggregates?.org_paid_mix_7d?.window || '7d';
+    const attrAgeDays = aggregates?.org_paid_mix_7d?.data_age_days ?? null;
+    const attrStale = !!aggregates && (attrWindow === 'all_time' || (attrAgeDays !== null && attrAgeDays > 7));
+    const attrStaleNote = attrAgeDays !== null
+        ? `Nessuna attribuzione negli ultimi 7g — ultima ${attrAgeDays}g fa. L'ADV non è ancora partito.`
+        : "Nessuna attribuzione negli ultimi 7g. L'ADV non è ancora partito.";
+
     return (
         <div className="exec-page">
             <div className="exec-header">
@@ -5822,7 +5848,7 @@ function ExecutivePage() {
                     const badge = band === 'VERDE' ? 'g' : band === 'GIALLO' ? 'y'
                                 : (band === 'ROSSO' || band === 'NERO') ? 'r' : 'y';
                     const badgeText = value == null
-                        ? 'Parziale'
+                        ? (attrStale ? 'Pre-lancio ADV' : 'Parziale')
                         : band === 'NERO' ? '● Allarme NERO' : `● Live · ${band}`;
                     const reasonText = {
                         'no_spend_in_window': 'Nessuno spend caricato nella finestra (sync da attivare)',
@@ -5844,6 +5870,10 @@ function ExecutivePage() {
                             <div className="exec-msub">
                                 {value != null ? (
                                     <>Spend <strong>€{(totalSpend ?? 0).toFixed(2)}</strong> · conv paid <strong>{paidConv ?? 0}</strong> · finestra <strong>{window}</strong></>
+                                ) : attrStale ? (
+                                    /* I contatori proxy vengono dallo stesso pool storico: mostrarli
+                                       accanto a "n/d" li fa leggere come dato corrente. Meglio niente. */
+                                    <span style={{color:'#b45309'}}>{attrStaleNote}</span>
                                 ) : cpa?.proxy ? (
                                     <>Paid attr <strong>{cpa.proxy.paid_attributions}</strong> · conv paid <strong>{cpa.proxy.paid_conversions}</strong>{' '}
                                     {cpa.proxy.implied_paid_conversion_rate_pct !== null && (
@@ -5853,7 +5883,7 @@ function ExecutivePage() {
                             </div>
                             <div style={{marginTop:'6px',fontSize:'10px',color:'#71717a'}}>
                                 Target sostenibile <strong style={{color:'#a1a1aa'}}>€17.92</strong> · max <strong style={{color:'#a1a1aa'}}>€19.39</strong>
-                                {value == null && reasonText && <><br/><span style={{color:'#a1a1aa'}}>{reasonText}</span></>}
+                                {value == null && !attrStale && reasonText && <><br/><span style={{color:'#a1a1aa'}}>{reasonText}</span></>}
                             </div>
                             <div className="exec-threshold">
                                 <div className="exec-tlabel">Soglie</div>
@@ -5872,26 +5902,29 @@ function ExecutivePage() {
                     const paidPct = mix?.paid_pct ?? null;
                     const state = orgPct === null ? 'sy' : orgPct >= 70 ? 'sg' : orgPct >= 50 ? 'sy' : 'sr';
                     const badge = orgPct === null ? 'y' : state === 'sg' ? 'g' : state === 'sy' ? 'y' : 'r';
-                    const window = aggregates?.org_paid_mix_7d?.window || '7d';
-                    // Fallback all_time = nessuna attribuzione nella finestra: i numeri
-                    // sono storici, non live. Va detto, altrimenti il badge mente.
-                    const isStale = window === 'all_time';
-                    const ageDays = aggregates?.org_paid_mix_7d?.data_age_days ?? null;
+                    const window = attrWindow;
+                    // Fallback all_time (o dato più vecchio di 7g) = nessuna attribuzione nella
+                    // finestra. Mostrare comunque la percentuale storica con un badge "Storico"
+                    // non basta: il numero grande resta l'unica cosa che si legge da lontano.
+                    // La tile va svuotata, non annotata.
+                    const isStale = attrStale;
                     return (
                         <div className={`exec-tile ${isStale ? 'sy' : state}`}>
                             <div className="exec-thead">
                                 <p className="exec-ttitle">Org / Paid Mix</p>
                                 <span className="exec-tnum">02</span>
                             </div>
-                            <span className={`exec-sbadge ${isStale ? 'y' : badge}`}>● {orgPct === null ? 'Parziale' : isStale ? 'Storico' : 'Live'}</span>
+                            <span className={`exec-sbadge ${isStale ? 'y' : badge}`}>● {isStale ? 'Pre-lancio ADV' : orgPct === null ? 'Parziale' : 'Live'}</span>
                             <div className="exec-metric">
-                                <span className="exec-mval">{orgPct !== null ? `${orgPct}%` : '—'}</span>
+                                <span className={`exec-mval${isStale ? ' exec-skel' : ''}`}>{!isStale && orgPct !== null ? `${orgPct}%` : '—'}</span>
                                 <span className="exec-munit">organico</span>
                             </div>
                             <div className="exec-msub">
-                                {mix ? <>{paidPct}% paid · <strong>{mix.organic_count}</strong> org / <strong>{mix.paid_count}</strong> paid attribuzioni</> : <span className="exec-skel">In caricamento…</span>}
+                                {isStale
+                                    ? <span style={{color:'#b45309'}}>{attrStaleNote}</span>
+                                    : mix ? <>{paidPct}% paid · <strong>{mix.organic_count}</strong> org / <strong>{mix.paid_count}</strong> paid attribuzioni</> : <span className="exec-skel">In caricamento…</span>}
                             </div>
-                            {mix && (
+                            {mix && !isStale && (
                                 <>
                                     <div className="exec-stack">
                                         <div className="sa" style={{flex: mix.organic_pct}}></div>
@@ -5903,10 +5936,8 @@ function ExecutivePage() {
                                     </div>
                                 </>
                             )}
-                            <div style={{fontSize:'9px',color: isStale ? '#b45309' : '#71717a',marginTop:'2px'}}>
-                                {isStale
-                                    ? `⚠ dati storici — nessuna attribuzione negli ultimi 7g${ageDays !== null ? ` (ultima ${ageDays}g fa)` : ''}`
-                                    : `window: ${window}`}
+                            <div style={{fontSize:'9px',color:'#71717a',marginTop:'2px'}}>
+                                {isStale ? 'La tile torna live al primo click paid tracciato' : `window: ${window}`}
                             </div>
                             <div className="exec-threshold">
                                 <div className="exec-tlabel">Soglie</div>
@@ -6001,18 +6032,23 @@ function ExecutivePage() {
                     const targets = aggregates?.cr_by_cluster_7d?.targets || { heritage_mature: 4.8, business_professional: 3.8 };
                     const state = !cr.length ? 'sy' : maxCr >= 3.0 ? 'sg' : maxCr >= 1.5 ? 'sy' : 'sr';
                     const badge = !cr.length ? 'y' : state === 'sg' ? 'g' : state === 'sy' ? 'y' : 'r';
-                    const window = aggregates?.cr_by_cluster_7d?.window || '7d';
+                    const window = attrWindow;
+                    // Stessa tabella delle tile 01 e 02: fuori finestra le barre disegnano
+                    // il CR dell'ultima campagna, non quello di oggi. Si spengono.
+                    const isStale = attrStale;
                     return (
-                        <div className={`exec-tile ${state}`}>
+                        <div className={`exec-tile ${isStale ? 'sy' : state}`}>
                             <div className="exec-thead">
                                 <p className="exec-ttitle">CR per Cluster (top 5)</p>
                                 <span className="exec-tnum">06</span>
                             </div>
-                            <span className={`exec-sbadge ${badge}`}>● {!cr.length ? 'Parziale' : 'Live'}</span>
+                            <span className={`exec-sbadge ${isStale ? 'y' : badge}`}>● {isStale ? 'Pre-lancio ADV' : !cr.length ? 'Parziale' : 'Live'}</span>
                             <div className="exec-msub" style={{marginBottom:'6px'}}>
-                                {cr.length ? <>CR conversioni / attribuzioni per cluster</> : <span className="exec-skel">In caricamento…</span>}
+                                {isStale
+                                    ? <span style={{color:'#b45309'}}>{attrStaleNote}</span>
+                                    : cr.length ? <>CR conversioni / attribuzioni per cluster</> : <span className="exec-skel">In caricamento…</span>}
                             </div>
-                            {cr.map(c => {
+                            {!isStale && cr.map(c => {
                                 const widthPct = maxCr > 0 ? Math.max(c.cr_pct / maxCr * 100, 3) : 0;
                                 return (
                                     <div className="exec-cluster" key={c.cluster}>
@@ -6022,7 +6058,9 @@ function ExecutivePage() {
                                     </div>
                                 );
                             })}
-                            <div style={{fontSize:'9px',color:'#71717a',marginTop:'4px'}}>window: {window}</div>
+                            <div style={{fontSize:'9px',color:'#71717a',marginTop:'4px'}}>
+                                {isStale ? 'La tile torna live al primo click paid tracciato' : `window: ${window}`}
+                            </div>
                             <div className="exec-threshold">
                                 <div className="exec-tlabel">CR target (doc 19)</div>
                                 <div className="exec-tmeta" style={{fontSize:'10px'}}>
