@@ -142,6 +142,7 @@ const DOMAIN = {
  * loadFromFile() sync chiamato nel constructor garantisce non-empty al primo getVerdict.
  */
 const axios = require('axios');
+const { requestHasValidApiKey } = require('../utils/apiKey');
 const ML_WORKER_URL = process.env.ML_WORKER_URL || 'http://albeni-ai-orchestration.railway.internal:8080';
 
 class CrawlMapStore {
@@ -529,8 +530,7 @@ function createRoutes(dashboardPath) {
   // Lasciato in vita come backward-compat ma deprecato.
   router.post('/crawl-maps', (req, res) => {
     console.warn('[IndexRouter] DEPRECATED: POST /v1/router/crawl-maps — use ml-worker /v1/crawl-map/batch instead. Writes to ephemeral fs.');
-    const apiKey = req.headers['x-api-key'] || req.query.api_key;
-    if (!process.env.API_KEY || apiKey !== process.env.API_KEY) {
+    if (!requestHasValidApiKey(req)) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 

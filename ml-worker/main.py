@@ -13,6 +13,7 @@ import asyncio
 import logging
 import time
 import json
+import hmac
 import os
 from datetime import datetime, timedelta, date
 from contextlib import asynccontextmanager
@@ -67,6 +68,25 @@ from services.pipeline_consumer import recompute_pipeline
 # Pipeline consumer scheduler (added 2026-05-06 to fix the downstream pipeline that
 # never aggregated behavioral_signals into sessions/intent_intelligence/routing_decisions).
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+
+def _api_key_ok(provided: str) -> bool:
+    """Valida la chiave contro API_KEY e, durante le rotazioni, API_KEY_PREVIOUS.
+
+    I detentori della chiave sono sei (due servizi Railway, il wp-config.php di
+    tre domini e lo script GSC in locale) e non si aggiornano nello stesso
+    istante: tenere valida la vecchia per la durata del giro evita la finestra
+    in cui meta' sistema prende 401. API_KEY_PREVIOUS va rimossa a giro finito.
+
+    Nessun default hardcoded: senza API_KEY non passa nessuno.
+    """
+    provided = (provided or "").strip()
+    if not provided:
+        return False
+    for var in ("API_KEY", "API_KEY_PREVIOUS"):
+        expected = (os.environ.get(var) or "").strip()
+        if expected and hmac.compare_digest(provided, expected):
+            return True
+    return False
 
 # Logging setup
 logging.basicConfig(level=logging.INFO)
@@ -1625,8 +1645,7 @@ async def gsc_report(
     from datetime import datetime as dt
 
     api_key = (request.headers.get("x-api-key") or request.query_params.get("api_key") or "").strip()
-    expected = (os.environ.get("API_KEY") or "").strip()
-    if not expected or api_key != expected:
+    if not _api_key_ok(api_key):
         logger.warning(f"GSC POST 401: api_key_len={len(api_key)} expected_len={len(expected)}")
         raise HTTPException(status_code=401, detail="Unauthorized")
 
@@ -1985,8 +2004,7 @@ async def adv_spend_report(
 
     # ── Auth ──
     api_key = (request.headers.get("x-api-key") or request.query_params.get("api_key") or "").strip()
-    expected = (os.environ.get("API_KEY") or "").strip()
-    if not expected or api_key != expected:
+    if not _api_key_ok(api_key):
         logger.warning(f"ADV POST 401: api_key_len={len(api_key)} expected_len={len(expected)}")
         raise HTTPException(status_code=401, detail="Unauthorized")
 
@@ -2072,8 +2090,7 @@ async def adv_spend_batch(
     from decimal import Decimal, InvalidOperation
 
     api_key = (request.headers.get("x-api-key") or request.query_params.get("api_key") or "").strip()
-    expected = (os.environ.get("API_KEY") or "").strip()
-    if not expected or api_key != expected:
+    if not _api_key_ok(api_key):
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     rows_in = payload.get("rows")
@@ -2515,8 +2532,7 @@ async def semantic_defense_snapshot(
     Risparmio via Redis cache 1h già attiva su SemrushAgent.
     """
     api_key = (request.headers.get("x-api-key") or request.query_params.get("api_key") or "").strip()
-    expected = (os.environ.get("API_KEY") or "").strip()
-    if not expected or api_key != expected:
+    if not _api_key_ok(api_key):
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     from datetime import datetime as dt
@@ -2649,6 +2665,8 @@ async def semantic_defense_keywords(db: DBSession = Depends(get_db)):
 # ===================================================================
 
 import random as _cro_random
+
+
 
 # Soglie MAB (override via env se serve calibrare exploration)
 _CRO_EPSILON         = float(os.environ.get("CRO_EPSILON", "0.10"))        # 10% exploration
@@ -2837,8 +2855,7 @@ async def cro_slot_upsert(
     from models.database import CROSlot
 
     api_key = (request.headers.get("x-api-key") or request.query_params.get("api_key") or "").strip()
-    expected = (os.environ.get("API_KEY") or "").strip()
-    if not expected or api_key != expected:
+    if not _api_key_ok(api_key):
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     slot_key = (payload.get("slot_key") or "").strip()
@@ -2880,8 +2897,7 @@ async def cro_variant_upsert(
     from models.database import CROSlot, CROVariant
 
     api_key = (request.headers.get("x-api-key") or request.query_params.get("api_key") or "").strip()
-    expected = (os.environ.get("API_KEY") or "").strip()
-    if not expected or api_key != expected:
+    if not _api_key_ok(api_key):
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     slot_key = (payload.get("slot_key") or "").strip()
@@ -2986,8 +3002,7 @@ async def cro_conversion(
     Idempotente: se l'exposure è già 'converted', non incrementa nuovamente.
     """
     api_key = (request.headers.get("x-api-key") or request.query_params.get("api_key") or "").strip()
-    expected = (os.environ.get("API_KEY") or "").strip()
-    if not expected or api_key != expected:
+    if not _api_key_ok(api_key):
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     exposure_id = payload.get("exposure_id")
@@ -3139,8 +3154,7 @@ async def crawl_map_batch(
     from datetime import datetime as dt
 
     api_key = (request.headers.get("x-api-key") or request.query_params.get("api_key") or "").strip()
-    expected = (os.environ.get("API_KEY") or "").strip()
-    if not expected or api_key != expected:
+    if not _api_key_ok(api_key):
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     site = (payload.get("site") or "").strip().lower()
@@ -3569,8 +3583,7 @@ async def anomaly_snapshot(
     Chiamato automaticamente dallo scheduler APScheduler (lifespan job).
     """
     api_key = (request.headers.get("x-api-key") or request.query_params.get("api_key") or "").strip()
-    expected = (os.environ.get("API_KEY") or "").strip()
-    if not expected or api_key != expected:
+    if not _api_key_ok(api_key):
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     from datetime import datetime as dt
@@ -3681,8 +3694,7 @@ async def anomaly_alert_resolve(
     from datetime import datetime
 
     api_key = (request.headers.get("x-api-key") or request.query_params.get("api_key") or "").strip()
-    expected = (os.environ.get("API_KEY") or "").strip()
-    if not expected or api_key != expected:
+    if not _api_key_ok(api_key):
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     alert = db.query(AnomalyAlert).filter(AnomalyAlert.id == alert_id).first()
@@ -5975,8 +5987,7 @@ async def klaviyo_index_sync_trigger(
     Response: {"updated": N, "failed": N, "coverage": "IT=15/22 | ...", "timestamp": "..."}
     """
     api_key = (request.headers.get("x-api-key") or request.query_params.get("api_key") or "").strip()
-    expected = (os.environ.get("API_KEY") or "").strip()
-    if not expected or api_key != expected:
+    if not _api_key_ok(api_key):
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     result = await _run_klaviyo_index_sync(db)

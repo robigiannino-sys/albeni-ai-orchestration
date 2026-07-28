@@ -110,7 +110,7 @@ app.get('/health', (req, res) => {
 // frontend pubblico chiama davvero — enumerate dai tracker in dashboard/*.js e
 // dagli snippet in wp-snippets/. Tutto il resto vuole la API_KEY (script e
 // server-to-server) oppure Basic auth (browser).
-const crypto = require('crypto');
+const { safeEqual, requestHasValidApiKey } = require('./utils/apiKey');
 
 const PUBLIC_API_PREFIXES = [
     '/v1/track/',           // ingestion eventi comportamentali
@@ -125,21 +125,6 @@ const PUBLIC_API_PREFIXES = [
     '/v1/router/assign',    // assegnazione dominio cross-site
     '/v1/router/status',
 ];
-
-// Confronto a tempo costante che non trapela la lunghezza del segreto.
-function safeEqual(a, b) {
-    if (typeof a !== 'string' || typeof b !== 'string') return false;
-    const ha = crypto.createHash('sha256').update(a).digest();
-    const hb = crypto.createHash('sha256').update(b).digest();
-    return crypto.timingSafeEqual(ha, hb);
-}
-
-function hasValidApiKey(req) {
-    const expected = process.env.API_KEY;
-    if (!expected) return false; // nessun default hardcoded: senza API_KEY si chiude
-    const provided = req.headers['x-api-key'] || req.query.api_key;
-    return safeEqual(String(provided || ''), expected);
-}
 
 function hasValidBasicAuth(req) {
     const user = process.env.DASHBOARD_USER;
@@ -177,7 +162,7 @@ app.use((req, res, next) => {
     }
     if (PUBLIC_DASHBOARD_FILES.has(name)) return next();
     if (PUBLIC_API_PREFIXES.some(p => req.path === p || req.path.startsWith(p))) return next();
-    if (hasValidApiKey(req) || hasValidBasicAuth(req)) return next();
+    if (requestHasValidApiKey(req) || hasValidBasicAuth(req)) return next();
 
     res.set('WWW-Authenticate', 'Basic realm="micron-e Control Tower", charset="UTF-8"');
     return res.status(401).json({ error: 'Unauthorized' });

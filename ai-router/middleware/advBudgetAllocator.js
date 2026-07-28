@@ -35,6 +35,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { requestHasValidApiKey } = require('../utils/apiKey');
 
 // Reuse core infrastructure from contentPrioritizer
 const {
@@ -541,8 +542,7 @@ function createRoutes(dashboardPath) {
   // Body: { urlPath: "/page-slug", site: "mu", cluster: "A" }
   // Called when GSC scan detects a new PASS verdict
   router.post('/index-event', (req, res) => {
-    const apiKey = req.headers['x-api-key'] || req.query.api_key;
-    if (!process.env.API_KEY || apiKey !== process.env.API_KEY) {
+    if (!requestHasValidApiKey(req)) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
@@ -577,8 +577,7 @@ function createRoutes(dashboardPath) {
   // POST /v1/adv/index-events
   // Body: { events: [{ urlPath, site, cluster }, ...] }
   router.post('/index-events', (req, res) => {
-    const apiKey = req.headers['x-api-key'] || req.query.api_key;
-    if (!process.env.API_KEY || apiKey !== process.env.API_KEY) {
+    if (!requestHasValidApiKey(req)) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
@@ -614,8 +613,7 @@ function createRoutes(dashboardPath) {
   // --- Update config ---
   // PUT /v1/adv/config
   router.put('/config', (req, res) => {
-    const apiKey = req.headers['x-api-key'] || req.query.api_key;
-    if (!process.env.API_KEY || apiKey !== process.env.API_KEY) {
+    if (!requestHasValidApiKey(req)) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 

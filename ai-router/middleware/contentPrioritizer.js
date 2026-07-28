@@ -424,6 +424,7 @@ function getStrategyDetails(strategy) {
 // Pattern identico a indexAwareRouter.CrawlMapStore.
 // ============================================================
 const axios = require('axios');
+const { requestHasValidApiKey } = require('../utils/apiKey');
 const ML_WORKER_URL = process.env.ML_WORKER_URL || 'http://albeni-ai-orchestration.railway.internal:8080';
 
 class CrawlMapStore {
@@ -1035,8 +1036,7 @@ function createRoutes(dashboardPath) {
   // --- Update thresholds ---
   // PUT /v1/content/priorities/thresholds
   router.put('/thresholds', (req, res) => {
-    const apiKey = req.headers['x-api-key'] || req.query.api_key;
-    if (!process.env.API_KEY || apiKey !== process.env.API_KEY) {
+    if (!requestHasValidApiKey(req)) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
     const { high, medium } = req.body;
