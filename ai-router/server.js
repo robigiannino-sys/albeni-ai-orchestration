@@ -242,25 +242,62 @@ app.get('/dashboard', (req, res) => {
 const axios = require('axios');
 const ML_WORKER_URL = process.env.ML_WORKER_URL || 'http://albeni-ai-orchestration.railway.internal:8080';
 
+// Header che descrivono *questa* connessione o l'incarto del body del client, e
+// che quindi non possono viaggiare su una connessione diversa con un body
+// diverso. Nota su content-length, che e' il motivo per cui esiste questa
+// lista: express.json() ha gia' consumato il body e ce lo consegna come
+// oggetto; axios lo ri-serializza con JSON.stringify, che e' compatto. Il
+// client, se e' Python requests (json=), aveva serializzato con json.dumps,
+// che mette uno spazio dopo ogni virgola e ogni due punti. La content-length
+// del client descrive quindi piu' byte di quanti ne mandiamo noi, e axios
+// (setContentLength(len, false) — il false vuol dire "non sovrascrivere se
+// c'e' gia'") si guarda bene dal correggerla. Uvicorn resta in attesa dei byte
+// mancanti finche' non scade il timeout: la richiesta non fallisce, si pianta.
+// E' il guasto che dal 2026-05-14 mandava in timeout ogni POST /v1/gsc/report
+// dello scan mensile mentre le GET sulle stesse rotte rispondevano in 100ms.
+const HOP_BY_HOP_REQUEST_HEADERS = new Set([
+    'host',              // lo ricalcola axios sul target
+    'content-length',    // vedi sopra: si riferisce al body del client, non al nostro
+    'connection',
+    'keep-alive',
+    'transfer-encoding',
+    'upgrade',
+    'te',
+    'trailer',
+    'expect',            // un 100-continue verso di noi non riguarda ml-worker
+    'proxy-authorization',
+    'proxy-connection'
+]);
+
+// Le rotte che chiamano Gemini in sincrono sono lente per costruzione:
+// /v1/content/validate fa il second-pass (validate_with_ai) e puo' impiegare
+// 30-90s, /v1/content/generate altrettanto. Tutto il resto e' lettura da
+// Postgres o ingestione e deve rispondere in fretta: se non lo fa e' rotto, e
+// tenerlo appeso due minuti serve solo a nascondere il guasto a chi chiama.
+// Smoke test fast su validate: skip_ai_validation=true nel body.
+const SLOW_AI_ROUTE_PREFIXES = ['/v1/content/validate', '/v1/content/generate'];
+const PROXY_TIMEOUT_MS = parseInt(process.env.AI_ROUTER_PROXY_TIMEOUT_MS || '20000', 10);
+const PROXY_SLOW_TIMEOUT_MS = parseInt(process.env.AI_ROUTER_PROXY_SLOW_TIMEOUT_MS || '120000', 10);
+
 app.all('/v1/*', async (req, res) => {
     const targetUrl = `${ML_WORKER_URL}${req.originalUrl}`;
+    const isSlowRoute = SLOW_AI_ROUTE_PREFIXES.some(p => req.path.startsWith(p));
+    const timeoutMs = isSlowRoute ? PROXY_SLOW_TIMEOUT_MS : PROXY_TIMEOUT_MS;
     try {
+        const forwardedHeaders = {};
+        Object.entries(req.headers).forEach(([key, value]) => {
+            if (!HOP_BY_HOP_REQUEST_HEADERS.has(key.toLowerCase())) {
+                forwardedHeaders[key] = value;
+            }
+        });
+        forwardedHeaders['x-forwarded-for'] = req.ip;
+        forwardedHeaders['x-forwarded-proto'] = req.protocol;
+
         const axiosConfig = {
             method: req.method.toLowerCase(),
             url: targetUrl,
-            headers: {
-                ...req.headers,
-                host: undefined, // let axios set the correct host
-                'x-forwarded-for': req.ip,
-                'x-forwarded-proto': req.protocol
-            },
-            // Fix P0.2 follow-up (2026-05-12): /v1/content/validate ora chiama
-            // anche Gemini second-pass (validate_with_ai) che può impiegare
-            // 30-90s (Gemini sync + time.sleep(2) buffer + Data Hub query DB).
-            // Default 120s per coprire i worst case. Override via env
-            // AI_ROUTER_PROXY_TIMEOUT_MS. Smoke test fast: usare
-            // skip_ai_validation=true nel body per saltare il second-pass.
-            timeout: parseInt(process.env.AI_ROUTER_PROXY_TIMEOUT_MS || '120000', 10),
+            headers: forwardedHeaders,
+            timeout: timeoutMs,
             validateStatus: () => true // forward all status codes as-is
         };
 
@@ -286,18 +323,24 @@ app.all('/v1/*', async (req, res) => {
 
         res.status(mlResponse.status).send(mlResponse.data);
     } catch (error) {
-        console.error(`[ML Proxy] ${req.method} ${req.originalUrl} -> ${targetUrl} FAILED:`, error.message);
-        if (error.code === 'ECONNREFUSED') {
+        console.error(`[ML Proxy] ${req.method} ${req.originalUrl} -> ${targetUrl} FAILED:`, error.code || '-', error.message);
+        if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND' || error.code === 'EAI_AGAIN') {
             res.status(503).json({
                 error: 'ML Worker unavailable',
                 detail: 'The Python FastAPI backend is not responding. Check Railway deployment.',
+                code: error.code,
                 target: targetUrl
             });
-        } else if (error.code === 'ETIMEDOUT') {
-            const timeoutSec = Math.round(parseInt(process.env.AI_ROUTER_PROXY_TIMEOUT_MS || '60000', 10) / 1000);
+        // ECONNABORTED e' il codice che axios usa per il *proprio* timeout
+        // (ETIMEDOUT arriva solo dal socket di sistema). Prima era gestito solo
+        // ETIMEDOUT, quindi il caso di gran lunga piu' frequente — ml-worker che
+        // non risponde in tempo — usciva dal ramo generico come 502 "proxy
+        // error", che manda a cercare il guasto nel posto sbagliato.
+        } else if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
             res.status(504).json({
                 error: 'ML Worker timeout',
-                detail: `The request took longer than ${timeoutSec} seconds.`,
+                detail: `No response from ML Worker within ${Math.round(timeoutMs / 1000)}s.`,
+                code: error.code,
                 target: targetUrl
             });
         } else {

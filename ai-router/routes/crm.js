@@ -11,7 +11,12 @@ const router = express.Router();
 const axios = require('axios');
 const redis = require('../utils/redis');
 
-const ML_WORKER_URL = process.env.ML_WORKER_URL || 'http://ml-worker:8000';
+// Il default e' l'host interno di Railway, dove gira la produzione. Fino al
+// 2026-07-28 qui c'era 'http://ml-worker:8000', che e' il nome del servizio in
+// docker-compose: valido in locale, non risolvibile su Railway. Con la env
+// impostata non cambia nulla, ma il giorno che manca il fallback deve mancare
+// verso l'ambiente vero, non verso quello di sviluppo.
+const ML_WORKER_URL = process.env.ML_WORKER_URL || 'http://albeni-ai-orchestration.railway.internal:8080';
 
 /**
  * POST /v1/crm/sync-lead

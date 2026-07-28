@@ -12,7 +12,10 @@ const axios = require('axios');
 const { v4: uuidv4 } = require('uuid');
 const redis = require('../utils/redis');
 
-const ML_WORKER_URL = process.env.ML_WORKER_URL || 'http://ml-worker:8000';
+// Default = host interno Railway (produzione). Prima era il nome del servizio
+// docker-compose 'http://ml-worker:8000' — vedi la nota al forward qui sotto:
+// e' esattamente il fallback che aveva gia' mascherato un backend fantasma.
+const ML_WORKER_URL = process.env.ML_WORKER_URL || 'http://albeni-ai-orchestration.railway.internal:8080';
 
 // Critical events that trigger immediate IDS recalculation
 const CRITICAL_EVENTS = [

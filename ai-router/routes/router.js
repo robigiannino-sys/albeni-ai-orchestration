@@ -17,7 +17,9 @@ const router = express.Router();
 const axios = require('axios');
 const redis = require('../utils/redis');
 
-const ML_WORKER_URL = process.env.ML_WORKER_URL || 'http://ml-worker:8000';
+// Default = host interno Railway (produzione). Prima era il nome del servizio
+// docker-compose 'http://ml-worker:8000', che su Railway non risolve.
+const ML_WORKER_URL = process.env.ML_WORKER_URL || 'http://albeni-ai-orchestration.railway.internal:8080';
 
 // Domain configuration
 const DOMAINS = {
