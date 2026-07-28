@@ -254,6 +254,7 @@
         .plan-kpil { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #52525b; margin-top: 3px; }
         .plan-modstrip { flex: 1; display: flex; flex-wrap: wrap; gap: 6px; align-content: center; min-width: 260px; }
         .plan-modchip { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: #a1a1aa; background: #141519; border: 1px solid #1f1f23; border-radius: 20px; padding: 3px 10px; }
+        .plan-sync { display: inline-flex; align-items: center; gap: 7px; font-size: 11px; color: #71717a; background: #141519; border: 1px solid #1f1f23; border-radius: 20px; padding: 4px 11px; align-self: center; white-space: nowrap; }
         .plan-stage { margin-bottom: 26px; }
         .plan-stagehead { display: flex; align-items: baseline; gap: 10px; }
         .plan-stagen { width: 22px; height: 22px; border-radius: 50%; background: #1e3a5f; color: #93c5fd; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; flex: none; }
@@ -1255,6 +1256,11 @@ function buildPlan(byPath) {
 // Non è una to-do list: se dopo RESURFACE_DAYS i dati continuano a generare
 // la stessa voce, torna in lista marcata "riaperta" — perché segnarla fatta
 // non è la prova che sia stata risolta. La prova è che il dato smetta di chiederla.
+//
+// Lo stato vive sul server (/v1/plan/done). Prima stava nel localStorage, che è
+// per-origine: le stesse spunte risultavano fatte su un dominio della tower e
+// ancora aperte sull'altro. Il localStorage resta come specchio — regge il primo
+// paint e tiene la pagina utilizzabile se l'API non risponde — ma la fonte è il DB.
 const PLAN_DONE_KEY = 'plan_done';
 const RESURFACE_DAYS = 7;
 const loadDone = () => { try { return JSON.parse(localStorage.getItem(PLAN_DONE_KEY) || '{}'); } catch (e) { return {}; } };
@@ -1334,6 +1340,33 @@ function PlanPage() {
     const [done, setDone] = useState(loadDone);
     const [showDone, setShowDone] = useState(false);
     const [copiedAll, setCopiedAll] = useState(false);
+    const [condiviso, setCondiviso] = useState(null); // null = ancora da stabilire
+
+    const applica = useCallback((res) => {
+        if (!res || !res.items) return false;
+        setDone(res.items); saveDone(res.items); setCondiviso(true);
+        return true;
+    }, []);
+
+    // All'apertura: il server è la verità. Le spunte fatte prima che lo stato
+    // diventasse condiviso vivono solo qui: si salgono una volta sola.
+    useEffect(() => {
+        let vivo = true;
+        (async () => {
+            const res = await api('/v1/plan/done');
+            if (!vivo) return;
+            if (!res || !res.items) { setCondiviso(false); return; }
+            const locali = loadDone();
+            const daMigrare = Object.keys(locali).filter(k => !(k in res.items));
+            if (!daMigrare.length) { applica(res); return; }
+            for (const k of daMigrare) {
+                await api('/v1/plan/done', { method: 'POST', body: JSON.stringify({ key: k, title: (locali[k] || {}).title || k }) });
+            }
+            const dopo = await api('/v1/plan/done');
+            if (vivo) applica(dopo) || setCondiviso(false);
+        })();
+        return () => { vivo = false; };
+    }, [applica]);
 
     const load = useCallback(() => {
         const paths = [...new Set(Object.values(COACH).flatMap(c => (c.sources || []).map(s => s.p)))];
@@ -1345,12 +1378,27 @@ function PlanPage() {
     }, []);
     useEffect(() => { load(); }, [load]);
 
-    const markDone = (k, title) => { const d = { ...done, [k]: { at: new Date().toISOString(), title } }; setDone(d); saveDone(d); };
-    const reopen = (k) => { const d = { ...done }; delete d[k]; setDone(d); saveDone(d); };
-    const clearConfirmed = () => {
-        const stillGenerated = new Set(all.map(i => i.key));
-        const d = {}; Object.entries(done).forEach(([k, v]) => { if (stillGenerated.has(k)) d[k] = v; });
+    // Scritture ottimistiche: la lista si aggiorna subito, poi il server conferma.
+    const markDone = (k, title) => {
+        const d = { ...done, [k]: { at: new Date().toISOString(), title } };
         setDone(d); saveDone(d);
+        api('/v1/plan/done', { method: 'POST', body: JSON.stringify({ key: k, title }) }).then(applica);
+    };
+    const reopen = (k) => {
+        const d = { ...done }; delete d[k];
+        setDone(d); saveDone(d);
+        api(`/v1/plan/done/${encodeURIComponent(k)}`, { method: 'DELETE' }).then(applica);
+    };
+    const clearConfirmed = () => {
+        const ancoraGenerate = new Set(all.map(i => i.key));
+        const daPulire = Object.keys(done).filter(k => !ancoraGenerate.has(k));
+        const d = {}; Object.entries(done).forEach(([k, v]) => { if (ancoraGenerate.has(k)) d[k] = v; });
+        setDone(d); saveDone(d);
+        (async () => {
+            let ultimo = null;
+            for (const k of daPulire) ultimo = await api(`/v1/plan/done/${encodeURIComponent(k)}`, { method: 'DELETE' });
+            applica(ultimo);
+        })();
     };
 
     const { list: all, modules } = byPath ? buildPlan(byPath) : { list: [], modules: [] };
@@ -1421,6 +1469,10 @@ function PlanPage() {
                             <div className="plan-kpin" style={{ color: '#4ade80' }}>{confirmed.length}</div>
                             <div className="plan-kpil">chiusi e confermati</div>
                         </div>
+                        <div className="plan-sync" title={condiviso ? 'Le spunte stanno sul server: valgono su ogni dominio della tower e su ogni browser.' : 'Il server non risponde: le spunte restano su questo browser e non sono visibili altrove.'}>
+                            <span className="coach-dot" style={{ background: condiviso === null ? CST.na.c : condiviso ? CST.ok.c : CST.watch.c }}></span>
+                            {condiviso === null ? 'stato in sincronizzazione…' : condiviso ? 'spunte condivise fra i domini' : 'spunte solo su questo browser'}
+                        </div>
                         <div className="plan-modstrip">
                             {modules.map(m => {
                                 const meta = MODULE_META[m.mod] || { icon: '•', label: m.mod };
@@ -1486,6 +1538,9 @@ function PlanPage() {
                     <div className="plan-foot">
                         Il piano legge {[...new Set(Object.values(COACH).flatMap(c => (c.sources || []).map(s => s.p)))].length} endpoint e applica le stesse soglie del Copilota.
                         Quando lo stesso intervento è suggerito da più moduli compare una volta sola, sotto il modulo che lo motiva meglio.
+                        <br />
+                        Le spunte sono salvate sul server (<code>/v1/plan/done</code>), non nel browser: valgono su tower.worldofmerino.com, su tower.merinouniversity.com e su qualunque altro accesso.
+                        Riaprire una voce non cancella lo storico, lo marca — serve al meccanismo che la ripropone dopo {RESURFACE_DAYS} giorni se i dati continuano a chiederla.
                         <br />
                         <strong style={{ color: '#a1a1aa' }}>Esegui nel Terminale AI</strong> lancia l'istruzione sugli agenti interni della tower (dati reali, risposta in pagina).
                         Le istruzioni che nominano una skill — semrush-specialist, adv-budget-allocator, albeni-wp-operator — vivono invece in Claude Code: lì il pulsante di copia è la via giusta,

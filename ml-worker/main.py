@@ -5992,3 +5992,93 @@ async def klaviyo_index_sync_trigger(
 
     result = await _run_klaviyo_index_sync(db)
     return {"status": "ok", **result}
+
+
+# ===================================================================
+# PIANO D'AZIONE — stato di avanzamento condiviso
+# ===================================================================
+# Le spunte del Piano vivevano nel localStorage del browser, che e' per-origine:
+# tower.worldofmerino.com, tower.merinouniversity.com e il preview locale
+# tenevano tre memorie separate, e lo stesso intervento risultava chiuso su un
+# dominio e ancora aperto sull'altro. Qui diventa uno stato solo, leggibile da
+# qualunque browser e da qualunque dominio.
+#
+# Riaprire una voce non cancella la riga, la marca: serve la traccia di quando
+# era stata dichiarata chiusa, perche' il Piano riapre da solo cio' che dopo 7
+# giorni i dati continuano a segnalare.
+#
+# Auth: questi path non stanno in PUBLIC_API_PREFIXES dell'ai-router, quindi
+# richiedono API_KEY o Basic auth come il resto del cruscotto.
+
+
+def _ensure_plan_done_table(db: DBSession):
+    """Crea plan_done_items se manca. Idempotente."""
+    from sqlalchemy import text
+    try:
+        db.execute(text(
+            "CREATE TABLE IF NOT EXISTS plan_done_items ("
+            "  item_key    TEXT PRIMARY KEY,"
+            "  title       TEXT,"
+            "  marked_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),"
+            "  reopened_at TIMESTAMPTZ"
+            ")"
+        ))
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        logger.warning(f"plan_done_items table create check failed: {e}")
+
+
+def _plan_done_map(db: DBSession) -> Dict:
+    """Voci attualmente segnate come fatte, nella forma attesa dal frontend."""
+    from sqlalchemy import text
+    rows = db.execute(text(
+        "SELECT item_key, title, marked_at FROM plan_done_items "
+        "WHERE reopened_at IS NULL ORDER BY marked_at DESC"
+    )).fetchall()
+    return {
+        r[0]: {"at": r[2].isoformat() if r[2] else None, "title": r[1]}
+        for r in rows
+    }
+
+
+@app.get("/v1/plan/done")
+async def plan_done_list(db: DBSession = Depends(get_db)):
+    """Stato del Piano d'Azione. Response: {"items": {key: {at, title}}, "count": N}."""
+    _ensure_plan_done_table(db)
+    items = _plan_done_map(db)
+    return {"items": items, "count": len(items)}
+
+
+@app.post("/v1/plan/done")
+async def plan_done_mark(payload: Dict = Body(...), db: DBSession = Depends(get_db)):
+    """Segna una voce come fatta. Idempotente: rimarcarla aggiorna la data e la riapre dallo storico."""
+    from sqlalchemy import text
+    key = (payload.get("key") or "").strip()
+    if not key:
+        raise HTTPException(status_code=400, detail="key required")
+    title = (payload.get("title") or "")[:300]
+    _ensure_plan_done_table(db)
+    db.execute(text(
+        "INSERT INTO plan_done_items (item_key, title, marked_at, reopened_at) "
+        "VALUES (:k, :t, NOW(), NULL) "
+        "ON CONFLICT (item_key) DO UPDATE "
+        "SET title = EXCLUDED.title, marked_at = NOW(), reopened_at = NULL"
+    ), {"k": key, "t": title})
+    db.commit()
+    items = _plan_done_map(db)
+    return {"items": items, "count": len(items)}
+
+
+@app.delete("/v1/plan/done/{key}")
+async def plan_done_reopen(key: str, db: DBSession = Depends(get_db)):
+    """Riapre una voce. La riga resta, marcata come riaperta: lo storico non si perde."""
+    from sqlalchemy import text
+    _ensure_plan_done_table(db)
+    db.execute(text(
+        "UPDATE plan_done_items SET reopened_at = NOW() "
+        "WHERE item_key = :k AND reopened_at IS NULL"
+    ), {"k": key})
+    db.commit()
+    items = _plan_done_map(db)
+    return {"items": items, "count": len(items)}
