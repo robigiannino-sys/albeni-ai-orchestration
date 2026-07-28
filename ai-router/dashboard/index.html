@@ -507,11 +507,19 @@ dashboard: {
         const rows = [];
         const doms = d.traffic?.domains || [];
         const ev24 = doms.reduce((s, x) => s + (num(x.events_window) || 0), 0);
-        const live = doms.filter(x => x.last_event && (Date.now() - new Date(x.last_event + 'Z').getTime()) < 864e5).length;
-        rows.push(R('Domini che trasmettono', `${live}/4`, live >= 4 ? 'ok' : live >= 2 ? 'watch' : 'bad',
-            "Domini con almeno un evento nelle ultime 24h. Un dominio a zero è quasi sempre il tracker o l'ingestion, non un calo di traffico: verifica prima l'health, poi il marketing."));
-        rows.push(R('Eventi 24h', String(ev24), ev24 > 50 ? 'ok' : ev24 > 0 ? 'watch' : 'bad',
-            "Volume grezzo di segnali. Serve come denominatore: sotto qualche decina di eventi ogni percentuale in questa pagina è rumore statistico."));
+        const ev7 = doms.reduce((s, x) => s + (num(x.events_7d) || 0), 0);
+        // Soglia relativa alla baseline del sistema, non a un numero fisso: dopo il consenso CMP
+        // (23/07) il volume è sceso di circa l'80% e ogni soglia assoluta scritta prima è finzione.
+        const base = ev7 / 7;
+        const ratio = base > 0 ? ev24 / base : null;
+        const ageH = (x) => x.last_event ? (Date.now() - new Date(x.last_event + 'Z').getTime()) / 36e5 : Infinity;
+        const live = doms.filter(x => ageH(x) < 72).length;
+        const live24 = doms.filter(x => ageH(x) < 24).length;
+        rows.push(R('Domini che trasmettono', `${live}/4`, live >= 4 ? 'ok' : live >= 3 ? 'watch' : 'bad',
+            `Domini con almeno un evento nelle ultime 72h (${live24} nelle ultime 24h). La finestra è 72h e non 24h perché i domini minori viaggiano sotto i 2 eventi al giorno: a 24h un giorno vuoto è statistica, non guasto. Un silenzio oltre le 72h invece è quasi sempre tracker o ingestion, non calo di traffico.`));
+        rows.push(R('Eventi 24h', base > 0 ? `${ev24} · baseline ${base.toFixed(1)}/g` : String(ev24),
+            ev24 === 0 ? 'bad' : ratio === null ? 'na' : ratio >= 0.7 ? 'ok' : ratio >= 0.4 ? 'watch' : 'bad',
+            "Confrontato con la media giornaliera degli ultimi 7 giorni, non con una soglia fissa: così si ritara da sola quando il volume cambia. Dal consenso CMP questo numero conta i visitatori che accettano, non i visitatori."));
         rows.push(R('Visitatori 7g', String(doms.reduce((s, x) => s + (num(x.visitors_7d) || 0), 0)),
             'na', "Utenti distinti sui 7 giorni. È il campione su cui poggiano cluster e funnel: sotto ~100 le distribuzioni non sono leggibili."));
         const ids = num(d.metrics?.avg_ids_score);
@@ -919,31 +927,51 @@ funnel: {
         const stages = f.stages || [];
         if (!stages.length) return [R('Dati funnel', '—', 'na', "Nessun evento nella finestra: verifica tracker e ingestion prima di interpretare.")];
         const rows = [];
+        // Distinzione decisiva: "nessuno converte" e "quello stadio non è misurato" hanno lo stesso
+        // aspetto (zero) e richiedono azioni opposte. Se da uno stadio in poi è tutto zero, il funnel
+        // è strumentato solo fino a lì: leggerlo come conversione mancata manda a ottimizzare il nulla.
+        const attivi = stages.filter(s => (num(s.users) || 0) > 0).length;
+        const oltre = stages.slice(2).some(s => (num(s.users) || 0) > 0);
         const cr = num(f.overall_conversion_pct);
-        rows.push(R('Conversion rate', cr === null ? '—' : `${cr}%`, bandUp(cr, 1, 0.3),
-            "checkout_complete su page_view. Nel D2C abbigliamento l'1% è una soglia di normalità: sotto lo 0,3% il problema è a monte della pagina prodotto."));
-        rows.push(R('Stadi attivi', `${stages.filter(s => s.users > 0).length}/6`,
-            bandUp(stages.filter(s => s.users > 0).length, 5, 3),
-            "Uno stadio vuoto è quasi sempre un evento non tracciato, non un comportamento assente: prima di riprogettare il sito, verifica che l'evento venga inviato."));
-        const withDrop = stages.map((s, i) => ({ s, i })).filter(x => x.i > 0 && num(x.s.drop_off_pct) > 0);
-        if (withDrop.length) {
-            const worst = withDrop.reduce((w, x) => num(x.s.drop_off_pct) > num(w.s.drop_off_pct) ? x : w);
-            const prev = stages[worst.i - 1];
-            const persi = (num(prev.users) || 0) - (num(worst.s.users) || 0);
-            rows.push(R('Drop-off maggiore', `${prev.label} → ${worst.s.label}: −${worst.s.drop_off_pct}%`,
-                band(num(worst.s.drop_off_pct), 30, 60),
-                `Percentuale più alta di abbandono. In valore assoluto sono ${persi} utenti persi: è questo il numero che decide se vale la pena intervenire, non la percentuale.`));
+        if (oltre) {
+            rows.push(R('Conversion rate', cr === null ? '—' : `${cr}%`, bandUp(cr, 1, 0.3),
+                "checkout_complete su page_view. Nel D2C abbigliamento l'1% è una soglia di normalità: sotto lo 0,3% il problema è a monte della pagina prodotto."));
+            rows.push(R('Stadi attivi', `${attivi}/6`, bandUp(attivi, 5, 3),
+                "Uno stadio vuoto è quasi sempre un evento non tracciato, non un comportamento assente: prima di riprogettare il sito, verifica che l'evento venga inviato."));
+            const withDrop = stages.map((s, i) => ({ s, i })).filter(x => x.i > 0 && num(x.s.drop_off_pct) > 0);
+            if (withDrop.length) {
+                const worst = withDrop.reduce((w, x) => num(x.s.drop_off_pct) > num(w.s.drop_off_pct) ? x : w);
+                const prev = stages[worst.i - 1];
+                const persi = (num(prev.users) || 0) - (num(worst.s.users) || 0);
+                rows.push(R('Drop-off maggiore', `${prev.label} → ${worst.s.label}: −${worst.s.drop_off_pct}%`,
+                    band(num(worst.s.drop_off_pct), 30, 60),
+                    `Percentuale più alta di abbandono. In valore assoluto sono ${persi} utenti persi: è questo il numero che decide se vale la pena intervenire, non la percentuale.`));
+            }
+        } else {
+            const ultimo = stages[attivi - 1];
+            rows.push(R('Copertura della misurazione', `strumentato fino a "${ultimo ? ultimo.label : '—'}"`, 'na',
+                `Dallo stadio "${stages[2] ? stages[2].label : '3'}" in poi non c'è nessun utente: non zero conversioni, proprio nessun evento. Finché è così, un conversion rate qui non è un dato — sarebbe una divisione per uno stadio che non viene misurato. Il checkout non esiste ancora (store dietro coming-soon, pre-order dal 01/09), ma i lead magnet su WoM e MU dovrebbero poter generare lo stadio Lead: è quello il primo da verificare.`));
+            rows.push(R('Stadi misurati', `${attivi}/6`, 'na',
+                `${stages.slice(0, attivi).map(s => `${s.label} ${s.users}`).join(' → ')}. Questi due stadi sono leggibili e dicono una cosa vera: ${stages[1] ? Math.round((num(stages[1].users) || 0) / Math.max(1, num(stages[0].users) || 1) * 100) : 0}% dei visitatori supera la soglia di ingaggio.`));
         }
-        rows.push(R('Eventi nella finestra', String(num(f.total_events_in_window) ?? '—'),
-            (num(f.total_events_in_window) || 0) > 500 ? 'ok' : 'watch',
-            "Sotto ~500 eventi le percentuali di questo funnel oscillano troppo per guidare una decisione."));
+        const tot = num(f.total_events_in_window) || 0;
+        rows.push(R('Eventi nella finestra', String(tot), tot >= 300 ? 'ok' : tot >= 100 ? 'watch' : 'bad',
+            "Campione su 30 giorni. Sotto ~100 eventi le percentuali di questo funnel oscillano troppo per guidare una decisione."));
         return rows;
     },
     actions: (d) => {
         const f = d.f || {};
         const stages = f.stages || [];
         const a = [];
-        const withDrop = stages.map((s, i) => ({ s, i })).filter(x => x.i > 0 && num(x.s.drop_off_pct) > 0);
+        const oltre = stages.slice(2).some(s => (num(s.users) || 0) > 0);
+        if (!oltre && stages.length) {
+            a.push({
+                stage: 1, key: 'funnel-strumentazione', title: "Verifica se gli stadi oltre Engaged esistono davvero",
+                why: "Quattro stadi su sei sono a zero utenti, non a pochi. Prima di qualunque intervento sul percorso va stabilito se quegli eventi non vengono emessi o se non vengono proprio generati: sono due problemi opposti e da qui hanno lo stesso aspetto.",
+                prompt: "Apri albeni-master. Nel funnel gli stadi da 'Interesse Attivo' in poi sono a zero utenti su 30 giorni. Dimmi per ciascuno quali event_type lo alimentano, se il tracker li emette oggi su WoM/MU/micron-e e quali sono strutturalmente impossibili adesso (checkout assente fino al pre-order del 01/09). In particolare verifica lo stadio Lead: i lead magnet con form Klaviyo su WoM e MU dovrebbero poterlo generare.",
+            });
+        }
+        const withDrop = oltre ? stages.map((s, i) => ({ s, i })).filter(x => x.i > 0 && num(x.s.drop_off_pct) > 0) : [];
         if (withDrop.length) {
             const worst = withDrop.reduce((w, x) => num(x.s.drop_off_pct) > num(w.s.drop_off_pct) ? x : w);
             const prev = stages[worst.i - 1];
@@ -953,7 +981,7 @@ funnel: {
                 prompt: `Apri albeni-master. Nel funnel il drop-off maggiore è fra "${prev.label}" e "${worst.s.label}" (−${worst.s.drop_off_pct}%, ${(num(prev.users) || 0) - (num(worst.s.users) || 0)} utenti persi in 30 giorni). Dimmi quali pagine e quali cluster contribuiscono di più a questa perdita e proponi 3 interventi in ordine di rapporto impatto/sforzo.`,
             });
         }
-        a.push({
+        if (oltre) a.push({
             stage: 4, key: 'funnel-segmenta', title: "Segmenta prima di concludere",
             why: "Il funnel aggregato mescola cluster e domini con comportamenti opposti: la media descrive un utente che non esiste.",
             prompt: "Apri albeni-master. Confronta il funnel per cluster e per dominio (endpoint /v1/funnel/journey/by-cluster e by-domain, 30 giorni). Dimmi dove i comportamenti divergono di più e quale segmento merita un percorso dedicato.",
@@ -1062,9 +1090,12 @@ function Coach({ page }) {
         try { actions = cfg.actions ? (cfg.actions(data, rows) || []) : []; } catch (e) { actions = []; }
     }
 
+    // Un modulo si dichiara "in soglia" solo se almeno metà delle righe è davvero valutata:
+    // due righe informative e una verde non fanno un semaforo verde, fanno un dato mancante.
+    const graded = rows.filter(r => r.state !== 'na');
     const worst = rows.some(r => r.state === 'bad') ? 'bad'
         : rows.some(r => r.state === 'watch') ? 'watch'
-        : rows.some(r => r.state === 'ok') ? 'ok' : 'na';
+        : (graded.length && graded.length * 2 >= rows.length) ? 'ok' : 'na';
     const nBad = rows.filter(r => r.state === 'bad').length;
     const nWatch = rows.filter(r => r.state === 'watch').length;
     const verdict = !open ? 'Apri per la lettura guidata di questo modulo'
@@ -1072,7 +1103,8 @@ function Coach({ page }) {
         : worst === 'bad' ? `${nBad} ${nBad > 1 ? 'indicatori' : 'indicatore'} fuori soglia — c'è un'azione da prendere`
         : worst === 'watch' ? `${nWatch} ${nWatch > 1 ? 'indicatori' : 'indicatore'} da osservare — nessuna emergenza`
         : worst === 'ok' ? 'Tutti gli indicatori in soglia'
-        : 'Modulo operativo — nessuna metrica passiva da leggere';
+        : (cfg.sources || []).length === 0 ? 'Modulo operativo — nessuna metrica passiva da leggere'
+        : 'Misurazione incompleta — non c\'è abbastanza dato per un verdetto';
 
     const dotColor = CST[worst]?.c || CST.na.c;
 
@@ -1179,9 +1211,10 @@ function buildPlan(byPath) {
         let rows = [], acts = [];
         try { rows = cfg.read(d) || []; } catch (e) { rows = []; }
         try { acts = cfg.actions ? (cfg.actions(d, rows) || []) : []; } catch (e) { acts = []; }
+        const graded = rows.filter(r => r.state !== 'na');  // stessa regola del Copilota
         const sev = rows.some(r => r.state === 'bad') ? 'bad'
             : rows.some(r => r.state === 'watch') ? 'watch'
-            : rows.some(r => r.state === 'ok') ? 'ok' : 'na';
+            : (graded.length && graded.length * 2 >= rows.length) ? 'ok' : 'na';
         modules.push({ mod, sev, nBad: rows.filter(r => r.state === 'bad').length, nWatch: rows.filter(r => r.state === 'watch').length });
         acts.forEach(a => { if (a.plan !== false) raw.push({ ...a, mod, sev, stage: a.stage || 4 }); });
     });
