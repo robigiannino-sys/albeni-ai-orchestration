@@ -254,6 +254,15 @@
         .plan-kpil { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #52525b; margin-top: 3px; }
         .plan-modstrip { flex: 1; display: flex; flex-wrap: wrap; gap: 6px; align-content: center; min-width: 260px; }
         .plan-modchip { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: #a1a1aa; background: #141519; border: 1px solid #1f1f23; border-radius: 20px; padding: 3px 10px; }
+        .plan-modchip.muto { color: #52525b; border-style: dashed; text-decoration: line-through; text-decoration-color: #3f3f46; }
+        .plan-alert { background: #1a1206; border: 1px solid #78350f; border-left-width: 3px; border-radius: 10px; padding: 13px 16px; margin-bottom: 18px; }
+        .plan-alert.cieco { background: #170808; border-color: #7f1d1d; }
+        .plan-alerthead { font-size: 13px; font-weight: 600; color: #fbbf24; }
+        .plan-alert.cieco .plan-alerthead { color: #f87171; }
+        .plan-alertbody { font-size: 12px; line-height: 1.6; color: #a1a1aa; margin-top: 5px; }
+        .plan-alertbody strong { color: #d4d4d8; }
+        .plan-alertbody code, .plan-alertsrc code { background: #0d0e12; border: 1px solid #27272a; border-radius: 4px; padding: 1px 5px; font-size: 11px; color: #a1a1aa; }
+        .plan-alertsrc { font-size: 11px; color: #71717a; margin-top: 7px; }
         .plan-sync { display: inline-flex; align-items: center; gap: 7px; font-size: 11px; color: #71717a; background: #141519; border: 1px solid #1f1f23; border-radius: 20px; padding: 4px 11px; align-self: center; white-space: nowrap; }
         .plan-stage { margin-bottom: 26px; }
         .plan-stagehead { display: flex; align-items: baseline; gap: 10px; }
@@ -1096,8 +1105,16 @@ function Coach({ page }) {
 
     if (!cfg) return null;
 
+    // Stessa regola del Piano: se nessuna delle fonti del modulo è tornata, non
+    // si legge il vuoto come se fosse un dato. Vale soprattutto qui, dove il
+    // verdetto in barra ha l'aria di una diagnosi anche quando non c'è nulla dietro.
+    const srcs = cfg.sources || [];
+    const muto = !!srcs.length && !!data && srcs.every(s => nonRisposto(data[s.k]));
     let rows = [], actions = [];
-    if (data) {
+    if (data && muto) {
+        rows = [R('Lettura non riuscita', '—', 'na',
+            `Nessuno degli endpoint del modulo ha risposto (${srcs.map(s => s.p).join(', ')}). Non è un dato a zero: è un dato che non è arrivato — nessun verdetto e nessuna azione finché non torna.`)];
+    } else if (data) {
         try { rows = cfg.read(data) || []; } catch (e) { rows = [R('Lettura non disponibile', '—', 'na', 'Il modulo ha restituito dati in un formato inatteso: leggi i numeri direttamente in pagina.')]; }
         try { actions = cfg.actions ? (cfg.actions(data, rows) || []) : []; } catch (e) { actions = []; }
     }
@@ -1112,6 +1129,7 @@ function Coach({ page }) {
     const nWatch = rows.filter(r => r.state === 'watch').length;
     const verdict = !open ? 'Apri per la lettura guidata di questo modulo'
         : loading ? 'Lettura in corso…'
+        : muto ? 'Gli endpoint del modulo non rispondono — nessun verdetto possibile'
         : worst === 'bad' ? `${nBad} ${nBad > 1 ? 'indicatori' : 'indicatore'} fuori soglia — c'è un'azione da prendere`
         : worst === 'watch' ? `${nWatch} ${nWatch > 1 ? 'indicatori' : 'indicatore'} da osservare — nessuna emergenza`
         : worst === 'ok' ? 'Tutti gli indicatori in soglia'
@@ -1214,12 +1232,32 @@ const MODULE_META = {
 
 const SEV_RANK = { bad: 0, watch: 1, ok: 2, na: 3 };
 
+// Un endpoint che non risponde torna `null` da api(): non è "nessun dato",
+// è "non lo sappiamo". Trattare le due cose allo stesso modo è ciò che rendeva
+// il piano diverso da un accesso all'altro — la stessa pagina servita da un
+// file server senza API dietro costruiva 15 voci apparentemente normali, che
+// erano solo i consigli che non dipendono da nessuna lettura.
+const nonRisposto = (v) => v === null || v === undefined;
+
 function buildPlan(byPath) {
     const modules = [];
     const raw = [];
+    const perse = new Set();          // endpoint che non hanno risposto
+    const muti = [], parziali = [];   // moduli senza nessuna fonte viva / letti a metà
     Object.entries(COACH).forEach(([mod, cfg]) => {
+        const srcs = cfg.sources || [];
+        const morte = srcs.filter(s => nonRisposto(byPath[s.p]));
+        morte.forEach(s => perse.add(s.p));
+        // Nessuna fonte tornata: il modulo non dice "tutto a posto" e non dice
+        // "fuori soglia". Non dice niente, e da niente non si ricava un consiglio.
+        if (srcs.length && morte.length === srcs.length) {
+            modules.push({ mod, sev: 'na', nBad: 0, nWatch: 0, muto: true });
+            muti.push(mod);
+            return;
+        }
+        if (morte.length) parziali.push(mod);
         const d = {};
-        (cfg.sources || []).forEach(s => { d[s.k] = byPath[s.p]; });
+        srcs.forEach(s => { d[s.k] = byPath[s.p]; });
         let rows = [], acts = [];
         try { rows = cfg.read(d) || []; } catch (e) { rows = []; }
         try { acts = cfg.actions ? (cfg.actions(d, rows) || []) : []; } catch (e) { acts = []; }
@@ -1227,7 +1265,7 @@ function buildPlan(byPath) {
         const sev = rows.some(r => r.state === 'bad') ? 'bad'
             : rows.some(r => r.state === 'watch') ? 'watch'
             : (graded.length && graded.length * 2 >= rows.length) ? 'ok' : 'na';
-        modules.push({ mod, sev, nBad: rows.filter(r => r.state === 'bad').length, nWatch: rows.filter(r => r.state === 'watch').length });
+        modules.push({ mod, sev, nBad: rows.filter(r => r.state === 'bad').length, nWatch: rows.filter(r => r.state === 'watch').length, parziale: morte.length > 0 });
         acts.forEach(a => { if (a.plan !== false) raw.push({ ...a, mod, sev, stage: a.stage || 4 }); });
     });
 
@@ -1249,7 +1287,8 @@ function buildPlan(byPath) {
         || a.title.localeCompare(b.title)
     );
     list.forEach((it, i) => { it.rank = i + 1; });
-    return { list, modules };
+    const totali = Object.keys(byPath).length;
+    return { list, modules, letture: { totali, perse: [...perse], muti, parziali } };
 }
 
 // Stato di avanzamento: le voci segnate come fatte escono dalla lista attiva.
@@ -1412,7 +1451,10 @@ function PlanPage() {
         })();
     };
 
-    const { list: all, modules } = byPath ? buildPlan(byPath) : { list: [], modules: [] };
+    const { list: all, modules, letture } = byPath ? buildPlan(byPath) : { list: [], modules: [], letture: null };
+    const perse = letture ? letture.perse.length : 0;
+    const cieco = !!letture && perse === letture.totali;  // nessun endpoint ha risposto
+    const nomeMod = (m) => (MODULE_META[m] || {}).label || m;
 
     // 3 stati: attive · segnate fatte ma ancora generate dai dati · confermate (sparite dai dati)
     const nowMs = Date.now();
@@ -1434,6 +1476,12 @@ function PlanPage() {
             + `Ordine di esecuzione: misurare → fondamenta → sbloccare → ottimizzare → espandere\n`
             + `${active.length} interventi aperti${urgent ? `, di cui ${urgent} urgenti` : ''}`
             + `${completed.length ? ` · ${completed.length} segnati come fatti` : ''}.\n`
+            // Il piano finisce incollato in una sessione Claude Code: se è stato
+            // costruito su letture mancanti, deve dirlo lì dentro, non solo a schermo.
+            + (perse ? `ATTENZIONE — piano PARZIALE: ${perse} endpoint su ${letture.totali} non hanno risposto`
+                + `${letture.muti.length ? `; moduli esclusi: ${letture.muti.map(nomeMod).join(', ')}` : ''}`
+                + `${letture.parziali.length ? `; letti a metà: ${letture.parziali.map(nomeMod).join(', ')}` : ''}.`
+                + ` Non usarlo per decidere finché la tower non risponde per intero.\n` : '')
             + `Eseguili nell'ordine: ogni stadio presuppone il precedente.\n`;
         const body = active.map(it => {
             const st = PLAN_STAGES.find(s => s.n === it.stage);
@@ -1465,6 +1513,33 @@ function PlanPage() {
 
             {loading && <div className="coach-empty" style={{ padding: '20px 0' }}>Lettura di tutti i moduli in corso…</div>}
 
+            {!loading && !!perse && (
+                <div className={`plan-alert ${cieco ? 'cieco' : ''}`}>
+                    <div className="plan-alerthead">
+                        {cieco
+                            ? `Nessuno dei ${letture.totali} endpoint della tower ha risposto — questo non è il piano`
+                            : `${perse} endpoint su ${letture.totali} non hanno risposto — piano parziale`}
+                    </div>
+                    <div className="plan-alertbody">
+                        {cieco ? (
+                            <React.Fragment>
+                                Le voci qui sotto sono soltanto quelle che non dipendono da nessuna lettura: compaiono sempre, anche a tower spenta.
+                                Tutti i moduli che leggono un dato sono esclusi. Succede quando la pagina è aperta da un file server statico
+                                (es. <code>localhost</code>) che non ha dietro l'API, oppure quando l'accesso non è autenticato:
+                                apri la tower dal suo dominio — <code>tower.worldofmerino.com</code> o <code>tower.merinouniversity.com</code> — dove <code>/v1/*</code> risponde davvero.
+                            </React.Fragment>
+                        ) : (
+                            <React.Fragment>
+                                {!!letture.muti.length && <React.Fragment><strong>Esclusi dal piano</strong> (nessuna fonte tornata): {letture.muti.map(nomeMod).join(', ')}. </React.Fragment>}
+                                {!!letture.parziali.length && <React.Fragment><strong>Letti a metà</strong> (qualche fonte manca, le soglie restano attive sul resto): {letture.parziali.map(nomeMod).join(', ')}. </React.Fragment>}
+                                Finché non tornano, il piano descrive una parte del sistema: <strong>ricalcola</strong> prima di prendere decisioni di budget o priorità.
+                            </React.Fragment>
+                        )}
+                        <div className="plan-alertsrc">Non hanno risposto: {letture.perse.map(p => <code key={p}>{p}</code>).reduce((acc, x, i) => i ? [...acc, ' · ', x] : [x], [])}</div>
+                    </div>
+                </div>
+            )}
+
             {!loading && (
                 <React.Fragment>
                     <div className="plan-summary">
@@ -1487,10 +1562,13 @@ function PlanPage() {
                         <div className="plan-modstrip">
                             {modules.map(m => {
                                 const meta = MODULE_META[m.mod] || { icon: '•', label: m.mod };
+                                const nota = m.muto ? 'nessuna fonte ha risposto: escluso dal piano'
+                                    : m.parziale ? `letto a metà — ${m.nBad} fuori soglia · ${m.nWatch} da osservare, su fonti incomplete`
+                                    : `${m.nBad} fuori soglia · ${m.nWatch} da osservare`;
                                 return (
-                                    <span className="plan-modchip" key={m.mod} title={`${m.nBad} fuori soglia · ${m.nWatch} da osservare`}>
+                                    <span className={`plan-modchip ${m.muto ? 'muto' : ''}`} key={m.mod} title={nota}>
                                         <span className="coach-dot" style={{ background: (CST[m.sev] || CST.na).c }}></span>
-                                        {meta.label}
+                                        {meta.label}{m.parziale ? ' ½' : ''}
                                     </span>
                                 );
                             })}
@@ -1498,7 +1576,11 @@ function PlanPage() {
                     </div>
 
                     {!active.length && (
-                        <div className="plan-clear">Nessun intervento aperto: i moduli non stanno segnalando nulla che richieda un'azione.</div>
+                        <div className="plan-clear">
+                            {perse
+                                ? "Nessun intervento in lista, ma non è un via libera: i moduli che avrebbero potuto segnalarne non sono stati letti."
+                                : "Nessun intervento aperto: i moduli non stanno segnalando nulla che richieda un'azione."}
+                        </div>
                     )}
 
                     {PLAN_STAGES.map(st => {
