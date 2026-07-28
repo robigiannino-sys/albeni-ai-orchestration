@@ -491,7 +491,10 @@ executive: {
             why: "Un CRITICAL è uno scostamento che il sistema non sa spiegare da solo: finché è aperto ogni altra lettura è inaffidabile.",
             prompt: "Apri albeni-master. Recupera gli alert CRITICAL degli ultimi 7 giorni da /v1/anomaly/alerts, per ognuno dimmi: metrica, valore osservato vs atteso, quale modulo della tower lo genera e quale azione lo chiude. Poi proponi l'ordine di intervento.",
         });
-        if (rows.find(r => r.label === 'Mix organico' && r.state !== 'ok')) a.push({
+        // `state !== 'ok'` comprendeva anche 'na', cioè il pre-lancio ADV: la voce
+        // usciva mentre adv_spend è vuota e marketing_attributions ferma. Un ponte
+        // paid → organico non si riequilibra se il paid non è mai partito.
+        if (rows.find(r => r.label === 'Mix organico' && (r.state === 'bad' || r.state === 'watch'))) a.push({
             stage: 4, key: 'paid-organic', title: "Riequilibra il ponte paid → organico",
             why: "Se l'organico non sale mentre il paid gira, stai comprando traffico senza costruire l'asset.",
             prompt: "Apri adv-budget-allocator. Fammi il report di allocazione corrente e dimmi quali pagine sono ancora sotto copertura paid dopo 30+ giorni: sono i casi in cui l'handoff a organico non è avvenuto. Per ognuna indica se il problema è indicizzazione, contenuto o keyword.",
@@ -638,9 +641,12 @@ notion: {
             why: "Una coda lunga fa sembrare il sistema produttivo mentre sta solo accumulando. Il costo è invisibile: i brief invecchiano e vanno riscritti.",
             prompt: "Apri albeni-master. Ho più di 25 contenuti in stato 'Da Fare'. Ordinali per impatto atteso (cluster, mercato, stadio funnel, keyword target) e dimmi quali 5 tenere, quali archiviare e quali riscrivere perché il contesto è cambiato dal pivot micron-è.",
         });
-        a.push({
+        // Con la coda vuota E niente in produzione non c'è nessun "prossimo lotto":
+        // la voce mandava alla rassegna di approvazione a guardare uno schermo vuoto.
+        const inProd = num(d.st?.by_status?.['In Produzione']) || num(d.st?.by_status?.['In produzione']) || 0;
+        if (daFare + inProd > 0) a.push({
             stage: 3, key: 'coda-genera', title: "Genera il prossimo lotto dalla coda",
-            why: "La pipeline è già cablata: da qui parte generazione + validazione automatica.",
+            why: `${daFare} in coda e ${inProd} in produzione: la pipeline è già cablata, da qui parte generazione + validazione automatica.`,
             prompt: "Apri merino-rassegna e mostrami la coda di approvazione: cosa è pronto per la revisione, cosa posso deployare oggi e cosa va rigenerato.",
         });
         return a;
@@ -715,10 +721,19 @@ seo: {
         const doms = d.seo?.domains || [];
         const cannBad = doms.filter(x => (num(x.cannibalization_score) || 0) > 6).map(x => x.domain);
         const a = [];
+        // L'urgenza presuppone che il numero descriva oggi. Con il piano SEMrush
+        // sospeso questi punteggi arrivano da uno snapshot Postgres (`data_source`)
+        // che può avere mesi: resta un problema reale da chiudere, ma non è la cosa
+        // da fare stamattina, e la voce deve dire su che data si sta decidendo.
+        const eta = doms.filter(x => cannBad.includes(x.domain)).map(x => daysAgo(x.fetched_at)).filter(x => x !== null).sort((x, y) => y - x)[0];
+        const vecchio = eta !== undefined && eta > 30;
         if (cannBad.length) a.push({
-            urgent: true, stage: 4, key: 'cannibalizzazione', title: `Cannibalizzazione sopra soglia: ${cannBad.join(', ')}`,
-            why: "È l'unico problema SEO che peggiora producendo più contenuto: ogni pagina nuova sullo stesso intento aggrava la sovrapposizione.",
-            prompt: `Apri semrush-specialist. Estrai le keyword in conflitto per ${cannBad.join(', ')}. Per ognuna: volume, posizione per dominio, intento. Assegna la keyword al dominio corretto secondo il ruolo di funnel e dimmi cosa fare sulla pagina perdente (de-ottimizzare, canonical, riscrivere l'intento o unire).`,
+            urgent: !vecchio, stage: 4, key: 'cannibalizzazione',
+            title: `Cannibalizzazione sopra soglia: ${cannBad.join(', ')}${vecchio ? ` (misura di ${eta} giorni fa)` : ''}`,
+            why: "È l'unico problema SEO che peggiora producendo più contenuto: ogni pagina nuova sullo stesso intento aggrava la sovrapposizione."
+                + (vecchio ? ` Attenzione però alla data: il punteggio viene da uno snapshot di ${eta} giorni fa (piano SEMrush sospeso), non dalla settimana in corso — la sovrapposizione di oggi può essere diversa in entrambe le direzioni.` : ''),
+            prompt: `Apri semrush-specialist. Estrai le keyword in conflitto per ${cannBad.join(', ')}. Per ognuna: volume, posizione per dominio, intento. Assegna la keyword al dominio corretto secondo il ruolo di funnel e dimmi cosa fare sulla pagina perdente (de-ottimizzare, canonical, riscrivere l'intento o unire).`
+                + (vecchio ? ` Nota: il punteggio in tower è di ${eta} giorni fa, quindi rimisura prima di intervenire.` : ''),
         });
         a.push({
             stage: 2, key: 'pesi-cluster', title: "Rimetti i pesi cluster dell'allocator sui mercati veri",
@@ -827,10 +842,22 @@ semrush_data: {
                 "Tone of voice, glossario, profili cluster, dati competitor: sono le categorie che rendono coerenti gli agenti. Quelle vuote vengono rimpiazzate da assunzioni implicite."),
         ];
     },
-    actions: () => ([
-        { stage: 2, key: 'dataset-classificazione', title: "Classifica tutto prima di analizzare", why: "Gli agenti leggono solo ciò che è taggato: un'analisi 'completa' su archivio non classificato è completa solo in apparenza.", prompt: "Apri semrush-specialist. Lancia la classificazione automatica dei dataset non taggati nel Data Hub e dimmi quali coprono i mercati DE/IT/FR e quali sono ancora dati pre-pivot su US/UK da archiviare." },
-        { stage: 2, key: 'dataset-eta', title: "Controlla l'età dei dati prima di decidere il budget", why: "Un export di tre mesi fa descrive un mercato che nel frattempo si è mosso: l'errore si propaga silenziosamente in ogni allocazione.", prompt: "Apri semrush-specialist. Elenca i dataset presenti con data di import e mercato. Segnala quelli più vecchi di 60 giorni che vengono ancora usati come base per keyword e budget." },
-    ]),
+    // Le due voci chiedevano di classificare e di datare dataset che non ci sono:
+    // l'archivio è a zero import. Su archivio vuoto la domanda non è "classifica",
+    // è "gli agenti che leggono il Data Hub stanno lavorando senza contesto".
+    actions: (d) => {
+        const tot = num(d.ctx?.total_imports_in_hub) || 0;
+        const nonTaggati = num(d.ctx?.untagged_imports) || 0;
+        if (!tot) return [{
+            stage: 2, key: 'datahub-vuoto', title: "Il Data Hub è vuoto: gli agenti girano senza contesto",
+            why: "Zero import in archivio e 0 categorie su 13 in uso. Ogni skill che dovrebbe leggere tone of voice, glossario o dati competitor sta rispondendo solo con quello che ha nel prompt — e non lo dichiara.",
+            prompt: "Apri semrush-specialist. Il Data Hub è a zero import. Dimmi quali export ho ancora recuperabili in locale (CSV SEMrush, glossario, tone of voice) e ricaricali nelle categorie giuste, partendo da quelle che le altre skill leggono davvero. Se non c'è niente da ricaricare, dimmi quali categorie vanno rigenerate a mano e in che ordine.",
+        }];
+        const a = [];
+        if (nonTaggati) a.push({ stage: 2, key: 'dataset-classificazione', title: `Classifica i ${nonTaggati} dataset non taggati prima di analizzare`, why: "Gli agenti leggono solo ciò che è taggato: un'analisi 'completa' su archivio non classificato è completa solo in apparenza.", prompt: "Apri semrush-specialist. Lancia la classificazione automatica dei dataset non taggati nel Data Hub e dimmi quali coprono i mercati DE/IT/FR e quali sono ancora dati pre-pivot su US/UK da archiviare." });
+        a.push({ stage: 2, key: 'dataset-eta', title: "Controlla l'età dei dati prima di decidere il budget", why: "Un export di tre mesi fa descrive un mercato che nel frattempo si è mosso: l'errore si propaga silenziosamente in ogni allocazione.", prompt: "Apri semrush-specialist. Elenca i dataset presenti con data di import e mercato. Segnala quelli più vecchi di 60 giorni che vengono ancora usati come base per keyword e budget." });
+        return a;
+    },
     traps: [
         "**Un dato caricato non è un dato usato.** Il valore si crea al momento della classificazione, non del download.",
         "**I dati pre-pivot sono i più pericolosi.** Sono coerenti, completi e descrivono un'azienda che non esiste più (US/UK, marchio precedente). Vanno archiviati, non lasciati «per riferimento».",
@@ -863,10 +890,25 @@ adv: {
                 `Senza segnali di ritorno Google e Meta ottimizzano al buio sul clic invece che sulla conversione${cf.google_ads_configured === false ? ' — Google Ads risulta non configurato' : ''}${cf.meta_capi_configured === false ? ', Meta CAPI non configurato' : ''}.`),
         ];
     },
-    actions: () => ([
-        { stage: 4, key: 'spesa-varianza', title: "Verifica dove finisce davvero la spesa", why: "Il CPA medio nasconde la varianza: quasi sempre poche combinazioni bruciano la maggior parte del budget.", prompt: "Apri albeni-seo-agent. Analizza la spesa ADV corrente per cluster e mercato: dimmi quali combinazioni cluster×mercato hanno CPA sopra €17,92 (soglia di sostenibilità) e quali sotto €9. Proponi lo spostamento di budget e quanto vale in conversioni attese." },
-        { stage: 4, key: 'paid-organic', title: "Controlla la transizione paid → organico", why: "Il paid in questo sistema è un ponte temporaneo: se una pagina resta coperta dal paid oltre 30 giorni, il ponte è diventato una stampella.", prompt: "Apri adv-budget-allocator. Elencami le pagine con copertura paid attiva da più di 30 giorni e dimmi per ognuna perché l'handoff a organico non è avvenuto (non indicizzata, indicizzata ma senza posizione, contenuto debole)." },
-    ]),
+    // Entrambe le voci uscivano sempre, anche con le piattaforme non collegate e
+    // ogni contatore a zero: analizzare "dove finisce la spesa" quando non c'è
+    // spesa, e la transizione paid → organico quando nessuna pagina è coperta.
+    // Prima del lancio ADV questo modulo non ha niente da chiedere.
+    actions: (d) => {
+        const cfg = d.st?.intelligence?.config || {};
+        const routed = num(d.st?.routing?.total_routed) || 0;
+        const segnali = num(d.st?.intelligence?.feedback_loop?.total_signals) || 0;
+        const vivo = !!(cfg.google_ads_configured || cfg.meta_capi_configured) || routed > 0 || segnali > 0;
+        if (!vivo) return [{
+            stage: 5, key: 'adv-prelancio', plan: false, title: "Modulo in attesa del lancio ADV",
+            why: "Nessuna piattaforma collegata, nessun routing e nessun segnale di qualità: i numeri di questa pagina sono zeri per costruzione, non risultati da leggere.",
+            prompt: "Apri albeni-seo-agent. Prepara il piano di lancio ADV per la capsula EU: budget per cluster e mercato, soglie CPA e cosa deve essere collegato (Google Ads, Meta CAPI) prima della prima euro di spesa.",
+        }];
+        return [
+            { stage: 4, key: 'spesa-varianza', title: "Verifica dove finisce davvero la spesa", why: "Il CPA medio nasconde la varianza: quasi sempre poche combinazioni bruciano la maggior parte del budget.", prompt: "Apri albeni-seo-agent. Analizza la spesa ADV corrente per cluster e mercato: dimmi quali combinazioni cluster×mercato hanno CPA sopra €17,92 (soglia di sostenibilità) e quali sotto €9. Proponi lo spostamento di budget e quanto vale in conversioni attese." },
+            { stage: 4, key: 'paid-organic', title: "Controlla la transizione paid → organico", why: "Il paid in questo sistema è un ponte temporaneo: se una pagina resta coperta dal paid oltre 30 giorni, il ponte è diventato una stampella.", prompt: "Apri adv-budget-allocator. Elencami le pagine con copertura paid attiva da più di 30 giorni e dimmi per ognuna perché l'handoff a organico non è avvenuto (non indicizzata, indicizzata ma senza posizione, contenuto debole)." },
+        ];
+    },
     traps: [
         "**Il CPA medio è la media fra chi converte a €5 e chi a €80.** La decisione sta nella coda, non nella media.",
         "**Il paid dà gratificazione immediata.** Vedi il traffico salire lo stesso giorno: per questo è la leva su cui si torna sempre, anche quando l'organico avrebbe ROI superiore. Decidi l'allocazione a mente fredda, non guardando la curva.",
@@ -914,7 +956,7 @@ agents: {
     read: () => [R('Uso previsto', 'diagnostica', 'na',
         "Serve a isolare la causa: se il funnel è strano, provi qui l'intent scoring; se i cluster sembrano sbagliati, provi il cluster predict. Testare l'agente singolo separa il problema di dato dal problema di logica.")],
     actions: () => ([
-        { stage: 1, key: 'diagnostica-infra', title: "Isola il problema prima di correggerlo", why: "In una catena di agenti l'errore si manifesta lontano da dove nasce: correggere dove si vede il sintomo è il modo più veloce di rompere altro.", prompt: "Apri albeni-master. Ho un risultato anomalo a valle. Aiutami a risalire la catena agente per agente (tracking → cluster → intent → routing → contenuto) e dimmi in quale passaggio il dato smette di essere coerente." },
+        { stage: 1, key: 'diagnostica-infra', plan: false, title: "Isola il problema prima di correggerlo", why: "In una catena di agenti l'errore si manifesta lontano da dove nasce: correggere dove si vede il sintomo è il modo più veloce di rompere altro.", prompt: "Apri albeni-master. Ho un risultato anomalo a valle. Aiutami a risalire la catena agente per agente (tracking → cluster → intent → routing → contenuto) e dimmi in quale passaggio il dato smette di essere coerente." },
     ]),
     traps: [
         "**Un agente che risponde non è un agente che risponde bene.** Lo status 200 dice che il servizio è vivo, non che la classificazione sia corretta.",
@@ -974,9 +1016,17 @@ gsc: {
             why: "È l'anello che chiude il ciclo: la scansione GSC è l'input dell'allocatore di budget.",
             prompt: "Apri adv-budget-allocator. Usa l'ultima scansione GSC per rigenerare l'allocazione: budget sulle pagine non indicizzate, rilascio su quelle che nel frattempo sono state indicizzate. Mostrami il delta rispetto al ciclo precedente.",
         });
-        a.push({
-            stage: 1, key: 'gsc-freschezza', title: "Riesegui la scansione se la foto è vecchia",
-            why: "Decidere su una scansione di 40 giorni fa significa allocare budget su pagine che potrebbero essere già indicizzate.",
+        // La voce esisteva sempre, anche il giorno stesso della scansione: il titolo
+        // diceva "se la foto è vecchia" e il perché parlava di 40 giorni mentre la
+        // riga qui sopra leggeva 0. La soglia è già dichiarata nella riga
+        // "Età dell'ultima scansione" (35 giorni): si usa quella.
+        const eta = Object.values(bySite).map(s => daysAgo(s.date)).filter(x => x !== null).sort((x, y) => x - y)[0];
+        if (eta === undefined || eta === null || eta > 35) a.push({
+            stage: 1, key: 'gsc-freschezza',
+            title: eta == null ? "Nessuna scansione GSC registrata" : `La scansione ha ${eta} giorni: rifalla prima di decidere`,
+            why: eta == null
+                ? "La tower non ha nessuna scansione in archivio: l'allocatore di budget sta lavorando senza il suo input principale."
+                : `Oltre i 35 giorni la foto non descrive più il sito di oggi: allocheresti budget su pagine che nel frattempo possono essere già indicizzate. L'ultima ha ${eta} giorni.`,
             prompt: "Esegui la routine gsc-index-monitor: nuova scansione per worldofmerino.com e merinouniversity.com, push della crawl map e aggiornamento della tower. Poi dimmi cosa è cambiato rispetto all'ultima scansione.",
         });
         return a;
@@ -1074,7 +1124,7 @@ logs: {
     read: () => [R('Uso previsto', 'verifica infrastruttura', 'na',
         "Regola pratica del sistema: prima di spiegare un calo con il marketing, escludi ingestion, Redis e tracker. Nella storia di questo progetto la causa è stata tecnica molto più spesso che commerciale.")],
     actions: () => ([
-        { stage: 1, key: 'diagnostica-infra', title: "Escludi il guasto prima di cercare la spiegazione", why: "Una spiegazione di marketing costruita su un dato rotto sopravvive per settimane e orienta decisioni reali.", prompt: "Apri albeni-railway-operator. Verifica lo stato completo della catena: ml-worker, Redis, ingestion behavioral_signals e tracker sui 4 domini. Dimmi quale anello è degradato e da quando." },
+        { stage: 1, key: 'diagnostica-infra', plan: false, title: "Escludi il guasto prima di cercare la spiegazione", why: "Una spiegazione di marketing costruita su un dato rotto sopravvive per settimane e orienta decisioni reali.", prompt: "Apri albeni-railway-operator. Verifica lo stato completo della catena: ml-worker, Redis, ingestion behavioral_signals e tracker sui 4 domini. Dimmi quale anello è degradato e da quando." },
     ]),
     traps: [
         "**Un servizio 'healthy' può ricevere zero dati.** L'health check dice che il processo è vivo, non che il flusso arrivi.",
