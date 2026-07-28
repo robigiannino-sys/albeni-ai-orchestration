@@ -16,8 +16,16 @@ from config import get_settings
 settings = get_settings()
 engine = create_engine(
     settings.effective_database_url,
-    pool_size=5,
-    max_overflow=5,
+    # 10 connessioni tenute calde + 20 di sfogo. Il tetto precedente era 5+5: il
+    # 28/07 una pagina che leggeva 12 endpoint insieme lo ha esaurito, e il pool
+    # non si e' piu' liberato — non e' caduto solo il cruscotto, ma tutto cio' che
+    # scrive nel DB, ingestion dei quattro domini compresa. Questo servizio regge
+    # dashboard, 4 job APScheduler e le scritture dei tracker sulla stessa istanza:
+    # 10 era sottodimensionato per il carico combinato.
+    # Postgres su Railway dichiara max_connections=100 con ~14 in uso a regime dagli
+    # altri servizi, quindi il picco di 30 resta ampiamente dentro il budget.
+    pool_size=10,
+    max_overflow=20,
     pool_pre_ping=True,
     pool_recycle=1800,
     pool_timeout=20,
