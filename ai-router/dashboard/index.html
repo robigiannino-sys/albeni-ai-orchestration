@@ -433,6 +433,10 @@ executive: {
         { k: 'an',      p: '/v1/anomaly/alerts?days=7' },
         { k: 'seo',     p: '/v1/seo/health' },
         { k: 'lake',    p: '/v1/content/lake/stats/summary' },
+        // Non produce un tile: serve all'azione sui rossi della catena di misura,
+        // per distinguere "il dato non arriva" da "il dato arriva ed è brutto".
+        // Path già letto dalla Dashboard KPI: nel Piano viene deduplicato.
+        { k: 'traffic', p: '/v1/dashboard/traffic?hours=24' },
     ],
     read: (d) => {
         const rows = [];
@@ -502,11 +506,33 @@ executive: {
             why: "Quando tutti i tile sono in linea la mossa giusta non è ottimizzare, è aggiungere superficie (contenuto nuovo, mercati nuovi).",
             prompt: "Apri albeni-master. Tutti i tile executive sono in soglia. Dimmi qual è il prossimo blocco di lavoro a maggior impatto sui 90 giorni, con le decisioni ancora aperte che lo bloccano.",
         });
-        if (bad.length > 1) a.push({
-            stage: 1, key: 'verifica-misurazione', title: `Attenzione: ${bad.length} indicatori fuori soglia insieme`,
-            why: "Più indicatori rossi contemporaneamente sono quasi sempre un unico problema a monte (tracking, ingestion, deploy), non tre problemi separati.",
-            prompt: "Apri albeni-master. Ho più indicatori executive fuori soglia contemporaneamente. Verifica prima le cause comuni: health ml-worker/Redis, ingestion behavioral_signals, tracker attivo sui 4 domini. Dimmi se è un problema di misurazione o di performance reale.",
-        });
+        // "Un unico problema a monte" è vero solo se i rossi stanno sulla STESSA
+        // catena. IDS, CPA, mix e alert nascono tutti da tracking → ingestion →
+        // behavioral_signals: due di loro rossi insieme sono un indizio. La
+        // cannibalizzazione (SEO fra domini) e il CQS (qualità del brief) non
+        // condividono niente a monte con quella catena né fra loro — e per giunta
+        // arrivano da uno snapshot SEMrush, non dalla finestra corrente. Contarli
+        // tutti insieme mandava a rifare l'audit tracker/Redis anche quando il
+        // problema stava altrove ed era già coperto da un'azione specifica.
+        const CATENA_MISURA = ['IDS medio', 'CPA finestra', 'Mix organico', 'Alert aperti 7g'];
+        const badMisura = bad.filter(r => CATENA_MISURA.includes(r.label));
+        if (badMisura.length > 1) {
+            // Se il pannello traffico mostra eventi recenti su tutti i domini
+            // l'ingestion sta scrivendo: dirlo evita di far ripartire l'istruzione
+            // da una verifica che i dati hanno già escluso.
+            const dom = d.traffic?.domains || [];
+            const fermi = dom.filter(x => { const g = daysAgo(x.last_event); return g === null || g > 3; });
+            const viva = dom.length && !fermi.length;
+            a.push({
+                stage: 1, key: 'verifica-misurazione', title: `Attenzione: ${badMisura.length} indicatori della catena di misura fuori soglia insieme`,
+                why: `${badMisura.map(r => r.label).join(' e ')} nascono dalla stessa catena (tracker → ingestion → behavioral_signals): rossi insieme sono quasi sempre un unico guasto a monte, non due problemi separati.`
+                    + (viva ? " L'ingestion però sta scrivendo su tutti i domini, quindi la causa comune non è il trasporto del dato." : ''),
+                prompt: "Apri albeni-master. Ho più indicatori executive della catena di misura fuori soglia contemporaneamente"
+                    + (viva
+                        ? `, ma il pannello traffico mostra eventi recenti su tutti i ${dom.length} domini: l'ingestion sta scrivendo, quindi NON ripartire dall'audit tracker/Redis. Vai al passaggio dopo: qualità della sorgente di traffico e classificazione (IDS per dominio e per canale, distribuzione cluster, stadi di intento). Dimmi se il traffico è davvero poco qualificato o se è la classificazione a sbagliare.`
+                        : `${fermi.length ? ` e ${fermi.map(x => x.domain).join(', ')} non emette eventi da oltre 3 giorni` : ''}. Verifica le cause comuni in ordine: tracker attivo sui domini muti, health ml-worker/Redis, ingestion behavioral_signals. Dimmi se è un problema di misurazione o di performance reale.`),
+            });
+        }
         return a;
     },
     traps: [
