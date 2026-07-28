@@ -2,7 +2,7 @@
 Pydantic Schemas - Request/Response Models
 AI Orchestration Layer — micron-è
 """
-from pydantic import BaseModel, Field, EmailStr, AliasChoices
+from pydantic import BaseModel, Field, EmailStr, AliasChoices, model_validator
 from typing import Optional, Dict, List, Any
 from datetime import datetime
 from enum import Enum
@@ -199,13 +199,32 @@ class VisualGenerateRequest(BaseModel):
 # --- Klaviyo CRM Sync ---
 
 class KlaviyoSyncRequest(BaseModel):
-    email: str
+    """
+    Fino al 2026-07-28 `email` era obbligatoria. L'AI Router accetta pero' i sync
+    anonimi (routes/crm.js: "email is now optional") e inoltrava email=null: il
+    ML Worker rispondeva 422, il router 502, e nessuna riga finiva in
+    klaviyo_sync_log. Era la ragione per cui il contatore restava a zero anche
+    con il motore comportamentale attivo: un visitatore che supera IDS 65 senza
+    aver mai lasciato l'email e' il caso NORMALE, non l'eccezione.
+    Ora basta uno dei due identificatori; senza email l'ancora e' il visitor_id
+    del tracker, che diventa l'external_id del profilo Klaviyo — lo stesso a cui
+    l'email si attacchera' quando la lead la lascera'.
+    """
+    email: Optional[str] = None
+    visitor_id: Optional[str] = None
     ids_score: int
     cluster_tag: str
     intent_stage: IntentStage = IntentStage.BOFU
     language: str = "it"
     last_visited_domain: Optional[str] = None
+    source: Optional[str] = None
     ai_metadata: Dict[str, Any] = {}
+
+    @model_validator(mode="after")
+    def require_identifier(self):
+        if not self.email and not self.visitor_id:
+            raise ValueError("email or visitor_id is required")
+        return self
 
 
 class KlaviyoSyncResponse(BaseModel):

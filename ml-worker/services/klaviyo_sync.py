@@ -96,6 +96,7 @@ class KlaviyoService:
             # Log the sync
             self._log_sync(
                 user_email=request.email,
+                visitor_id=request.visitor_id,
                 sync_type="lead_sync",
                 trigger_reason=f"IDS={request.ids_score}, Stage={request.intent_stage.value}",
                 payload=request.model_dump(),
@@ -117,6 +118,7 @@ class KlaviyoService:
 
             self._log_sync(
                 user_email=request.email,
+                visitor_id=request.visitor_id,
                 sync_type="lead_sync",
                 trigger_reason=f"IDS={request.ids_score}",
                 payload=request.model_dump(),
@@ -131,13 +133,28 @@ class KlaviyoService:
                 sync_latency_ms=latency
             )
 
+    @staticmethod
+    def _identity(request: KlaviyoSyncRequest) -> Dict[str, str]:
+        """
+        Identificatori del profilo Klaviyo. Un profilo anonimo esiste solo se ha
+        un external_id: usiamo il visitor_id del tracker. Quando arrivano
+        entrambi li mandiamo insieme — e' cosi' che Klaviyo riconcilia il
+        profilo anonimo con la lead nel momento in cui lascia l'email.
+        """
+        ident = {}
+        if request.email:
+            ident["email"] = request.email
+        if request.visitor_id:
+            ident["external_id"] = request.visitor_id
+        return ident
+
     async def _upsert_profile(self, request: KlaviyoSyncRequest) -> Optional[str]:
         """Create or update a Klaviyo profile with AI-enriched data."""
         payload = {
             "data": {
                 "type": "profile",
                 "attributes": {
-                    "email": request.email,
+                    **self._identity(request),
                     "properties": {
                         "ids_score": request.ids_score,
                         "cluster_tag": request.cluster_tag,
@@ -155,9 +172,11 @@ class KlaviyoService:
             }
         }
 
+        ref = request.email or request.visitor_id
+
         if not self.api_key:
-            logger.info(f"[MOCK] Klaviyo profile upsert for {request.email}")
-            return f"mock_profile_{request.email}"
+            logger.info(f"[MOCK] Klaviyo profile upsert for {ref}")
+            return f"mock_profile_{ref}"
 
         async with httpx.AsyncClient() as client:
             response = await client.post(
@@ -171,53 +190,76 @@ class KlaviyoService:
                 data = response.json()
                 return data.get("data", {}).get("id")
             elif response.status_code == 409:
-                # Profile exists, update it
-                return await self._update_existing_profile(request)
+                # Profile exists. Klaviyo mette l'id del duplicato nel corpo del
+                # 409: usarlo evita una ricerca in piu' e funziona anche quando
+                # il match e' avvenuto sull'external_id invece che sull'email.
+                duplicate_id = None
+                try:
+                    errors = response.json().get("errors", [])
+                    duplicate_id = errors[0].get("meta", {}).get("duplicate_profile_id")
+                except Exception:
+                    pass
+                return await self._update_existing_profile(request, profile_id=duplicate_id)
             else:
                 logger.error(f"Klaviyo profile creation failed: {response.status_code} - {response.text}")
                 return None
 
-    async def _update_existing_profile(self, request: KlaviyoSyncRequest) -> Optional[str]:
-        """Update an existing Klaviyo profile by email."""
+    async def _update_existing_profile(
+        self,
+        request: KlaviyoSyncRequest,
+        profile_id: Optional[str] = None
+    ) -> Optional[str]:
+        """Update an existing Klaviyo profile, found by email or by external_id."""
         if not self.api_key:
-            return f"mock_profile_{request.email}"
+            return f"mock_profile_{request.email or request.visitor_id}"
 
-        # First, find the profile by email
         async with httpx.AsyncClient() as client:
-            search_response = await client.get(
-                f"{KLAVIYO_API_BASE}/profiles/",
-                headers=self.headers,
-                params={"filter": f'equals(email,"{request.email}")'},
-                timeout=10.0
-            )
+            if not profile_id:
+                # Senza email il profilo si ritrova solo per external_id.
+                if request.email:
+                    prof_filter = f'equals(email,"{request.email}")'
+                else:
+                    prof_filter = f'equals(external_id,"{request.visitor_id}")'
 
-            if search_response.status_code == 200:
-                profiles = search_response.json().get("data", [])
-                if profiles:
-                    profile_id = profiles[0]["id"]
-                    # Update the profile
-                    update_payload = {
-                        "data": {
-                            "type": "profile",
-                            "id": profile_id,
-                            "attributes": {
-                                "properties": {
-                                    "ids_score": request.ids_score,
-                                    "cluster_tag": request.cluster_tag,
-                                    "intent_stage": request.intent_stage.value,
-                                    "preferred_language": request.language,
-                                    "last_ai_sync": datetime.utcnow().isoformat()
-                                }
+                search_response = await client.get(
+                    f"{KLAVIYO_API_BASE}/profiles/",
+                    headers=self.headers,
+                    params={"filter": prof_filter},
+                    timeout=10.0
+                )
+
+                if search_response.status_code == 200:
+                    profiles = search_response.json().get("data", [])
+                    if profiles:
+                        profile_id = profiles[0]["id"]
+
+            if profile_id:
+                # Update the profile. Rimandiamo anche gli identificatori: se il
+                # profilo era anonimo e ora conosciamo l'email, e' qui che le due
+                # identita' si saldano sullo stesso profilo.
+                update_payload = {
+                    "data": {
+                        "type": "profile",
+                        "id": profile_id,
+                        "attributes": {
+                            **self._identity(request),
+                            "properties": {
+                                "ids_score": request.ids_score,
+                                "cluster_tag": request.cluster_tag,
+                                "intent_stage": request.intent_stage.value,
+                                "preferred_language": request.language,
+                                "last_ai_sync": datetime.utcnow().isoformat()
                             }
                         }
                     }
-                    await client.patch(
-                        f"{KLAVIYO_API_BASE}/profiles/{profile_id}/",
-                        headers=self.headers,
-                        json=update_payload,
-                        timeout=10.0
-                    )
-                    return profile_id
+                }
+                await client.patch(
+                    f"{KLAVIYO_API_BASE}/profiles/{profile_id}/",
+                    headers=self.headers,
+                    json=update_payload,
+                    timeout=10.0
+                )
+                return profile_id
 
         return None
 
@@ -240,9 +282,7 @@ class KlaviyoService:
                     "profile": {
                         "data": {
                             "type": "profile",
-                            "attributes": {
-                                "email": request.email
-                            }
+                            "attributes": self._identity(request)
                         }
                     },
                     "properties": {
@@ -260,7 +300,10 @@ class KlaviyoService:
         }
 
         if not self.api_key:
-            logger.info(f"[MOCK] Klaviyo event tracked: {flow_config['trigger_metric']} for {request.email}")
+            logger.info(
+                f"[MOCK] Klaviyo event tracked: {flow_config['trigger_metric']} "
+                f"for {request.email or request.visitor_id}"
+            )
             return
 
         async with httpx.AsyncClient() as client:
@@ -393,19 +436,27 @@ class KlaviyoService:
 
     def _log_sync(
         self,
-        user_email: str,
+        user_email: Optional[str],
         sync_type: str,
         trigger_reason: str,
         payload: dict,
         response_status: int,
         success: bool,
         latency: int,
-        error: str = None
+        error: str = None,
+        visitor_id: Optional[str] = None
     ):
         """Log sync attempt to database."""
         try:
-            # Find user by email
-            user = self.db.query(User).filter(User.email == user_email).first()
+            # Find user by email, altrimenti per external_id (= visitor_id del
+            # tracker). user_id resta NULL se il visitatore non e' ancora in DB:
+            # la riga di log si scrive comunque, ed e' il punto — il contatore
+            # deve misurare i tentativi, non i soli visitatori gia' noti.
+            user = None
+            if user_email:
+                user = self.db.query(User).filter(User.email == user_email).first()
+            if user is None and visitor_id:
+                user = self.db.query(User).filter(User.external_id == visitor_id).first()
 
             log = KlaviyoSyncLog(
                 user_id=user.id if user else None,
@@ -420,4 +471,7 @@ class KlaviyoService:
             self.db.add(log)
             self.db.commit()
         except Exception as e:
+            # Il rollback evita che una scrittura di log fallita lasci la
+            # sessione sporca per il resto della richiesta.
+            self.db.rollback()
             logger.error(f"Failed to log Klaviyo sync: {e}")
