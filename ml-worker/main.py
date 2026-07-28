@@ -3205,6 +3205,92 @@ async def crawl_map_batch(
     }
 
 
+@app.post("/v1/crawl-map/prune")
+async def crawl_map_prune(
+    request: Request,
+    payload: Dict = Body(...),
+    db: DBSession = Depends(get_db)
+):
+    """
+    Cancella le righe orfane di un sito: quelle che l'ultimo scan non ha toccato.
+    Auth API_KEY.
+    Body: {"site": "mu"|"wom", "keep_source": "gsc-scan-2026-07-28",
+           "dry_run"?: true, "expected"?: N}
+
+    Serve perche' /v1/crawl-map/batch e' un UPSERT: aggiorna e aggiunge, non toglie
+    mai nulla. Una pagina cancellata o rinominata resta in tabella per sempre e l'ADV
+    Budget Allocator continua a contarla come pagina reale (il 28/07: 42 righe orfane).
+
+    Due guardie, perche' qui si cancella:
+      - dry_run e' il default: senza dry_run=false non tocca niente e ritorna la lista;
+      - con dry_run=false serve 'expected' uguale al numero di orfani trovati, cosi'
+        una cancellazione parte solo dopo che qualcuno ha guardato la lista.
+    Resta a chi la lancia verificare che siano URL morte (301/404) prima di cancellare.
+    """
+    from models.database import CrawlMapEntry
+
+    api_key = (request.headers.get("x-api-key") or request.query_params.get("api_key") or "").strip()
+    if not _api_key_ok(api_key):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    site = (payload.get("site") or "").strip().lower()
+    if site not in _CRAWL_SITES:
+        raise HTTPException(status_code=400, detail=f"Invalid site '{site}'. Allowed: {sorted(_CRAWL_SITES)}")
+    keep_source = (payload.get("keep_source") or "").strip()
+    if not keep_source:
+        raise HTTPException(status_code=400, detail="Body must contain 'keep_source'")
+
+    _ensure_crawl_map_table(db)
+
+    # Se keep_source non esiste, il filtro 'source <> keep_source' prende tutta la
+    # tabella: un refuso nel nome dello scan svuoterebbe la crawl map del sito.
+    kept = db.query(CrawlMapEntry).filter(
+        CrawlMapEntry.site == site,
+        CrawlMapEntry.source == keep_source
+    ).count()
+    if kept == 0:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Nessuna riga con source '{keep_source}' su '{site}': "
+                   f"prune rifiutato per non cancellare l'intera crawl map"
+        )
+
+    orphan_q = db.query(CrawlMapEntry).filter(
+        CrawlMapEntry.site == site,
+        CrawlMapEntry.source != keep_source
+    )
+    orphans = orphan_q.order_by(CrawlMapEntry.url_path.asc()).all()
+    orphan_list = [
+        {"url_path": r.url_path, "verdict": r.verdict, "source": r.source,
+         "last_scanned_at": r.last_scanned_at.isoformat() if r.last_scanned_at else None}
+        for r in orphans
+    ]
+
+    dry_run = payload.get("dry_run", True)
+    if dry_run:
+        return {"status": "dry_run", "site": site, "keep_source": keep_source,
+                "kept_rows": kept, "orphans": len(orphan_list), "entries": orphan_list,
+                "deleted": 0,
+                "hint": "Verificare che siano URL morte, poi ripetere con "
+                        f"dry_run=false e expected={len(orphan_list)}"}
+
+    expected = payload.get("expected")
+    if expected != len(orphan_list):
+        raise HTTPException(
+            status_code=409,
+            detail=f"expected={expected} ma gli orfani sono {len(orphan_list)}: "
+                   f"rilanciare il dry_run e confermare il numero"
+        )
+
+    deleted = orphan_q.delete(synchronize_session=False)
+    db.commit()
+    total = db.query(CrawlMapEntry).filter(CrawlMapEntry.site == site).count()
+    logger.info(f"crawl-map prune: {deleted} righe orfane cancellate su '{site}' "
+                f"(keep_source={keep_source}), restano {total}")
+    return {"status": "ok", "site": site, "keep_source": keep_source,
+            "deleted": deleted, "entries": orphan_list, "total_rows_for_site": total}
+
+
 @app.get("/v1/crawl-map")
 async def crawl_map_get(
     site: str = Query(..., description="'mu' | 'wom'"),
