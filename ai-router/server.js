@@ -115,14 +115,41 @@ app.use('/v1/router', createIndexRoutes(dashboardPath_early));
 const dashboardPath = process.env.DASHBOARD_PATH || path.join(__dirname, 'dashboard');
 app.use('/v1/content/priorities', createContentPriorityRoutes(dashboardPath));
 app.use('/v1/adv', createAdvBudgetRoutes(dashboardPath));
-app.use(express.static(dashboardPath, {
+// Only these files are meant to be world-readable: the Layer 1 tracking scripts
+// injected into the WordPress sites (they need CORS *) and the dashboard shell.
+// Everything else in this folder is internal data — crawl maps read by
+// indexAwareRouter/contentPrioritizer, adv_transitions.json written by
+// advBudgetAllocator, legacy dumps — and must stay off the public surface.
+// Allowlist, not denylist: a new file dropped in here is private by default.
+const PUBLIC_DASHBOARD_FILES = new Set([
+    'index.html',
+    'albeni-ai-tracker.js',
+    'albeni-behavioral-engine.js',
+    'albeni-unified-tracker.js',
+    'content-lake-multilingual.js',
+]);
+
+const dashboardStatic = express.static(dashboardPath, {
     setHeaders: (res, filePath) => {
         if (filePath.endsWith('.js')) {
             res.setHeader('Access-Control-Allow-Origin', '*');
             res.setHeader('Content-Type', 'application/javascript');
         }
     }
-}));
+});
+
+app.use((req, res, next) => {
+    // path.basename on the decoded path: anything not explicitly public falls
+    // through to the /v1 routes and, failing those, to a 404.
+    let name;
+    try {
+        name = path.basename(decodeURIComponent(req.path));
+    } catch (e) {
+        return next(); // malformed percent-encoding — never reaches the disk
+    }
+    if (!PUBLIC_DASHBOARD_FILES.has(name)) return next();
+    return dashboardStatic(req, res, next);
+});
 
 // Dashboard - serve the HTML file
 app.get('/', (req, res) => {
@@ -132,32 +159,11 @@ app.get('/dashboard', (req, res) => {
     res.sendFile(path.join(dashboardPath, 'index.html'));
 });
 
-// Content Library API - serve the JSON database
-app.get('/v1/content-library', (req, res) => {
-    const fs = require('fs');
-    const dbPath = path.join(dashboardPath, 'content_library.json');
-    try {
-        const raw = fs.readFileSync(dbPath, 'utf8');
-        const db = JSON.parse(raw);
-        // Optional filters via query params
-        const { cat, search, limit } = req.query;
-        let items = db.contents || [];
-        if (cat && cat !== 'all') items = items.filter(i => i.category === cat);
-        if (search) {
-            const q = search.toLowerCase();
-            items = items.filter(i =>
-                (i.title||'').toLowerCase().includes(q) ||
-                (i.summary||'').toLowerCase().includes(q) ||
-                (i.body||'').toLowerCase().includes(q) ||
-                (i.tags||[]).some(t => t.toLowerCase().includes(q))
-            );
-        }
-        if (limit) items = items.slice(0, parseInt(limit));
-        res.json({ ...db, contents: items, filtered_count: items.length });
-    } catch (e) {
-        res.status(404).json({ error: 'content_library.json not found', detail: e.message });
-    }
-});
+// Content Library API — RIMOSSA il 28/07/2026.
+// Serviva content_library.json (dump di marzo) senza auth. Nessun lettore: la
+// pagina Content Lake della dashboard legge /v1/content/lake dal Postgres via
+// ML Worker, non questo file. L'archivio è stato spostato in ai-router/data/,
+// fuori dall'albero servito da express.static.
 
 // --- GSC Indexing Monitor API ---
 // MIGRATED 2026-05-14 to ml-worker Python + Postgres for persistence.
