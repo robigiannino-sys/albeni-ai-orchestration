@@ -19,7 +19,9 @@
  *
  * DATA SOURCES:
  *   - contentPrioritizer.js → cluster health, crawl maps
- *   - adv_transitions.json → pages in 30-day decay phase
+ *   - Postgres, tabella adv_transitions → pages in 30-day decay phase
+ *     (era adv_transitions.json, spostata il 2026-07-28: il filesystem del
+ *     container su Railway e' effimero e azzerava le transizioni a ogni deploy)
  *   - Budget config → €30K / 18 months, phase-based
  *
  * API:
@@ -36,6 +38,7 @@
 const fs = require('fs');
 const path = require('path');
 const { requestHasValidApiKey } = require('../utils/apiKey');
+const { getPool } = require('../utils/db');
 
 // Reuse core infrastructure from contentPrioritizer
 const {
@@ -105,34 +108,145 @@ const EXCLUDED_PATHS = [
 // ============================================================
 // Tracks pages transitioning from paid→organic (30-day decay)
 
+const TRANSITIONS_DDL = `
+  CREATE TABLE IF NOT EXISTS adv_transitions (
+    site               TEXT          NOT NULL,
+    url_path           TEXT          NOT NULL,
+    cluster            TEXT,
+    original_budget    NUMERIC(10,2) NOT NULL DEFAULT 0,
+    indexed_date       TIMESTAMPTZ   NOT NULL,
+    days_since_indexed INTEGER       NOT NULL DEFAULT 0,
+    remaining_budget   NUMERIC(10,2) NOT NULL DEFAULT 0,
+    status             TEXT          NOT NULL DEFAULT 'decaying',
+    updated_at         TIMESTAMPTZ   NOT NULL DEFAULT now(),
+    PRIMARY KEY (site, url_path)
+  )`;
+
+/**
+ * Le transizioni paid→organic vivono su Postgres.
+ *
+ * Prima del 2026-07-28 stavano in dashboard/adv_transitions.json, cioe' nel
+ * filesystem del container: su Railway ogni deploy o restart lo azzera. Le
+ * transizioni non sono mai sopravvissute, e siccome save() si limitava a
+ * loggare gli errori, l'endpoint rispondeva 200 con 'processed' valorizzato
+ * anche quando non restava niente. La compensazione paid→organic — il motivo
+ * per cui questo middleware esiste — non ha quindi mai funzionato: nessun
+ * budget e' mai stato ritirato da una pagina entrata in indice.
+ *
+ * Due regole che vengono da li':
+ *  - la scrittura non si ingoia: flush() rilancia, e la rotta risponde 5xx.
+ *    Un push che non persiste deve *sembrare* fallito, perche' lo e'.
+ *  - load/flush sono async, quindi le rotte le attendono esplicitamente;
+ *    refresh() e addTransition() restano sincroni e lavorano in memoria,
+ *    marcando lo stato "sporco" da scrivere.
+ */
 class TransitionStore {
   constructor(dashboardPath) {
-    this.filePath = path.join(dashboardPath, 'adv_transitions.json');
+    // Tenuto solo per la migrazione una tantum del file superstite, se c'e'.
+    this.legacyFilePath = path.join(dashboardPath, 'adv_transitions.json');
     this.transitions = [];
     this.lastLoad = 0;
     this.TTL = 60 * 1000; // 1 minute
+    this.dirty = false;
+    this.schemaReady = null;
   }
 
-  load() {
+  async ensureSchema() {
+    if (!this.schemaReady) {
+      this.schemaReady = getPool().query(TRANSITIONS_DDL).catch((e) => {
+        this.schemaReady = null; // un fallimento non si cristallizza
+        throw e;
+      });
+    }
+    return this.schemaReady;
+  }
+
+  static rowToTransition(r) {
+    return {
+      urlPath: r.url_path,
+      site: r.site,
+      cluster: r.cluster,
+      // pg restituisce NUMERIC come stringa: senza parseFloat le somme di
+      // budget diventerebbero concatenazioni di testo.
+      originalBudget: parseFloat(r.original_budget),
+      indexedDate: r.indexed_date instanceof Date ? r.indexed_date.toISOString() : r.indexed_date,
+      daysSinceIndexed: r.days_since_indexed,
+      remainingBudget: parseFloat(r.remaining_budget),
+      status: r.status,
+    };
+  }
+
+  async load(force = false) {
     const now = Date.now();
-    if (now - this.lastLoad < this.TTL) return;
+    if (!force && this.lastLoad && now - this.lastLoad < this.TTL) return;
+    await this.ensureSchema();
+    const { rows } = await getPool().query(
+      'SELECT * FROM adv_transitions ORDER BY indexed_date ASC'
+    );
+    this.transitions = rows.map(TransitionStore.rowToTransition);
+    this.lastLoad = now;
+    this.dirty = false;
+
+    if (this.transitions.length === 0) await this.migrateLegacyFile();
+  }
+
+  /**
+   * Recupero una tantum del vecchio file, se per caso e' sopravvissuto al
+   * deploy che porta questa modifica. In produzione sara' quasi sempre un
+   * no-op — il file e' gia' stato azzerato — ma non costa nulla e evita di
+   * buttare via transizioni ancora valide dove il filesystem e' persistente.
+   */
+  async migrateLegacyFile() {
     try {
-      if (fs.existsSync(this.filePath)) {
-        this.transitions = JSON.parse(fs.readFileSync(this.filePath, 'utf8'));
-      }
-      this.lastLoad = now;
+      if (!fs.existsSync(this.legacyFilePath)) return;
+      const legacy = JSON.parse(fs.readFileSync(this.legacyFilePath, 'utf8'));
+      if (!Array.isArray(legacy) || legacy.length === 0) return;
+      this.transitions = legacy;
+      this.dirty = true;
+      await this.flush();
+      console.log(`[ADVAllocator] Migrate ${legacy.length} transizioni dal file legacy a Postgres`);
+      fs.renameSync(this.legacyFilePath, `${this.legacyFilePath}.migrated`);
     } catch (e) {
-      console.error('[ADVAllocator] Failed to load transitions:', e.message);
-      this.transitions = [];
+      console.error('[ADVAllocator] Migrazione file legacy non riuscita:', e.message);
     }
   }
 
-  save() {
+  /**
+   * Scrive su Postgres tutto cio' che e' cambiato in memoria. Rilancia: chi
+   * chiama deve poter rispondere 5xx invece di dichiarare un successo che non
+   * c'e' stato.
+   */
+  async flush() {
+    if (!this.dirty) return;
+    await this.ensureSchema();
+    const client = await getPool().connect();
     try {
-      fs.writeFileSync(this.filePath, JSON.stringify(this.transitions, null, 2), 'utf8');
-      this.lastLoad = Date.now();
+      await client.query('BEGIN');
+      for (const t of this.transitions) {
+        await client.query(
+          `INSERT INTO adv_transitions
+             (site, url_path, cluster, original_budget, indexed_date,
+              days_since_indexed, remaining_budget, status, updated_at)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8, now())
+           ON CONFLICT (site, url_path) DO UPDATE SET
+             cluster            = EXCLUDED.cluster,
+             original_budget    = EXCLUDED.original_budget,
+             indexed_date       = EXCLUDED.indexed_date,
+             days_since_indexed = EXCLUDED.days_since_indexed,
+             remaining_budget   = EXCLUDED.remaining_budget,
+             status             = EXCLUDED.status,
+             updated_at         = now()`,
+          [t.site, t.urlPath, t.cluster, t.originalBudget, t.indexedDate,
+           t.daysSinceIndexed, t.remainingBudget, t.status]
+        );
+      }
+      await client.query('COMMIT');
+      this.dirty = false;
     } catch (e) {
-      console.error('[ADVAllocator] Failed to save transitions:', e.message);
+      await client.query('ROLLBACK').catch(() => {});
+      throw e;
+    } finally {
+      client.release();
     }
   }
 
@@ -152,11 +266,14 @@ class TransitionStore {
       status: 'decaying', // decaying | completed
     };
     this.transitions.push(transition);
-    this.save();
+    this.dirty = true;   // scritto da flush(), che chi chiama deve attendere
     return transition;
   }
 
   // Update all transitions: compute days elapsed, remaining budget
+  // Sincrono e in memoria: marca lo stato da riscrivere solo se qualcosa e'
+  // davvero cambiato, cosi' le GET del cruscotto non generano una scrittura
+  // per ogni visita.
   refresh() {
     const now = new Date();
     let freed = 0;
@@ -165,6 +282,7 @@ class TransitionStore {
       if (t.status === 'completed') continue;
 
       const indexedDate = new Date(t.indexedDate);
+      const before = { d: t.daysSinceIndexed, r: t.remainingBudget, s: t.status };
       t.daysSinceIndexed = Math.floor((now - indexedDate) / (1000 * 60 * 60 * 24));
 
       if (t.daysSinceIndexed >= GUARDRAILS.transitionDays) {
@@ -177,9 +295,12 @@ class TransitionStore {
         freed += (t.remainingBudget - newBudget);
         t.remainingBudget = newBudget;
       }
+
+      if (before.d !== t.daysSinceIndexed || before.r !== t.remainingBudget || before.s !== t.status) {
+        this.dirty = true;
+      }
     }
 
-    this.save();
     return { freedBudget: parseFloat(freed.toFixed(2)) };
   }
 
@@ -200,9 +321,10 @@ class TransitionStore {
  * Computes full budget allocation based on cluster health + KW weights.
  * Returns per-cluster and per-page allocation with recommendations.
  */
+// Presuppone che transitionStore sia gia' stato caricato: load() e' async da
+// quando la persistenza e' su Postgres, e le rotte lo attendono prima di qui.
 function computeAllocation(store, transitionStore) {
   const clusterHealth = analyzeClusterHealth(store);
-  transitionStore.load();
   const { freedBudget } = transitionStore.refresh();
 
   const phase = BUDGET_CONFIG.phases[BUDGET_CONFIG.currentPhase];
@@ -477,12 +599,20 @@ function createRoutes(dashboardPath) {
   const store = new CrawlMapStore(dashboardPath);
   const transitionStore = new TransitionStore(dashboardPath);
 
+  // Lettura + decadimento + riscrittura di cio' che e' cambiato. Il flush e'
+  // atteso: se Postgres non risponde, chi chiama lo deve sapere.
+  async function loadComputeFlush() {
+    await transitionStore.load();
+    const report = computeAllocation(store, transitionStore);
+    await transitionStore.flush();
+    return report;
+  }
+
   // --- Full allocation report ---
   // GET /v1/adv/allocate
-  router.get('/allocate', (req, res) => {
+  router.get('/allocate', async (req, res) => {
     try {
-      const report = computeAllocation(store, transitionStore);
-      res.json(report);
+      res.json(await loadComputeFlush());
     } catch (e) {
       console.error('[ADVAllocator] Report error:', e);
       res.status(500).json({ error: e.message });
@@ -490,10 +620,9 @@ function createRoutes(dashboardPath) {
   });
 
   // --- Full report (also on root) ---
-  router.get('/', (req, res) => {
+  router.get('/', async (req, res) => {
     try {
-      const report = computeAllocation(store, transitionStore);
-      res.json(report);
+      res.json(await loadComputeFlush());
     } catch (e) {
       console.error('[ADVAllocator] Report error:', e);
       res.status(500).json({ error: e.message });
@@ -502,9 +631,9 @@ function createRoutes(dashboardPath) {
 
   // --- Single cluster allocation ---
   // GET /v1/adv/cluster/:id
-  router.get('/cluster/:id', (req, res) => {
+  router.get('/cluster/:id', async (req, res) => {
     try {
-      const report = computeAllocation(store, transitionStore);
+      const report = await loadComputeFlush();
       const cluster = report.clusters[req.params.id.toUpperCase()];
       if (!cluster) {
         return res.status(404).json({ error: `Cluster "${req.params.id}" not found` });
@@ -521,10 +650,11 @@ function createRoutes(dashboardPath) {
 
   // --- Transitions list ---
   // GET /v1/adv/transitions
-  router.get('/transitions', (req, res) => {
+  router.get('/transitions', async (req, res) => {
     try {
-      transitionStore.load();
+      await transitionStore.load();
       transitionStore.refresh();
+      await transitionStore.flush();
       res.json({
         active: transitionStore.getActive(),
         completed: transitionStore.getCompleted(),
@@ -541,7 +671,7 @@ function createRoutes(dashboardPath) {
   // POST /v1/adv/index-event
   // Body: { urlPath: "/page-slug", site: "mu", cluster: "A" }
   // Called when GSC scan detects a new PASS verdict
-  router.post('/index-event', (req, res) => {
+  router.post('/index-event', async (req, res) => {
     if (!requestHasValidApiKey(req)) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -552,7 +682,7 @@ function createRoutes(dashboardPath) {
         return res.status(400).json({ error: 'Missing required fields: urlPath, site' });
       }
 
-      transitionStore.load();
+      await transitionStore.load();
 
       // Estimate original budget for this page (use cluster average)
       const report = computeAllocation(store, transitionStore);
@@ -562,6 +692,7 @@ function createRoutes(dashboardPath) {
       const transition = transitionStore.addTransition(
         urlPath, site, cluster || 'uncategorized', estimatedBudget
       );
+      await transitionStore.flush();   // prima di dichiarare l'esito
 
       res.json({
         status: 'ok',
@@ -576,7 +707,7 @@ function createRoutes(dashboardPath) {
   // --- Batch index events (from GSC scan) ---
   // POST /v1/adv/index-events
   // Body: { events: [{ urlPath, site, cluster }, ...] }
-  router.post('/index-events', (req, res) => {
+  router.post('/index-events', async (req, res) => {
     if (!requestHasValidApiKey(req)) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -587,7 +718,7 @@ function createRoutes(dashboardPath) {
         return res.status(400).json({ error: 'Body must contain events array' });
       }
 
-      transitionStore.load();
+      await transitionStore.load();
       const report = computeAllocation(store, transitionStore);
       const results = [];
 
@@ -600,13 +731,24 @@ function createRoutes(dashboardPath) {
         results.push(transition);
       }
 
+      // 'processed' si dichiara solo dopo che la scrittura e' andata a buon
+      // fine. Prima il flush non esisteva e la risposta era 200 comunque: e'
+      // il motivo per cui 72 transizioni risultavano inviate e nessuna
+      // atterrata, senza che nulla nei log lo segnalasse.
+      await transitionStore.flush();
+
       res.json({
         status: 'ok',
         processed: results.length,
         transitions: results,
       });
     } catch (e) {
-      res.status(500).json({ error: e.message });
+      console.error('[ADVAllocator] index-events: persistenza fallita:', e.message);
+      res.status(500).json({
+        error: 'Transizioni non persistite',
+        detail: e.message,
+        processed: 0,
+      });
     }
   });
 
