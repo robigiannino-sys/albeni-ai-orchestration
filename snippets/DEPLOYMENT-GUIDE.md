@@ -179,7 +179,7 @@ Per ogni flow, usa le subject line e i blocchi contenuto specificati in `klaviyo
 
 Nel file `.env` nella cartella `ai-orchestration-layer/`, assicurati che sia configurata:
 ```
-KLAVIYO_API_KEY=pk_xxxxxxxxxxxxxxxxxxxx
+KLAVIYO_API_KEY=<la-tua-chiave-privata-Klaviyo>
 ```
 
 ---
@@ -196,12 +196,20 @@ ai-router:
 ```
 
 ### Aggiungi la cartella tracking come static:
-1. Copia i file JS nella cartella `dashboard/`:
+
+> ⚠️ **NON copiare piu' da `tracking/` (nota 2026-07-29).** La sorgente
+> canonica dei file serviti e' **`ai-router/dashboard/`**, ed e' quella
+> pivotata su micron-è. I file rimasti in `tracking/` sono un mirror
+> **pre-pivot** che contiene ancora "Albeni 1905" e "eredità Albeni":
+> eseguire i `cp` qui sotto rimetterebbe in produzione termini vietati
+> (vedi la regola di purge totale). `tracking/albeni-behavioral-engine.js`
+> e' stato rimosso per questo; gli altri tre file della cartella hanno lo
+> stesso problema e vanno trattati come archivio, non come sorgente.
+
+1. I file JS sono gia' in `ai-router/dashboard/` e vengono serviti da li'.
+   Si modificano **in quella cartella** e si deploya il service:
 ```bash
-cp ai-orchestration-layer/tracking/albeni-ai-tracker.js \
-   ai-orchestration-layer/dashboard/
-cp ai-orchestration-layer/tracking/albeni-behavioral-engine.js \
-   ai-orchestration-layer/dashboard/
+cd ai-router && railway up --service creative-perfection
 ```
 
 2. In `server.js`, aggiungi la route statica (già presente per `/dashboard`):

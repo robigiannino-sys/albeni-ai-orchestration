@@ -696,6 +696,37 @@
   // 10. EMAIL CAPTURE LISTENER
   //     Stores email for Klaviyo sync if visitor fills any form
   // ============================================================
+  // `albeni_visitor_email` e' un identificatore di profilazione: EDPB 2/2023
+  // estende l'art. 5(3) ePrivacy a localStorage. Su WoM e MU il loader di
+  // questo script e' gia' gated da Complianz, ma il gating al caricamento non
+  // e' una garanzia: se il consenso viene revocato a meta' sessione lo script
+  // resta in pagina, e setEmail e' un'API pubblica che qualunque altro script
+  // puo' chiamare. Il controllo va dove avviene la scrittura.
+  //
+  // Dove un CMP non esiste (perfectmerinoshirt.com, micron-e.com) l'assenza di
+  // risposta non e' un rifiuto: bloccare li' spegnerebbe l'arricchimento su due
+  // domini senza che nessuno abbia negato niente. Quindi si rispetta il CMP se
+  // c'e'; dove non c'e', la questione e' del dominio, non di questo script.
+  function mayStoreVisitorEmail() {
+    try {
+      if (typeof window.cmplz_has_consent === 'function') {
+        return window.cmplz_has_consent('statistics') === true;
+      }
+    } catch (e) {
+      return false;  // CMP presente ma rotto: fail-closed
+    }
+    return true;     // nessun CMP su questo dominio
+  }
+
+  function storeVisitorEmail(email) {
+    if (!mayStoreVisitorEmail()) return false;
+    try {
+      localStorage.setItem('albeni_visitor_email', email);
+      sessionStorage.setItem('albeni_visitor_email', email);
+    } catch (e) { /* storage pieno o negato: non bloccare il form */ }
+    return true;
+  }
+
   function initEmailCapture() {
     document.addEventListener('submit', function(e) {
       const form = e.target;
@@ -703,8 +734,9 @@
       if (emailInput && emailInput.value) {
         const email = emailInput.value.trim();
         if (/^[^@]+@[^@]+\.[^@]+$/.test(email)) {
-          localStorage.setItem('albeni_visitor_email', email);
-          sessionStorage.setItem('albeni_visitor_email', email);
+          // Senza consenso non si scrive e non si sincronizza: il sync legge
+          // l'email dallo storage, quindi partirebbe comunque a vuoto.
+          if (!storeVisitorEmail(email)) return;
           log('Email captured:', email);
           // If IDS already above threshold, sync immediately
           if (STATE.ids >= 65) triggerKlaviyoSync(STATE.ids, STATE.cluster);
@@ -777,9 +809,10 @@
         STATE.quizCompleted = true;
         document.dispatchEvent(new CustomEvent('albeni:quiz_complete', { detail: answers }));
       },
-      // Called by email forms
+      // Called by email forms. Stesso gate di initEmailCapture: e' un'API
+      // pubblica, quindi qui il controllo di consenso e' l'unico che c'e'.
       setEmail: function(email) {
-        localStorage.setItem('albeni_visitor_email', email);
+        if (!storeVisitorEmail(email)) return;
         if (STATE.ids >= 65) triggerKlaviyoSync(STATE.ids, STATE.cluster);
       },
     };
