@@ -455,8 +455,23 @@ class ResearchHub:
         if source_override:
             source = source_override
 
-        # Store
-        import_id = f"hub_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{len(self._index)}"
+        # Store.
+        #
+        # Il suffisso era len(self._index), che non e' un contatore: dopo una
+        # cancellazione l'indice si accorcia e il numero torna indietro. Due
+        # import nello stesso secondo dopo un delete ricevevano cosi' lo stesso
+        # id, e siccome il payload sta in DATA_DIR/{id}.json il secondo
+        # sovrascriveva i dati del primo lasciando due record nell'indice che
+        # puntavano allo stesso file. Visto il 29/07/2026 ricaricando il Data
+        # Hub: 6 id duplicati su 14 import. Ora l'id si scontra con quelli
+        # esistenti e scala finche' non e' libero.
+        stamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        taken = {r.get("id") for r in self._index}
+        seq = len(self._index)
+        import_id = f"hub_{stamp}_{seq}"
+        while import_id in taken or os.path.exists(os.path.join(DATA_DIR, f"{import_id}.json")):
+            seq += 1
+            import_id = f"hub_{stamp}_{seq}"
         data_path = os.path.join(DATA_DIR, f"{import_id}.json")
 
         category = self.CATEGORIES.get(source, self.CATEGORIES["custom_data"])
