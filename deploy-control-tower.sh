@@ -12,7 +12,6 @@ set -euo pipefail
 # ── Paths ──────────────────────────────────────────────────────
 ALBENI_ROOT="$HOME/Desktop/ALBENI/albeni.com/STEFANO/AI STACK APP/ai-orchestration-layer"
 DASHBOARD_DIR="$ALBENI_ROOT/dashboard"
-TRACKING_DIR="$ALBENI_ROOT/tracking"
 SNIPPETS_DIR="$ALBENI_ROOT/snippets"
 
 # Source files (same folder as this script)
@@ -43,8 +42,11 @@ fi
 
 echo -e "${GREEN}✓${NC} Cartella AI Stack trovata"
 
-# Create target dirs if needed
-mkdir -p "$DASHBOARD_DIR" "$TRACKING_DIR" "$SNIPPETS_DIR"
+# Create target dirs if needed.
+# tracking/ non c'e' piu' (2026-07-29): era un mirror di dashboard/ che nessuno
+# leggeva e che nel tempo e' rimasto indietro al pivot micron-è, conservando il
+# branding pre-pivot. La sorgente servita e' solo dashboard/.
+mkdir -p "$DASHBOARD_DIR" "$SNIPPETS_DIR"
 
 # ── 2. Deploy Content Lake Multilingual ───────────────────────
 if [ -f "$CONTENT_LAKE" ]; then
@@ -57,10 +59,6 @@ if [ -f "$CONTENT_LAKE" ]; then
 
   cp "$CONTENT_LAKE" "$DASHBOARD_DIR/content-lake-multilingual.js"
   echo -e "${GREEN}✓${NC} Content Lake Multilingual → dashboard/"
-
-  # Also copy to tracking/ for the behavioral engine
-  cp "$CONTENT_LAKE" "$TRACKING_DIR/content-lake-multilingual.js"
-  echo -e "${GREEN}✓${NC} Content Lake Multilingual → tracking/"
 else
   echo -e "${RED}✗${NC} content-lake-multilingual.js non trovato in $SCRIPT_DIR"
 fi
@@ -68,17 +66,14 @@ fi
 # ── 3. Deploy Unified Tracker ─────────────────────────────────
 if [ -f "$UNIFIED_TRACKER" ]; then
   # Backup old trackers
-  for OLD_FILE in "$TRACKING_DIR/albeni-ai-tracker.js" "$SNIPPETS_DIR/tracking.js"; do
+  for OLD_FILE in "$SNIPPETS_DIR/tracking.js"; do
     if [ -f "$OLD_FILE" ]; then
       cp "$OLD_FILE" "${OLD_FILE}.bak.$(date +%Y%m%d%H%M%S)"
       echo -e "${YELLOW}↻${NC} Backup: $(basename "$OLD_FILE")"
     fi
   done
 
-  cp "$UNIFIED_TRACKER" "$TRACKING_DIR/albeni-unified-tracker.js"
-  echo -e "${GREEN}✓${NC} Unified Tracker → tracking/"
-
-  # Also place in snippets/ for WP deployment
+  # Place in snippets/ for WP deployment
   cp "$UNIFIED_TRACKER" "$SNIPPETS_DIR/albeni-unified-tracker.js"
   echo -e "${GREEN}✓${NC} Unified Tracker → snippets/"
 else
@@ -143,8 +138,6 @@ echo "════════════════════════�
 echo ""
 echo "  File deployati:"
 echo "    • dashboard/content-lake-multilingual.js  (432 varianti IT/EN/DE/FR)"
-echo "    • tracking/content-lake-multilingual.js   (copia per behavioral engine)"
-echo "    • tracking/albeni-unified-tracker.js      (Layer 1 consolidato)"
 echo "    • snippets/albeni-unified-tracker.js      (per deploy WP)"
 echo ""
 echo "  Prossimi passi:"
