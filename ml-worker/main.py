@@ -26,7 +26,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session as DBSession
-from sqlalchemy import func, and_
+from sqlalchemy import func, and_, or_, not_, distinct, cast, String
 
 from config import get_settings, Settings
 from models.database import (
@@ -1072,14 +1072,48 @@ async def get_dashboard_metrics(db: DBSession = Depends(get_db)):
         ).scalar() or 0
 
         # Klaviyo sync health
-        recent_syncs = db.query(func.count(KlaviyoSyncLog.id)).filter(
-            KlaviyoSyncLog.created_at >= datetime.utcnow() - timedelta(hours=24)
-        ).scalar() or 0
+        #
+        # Una riga di klaviyo_sync_log e' un *sync*, non un lead: la stessa
+        # persona ne genera una per punto di raccolta, e le sessioni di verifica
+        # scrivono in tabella esattamente come il traffico vero. Senza queste due
+        # distinzioni il contatore trasforma i propri test in un allarme — il
+        # 29/07 le 5 righe di probe del giorno prima (4 sulla stessa email di
+        # test + 1 anonima) sono state lette come "5 lead dalla catena".
+        sync_window = datetime.utcnow() - timedelta(hours=24)
+        p_email = KlaviyoSyncLog.payload_sent["email"].astext
+        p_visitor = KlaviyoSyncLog.payload_sent["visitor_id"].astext
+        p_source = KlaviyoSyncLog.payload_sent["source"].astext
+        # coalesce a stringa vuota: su un payload che non ha la chiave, `astext`
+        # e' NULL e il confronto restituirebbe NULL, non False — la riga
+        # sparirebbe da entrambi i conteggi invece di finire fra i reali.
+        is_test_sync = or_(
+            func.coalesce(p_email, "").ilike("test%"),
+            func.coalesce(p_visitor, "").ilike("probe%"),
+            func.coalesce(p_source, "").ilike("probe%"),
+        )
+        # I sync legacy (flow_trigger, event_track, profile_update) non portano
+        # email ne' visitor_id ma profile_id + user_id: senza questi due anelli
+        # 186 sync storici risultavano 0 persone.
+        sync_identity = func.coalesce(
+            func.nullif(p_email, ""),
+            func.nullif(p_visitor, ""),
+            func.nullif(KlaviyoSyncLog.payload_sent["profile_id"].astext, ""),
+            cast(KlaviyoSyncLog.user_id, String),
+        )
+
+        in_window = KlaviyoSyncLog.created_at >= sync_window
+        real_syncs = and_(in_window, not_(is_test_sync))
+
+        recent_syncs = db.query(func.count(KlaviyoSyncLog.id)).filter(real_syncs).scalar() or 0
         successful_syncs = db.query(func.count(KlaviyoSyncLog.id)).filter(
-            and_(
-                KlaviyoSyncLog.created_at >= datetime.utcnow() - timedelta(hours=24),
-                KlaviyoSyncLog.success == True
-            )
+            and_(real_syncs, KlaviyoSyncLog.success == True)
+        ).scalar() or 0
+        # Persone distinte dietro quei sync: e' questo il numero che vale "lead".
+        distinct_leads = db.query(
+            func.count(distinct(sync_identity))
+        ).filter(real_syncs).scalar() or 0
+        test_syncs = db.query(func.count(KlaviyoSyncLog.id)).filter(
+            and_(in_window, is_test_sync)
         ).scalar() or 0
 
         return DashboardMetrics(
@@ -1093,7 +1127,9 @@ async def get_dashboard_metrics(db: DBSession = Depends(get_db)):
             klaviyo_sync_health={
                 "last_24h_total": recent_syncs,
                 "last_24h_successful": successful_syncs,
-                "success_rate": round(successful_syncs / max(1, recent_syncs) * 100, 1)
+                "success_rate": round(successful_syncs / max(1, recent_syncs) * 100, 1),
+                "last_24h_leads": distinct_leads,
+                "last_24h_test_syncs": test_syncs,
             }
         )
 

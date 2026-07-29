@@ -670,26 +670,42 @@ klaviyo: {
     read: (d) => {
         const h = d.metrics?.klaviyo_sync_health || {};
         const tot = num(h.last_24h_total), ok = num(h.last_24h_successful), rate = num(h.success_rate);
-        return [R('Lead arricchiti 24h', tot === null ? '—' : tot === 0 ? '0' : `${tot} (${ok} riusciti · ${pct(rate)})`,
+        // Una riga di KlaviyoSyncLog e' un sync, non una persona: la stessa lead
+        // ne genera una per punto di raccolta. Il numero grande e' quello delle
+        // persone; i sync restano accanto perche' e' su quelli che si misura il
+        // tasso di riuscita.
+        const leads = num(h.last_24h_leads), test = num(h.last_24h_test_syncs) || 0;
+        const testNote = test
+            ? ` Nella stessa finestra ci sono ${test} sync di prova (email test*, visitor probe*), esclusi dal conteggio: sono sessioni di verifica, non contatti.`
+            : '';
+        return [R('Lead arricchiti 24h',
+            tot === null ? '—' : tot === 0 ? '0' : `${leads === null ? tot : leads} (${tot} sync · ${pct(rate)})`,
             tot === null ? 'na' : tot === 0 ? 'na' : bandUp(rate, 95, 80),
             tot === 0
-                ? "Nessun lead è passato dalla catena di arricchimento nelle ultime 24h. Zero non è un guasto e non è una conferma: senza lead non c'è niente da segmentare, ma nemmeno niente che provi che la catena funzioni. Se sai che dei contatti sono arrivati, stanno entrando in Klaviyo da un'altra porta (form WP diretto) e nascono senza cluster."
-                : "Quota di sync riusciti verso Klaviyo (tabella KlaviyoSyncLog). Un sync fallito non produce un errore visibile: produce un profilo povero, e i flussi segmentati continuano a girare trattando tutti allo stesso modo.")];
+                ? "Nessun lead è passato dalla catena di arricchimento nelle ultime 24h. Zero non è un guasto e non è una conferma: senza lead non c'è niente da segmentare, ma nemmeno niente che provi che la catena funzioni. Se sai che dei contatti sono arrivati, stanno entrando in Klaviyo da un'altra porta (form WP diretto) e nascono senza cluster." + testNote
+                : "Persone distinte arrivate in Klaviyo dalla catena, con accanto il numero di sync e la quota riuscita (tabella KlaviyoSyncLog). Un sync fallito non produce un errore visibile: produce un profilo povero, e i flussi segmentati continuano a girare trattando tutti allo stesso modo." + testNote)];
     },
     actions: (d) => {
         const h = d.metrics?.klaviyo_sync_health || {};
         const tot = num(h.last_24h_total) || 0;
+        const leads = num(h.last_24h_leads) || 0;
+        const test = num(h.last_24h_test_syncs) || 0;
         // Senza un lead passato di recente non c'è niente da ispezionare: chiedere
         // "quale percentuale arriva senza proprietà" su una finestra vuota è una
         // domanda senza risposta possibile. La domanda vera diventa un'altra.
+        // I sync di prova non contano come traffico: mandare a indagare il
+        // consenso su righe generate dalle proprie verifiche fa diagnosticare
+        // un guasto su dati che non descrivono nessun visitatore (29/07).
         if (!tot) return [{
             stage: 1, key: 'klaviyo-porta-ingresso', title: "Nessun lead passa dalla catena di arricchimento",
-            why: "Il contatore dei sync è a zero: o non arrivano contatti, o arrivano entrando in Klaviyo da un'altra porta (form WP diretto) e in quel caso nascono senza cluster, IDS e lingua — e nessun flusso segmentato può recuperarli dopo.",
-            prompt: "Apri albeni-master. Il contatore KlaviyoSyncLog è a zero nelle ultime 24h. Dimmi quali punti di raccolta lead esistono oggi sui domini (form lead magnet, waitlist, chatbot CS) e per ognuno se il contatto passa da /v1/crm/sync-lead o se scrive direttamente su Klaviyo. Per quelli che bypassano l'arricchimento, indica che cosa serve per farli passare dalla catena.",
+            why: test
+                ? `Il contatore dei sync reali è a zero: le ${test} righe della finestra sono sync di prova. O non arrivano contatti, o arrivano entrando in Klaviyo da un'altra porta (form WP diretto) e in quel caso nascono senza cluster, IDS e lingua.`
+                : "Il contatore dei sync è a zero: o non arrivano contatti, o arrivano entrando in Klaviyo da un'altra porta (form WP diretto) e in quel caso nascono senza cluster, IDS e lingua — e nessun flusso segmentato può recuperarli dopo.",
+            prompt: "Apri albeni-master. Il contatore KlaviyoSyncLog è a zero nelle ultime 24h (escludendo i sync di prova). Dimmi quali punti di raccolta lead esistono oggi sui domini (form lead magnet, waitlist, chatbot CS) e per ognuno se il contatto passa da /v1/crm/sync-lead o se scrive direttamente su Klaviyo. Per quelli che bypassano l'arricchimento, indica che cosa serve per farli passare dalla catena.",
         }];
         return [
-            { stage: 1, key: 'klaviyo-props', title: "Verifica che il cluster arrivi davvero in Klaviyo", why: `${tot} lead nelle ultime 24h: è la finestra giusta per controllare. Se la proprietà cluster non è popolata, i flussi segmentati girano ma trattano tutti allo stesso modo, e l'errore non produce alcun errore visibile.`, prompt: "Apri albeni-master. Verifica la catena lead → Klaviyo: quali proprietà comportamentali (cluster, IDS, dominio di origine, lingua) vengono scritte sul profilo e quali flussi le usano davvero come condizione di ingresso. Segnala le proprietà scritte ma mai usate e i flussi che dovrebbero usarle." },
-            { stage: 1, key: 'consenso-tracking', title: "Controlla l'effetto del consenso sul tracking", why: "Dal 23/07 il CMP blocca i tracker finché non c'è consenso: i lead raccolti prima del consenso arrivano senza cluster.", prompt: `Apri albeni-master. Con il CMP Complianz attivo sono passati ${tot} lead dalla catena nelle ultime 24h: dimmi quanti di questi hanno le proprietà comportamentali popolate e se il punto di raccolta va spostato dopo il consenso.` },
+            { stage: 1, key: 'klaviyo-props', title: "Verifica che il cluster arrivi davvero in Klaviyo", why: `${leads} lead (${tot} sync) nelle ultime 24h: è la finestra giusta per controllare. Se la proprietà cluster non è popolata, i flussi segmentati girano ma trattano tutti allo stesso modo, e l'errore non produce alcun errore visibile.`, prompt: "Apri albeni-master. Verifica la catena lead → Klaviyo: quali proprietà comportamentali (cluster, IDS, dominio di origine, lingua) vengono scritte sul profilo e quali flussi le usano davvero come condizione di ingresso. Segnala le proprietà scritte ma mai usate e i flussi che dovrebbero usarle." },
+            { stage: 1, key: 'consenso-tracking', title: "Controlla l'effetto del consenso sul tracking", why: "Dal 23/07 il CMP blocca i tracker finché non c'è consenso: chi lascia l'email prima di accettare arriva con IDS 0 e cluster ignoto.", prompt: `Apri albeni-master. Con il CMP Complianz attivo sono passati ${leads} lead (${tot} sync) dalla catena nelle ultime 24h: dimmi quanti hanno le proprietà comportamentali popolate, e per quelli poveri se l'email è stata lasciata prima del consenso. Dal 29/07 un sync senza segnale non sovrascrive più un profilo già arricchito: verifica che la regola tenga anche sui lead veri.` },
         ];
     },
     traps: [
