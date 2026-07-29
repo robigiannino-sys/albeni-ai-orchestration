@@ -301,9 +301,31 @@ app.all('/v1/*', async (req, res) => {
             validateStatus: () => true // forward all status codes as-is
         };
 
-        // Forward body for POST/PUT/PATCH
-        if (['POST', 'PUT', 'PATCH'].includes(req.method) && req.body) {
-            axiosConfig.data = req.body;
+        // Forward body for POST/PUT/PATCH.
+        //
+        // Due casi diversi. I body JSON li ha gia' consumati express.json() e
+        // arrivano qui come oggetto: axios li ri-serializza (vedi la nota su
+        // content-length sopra). I body multipart invece nessun parser li tocca
+        // -- non c'e' multer -- quindi req.body resta {} e fino al 29/07/2026
+        // partiva verso ml-worker un "{}" JSON con il content-type multipart
+        // originale addosso: FastAPI non trovava il campo file e rispondeva 422
+        // "Field required". E' il motivo per cui l'upload del Data Hub non ha
+        // mai funzionato dalla tower, e per cui il Data Hub risultava a zero
+        // import. Qui lo stream della richiesta viene inoltrato intatto,
+        // ripristinando la content-length del client -- che in questo ramo
+        // descrive esattamente i byte che rigiriamo, essendo gli stessi.
+        if (['POST', 'PUT', 'PATCH'].includes(req.method)) {
+            const contentType = String(req.headers['content-type'] || '');
+            if (contentType.startsWith('multipart/')) {
+                axiosConfig.data = req;
+                axiosConfig.maxBodyLength = Infinity;
+                axiosConfig.maxContentLength = Infinity;
+                if (req.headers['content-length']) {
+                    axiosConfig.headers['content-length'] = req.headers['content-length'];
+                }
+            } else if (req.body) {
+                axiosConfig.data = req.body;
+            }
         }
 
         // Forward query params
