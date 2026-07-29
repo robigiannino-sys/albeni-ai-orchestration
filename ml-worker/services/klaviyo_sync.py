@@ -148,6 +148,75 @@ class KlaviyoService:
             ident["external_id"] = request.visitor_id
         return ident
 
+    @staticmethod
+    def _merge_behavioral(
+        request: KlaviyoSyncRequest,
+        existing: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Campi comportamentali da scrivere su un profilo che gia' esiste.
+
+        Il tracker senza consenso *statistics* non ha localStorage, quindi la
+        catena manda IDS=0 / cluster "unknown" in buona fede: senza guardia
+        quegli zeri sovrascrivono un profilo gia' arricchito da un altro punto
+        di raccolta (verificato 29/07 sul profilo di test del 28/07, che da
+        IDS=72/italian_authentic/BOFU e' finito a 0/unknown/TOFU).
+
+        Non e' un floor monotono: un IDS ricalcolato piu' basso e' un dato
+        legittimo e passa. A non passare e' il sync *senza segnale*.
+        """
+        props: Dict[str, Any] = {
+            "preferred_language": request.language,
+            "last_ai_sync": datetime.utcnow().isoformat()
+        }
+
+        # cluster_tag: un cluster noto non torna mai a "unknown". Il passaggio
+        # da un cluster noto a un altro e' invece una riclassificazione valida.
+        incoming_cluster = (request.cluster_tag or "").strip()
+        existing_cluster = (existing.get("cluster_tag") or "").strip()
+        if incoming_cluster and incoming_cluster != "unknown":
+            props["cluster_tag"] = request.cluster_tag
+        elif not existing_cluster:
+            props["cluster_tag"] = request.cluster_tag
+
+        # ids_score e intent_stage viaggiano insieme: lo stage e' derivato dallo
+        # score, riscriverne uno solo li lascerebbe incoerenti.
+        incoming_score = request.ids_score or 0
+        try:
+            existing_score = int(existing.get("ids_score") or 0)
+        except (TypeError, ValueError):
+            existing_score = 0
+
+        if incoming_score > 0 or existing_score <= 0:
+            props["ids_score"] = request.ids_score
+            props["intent_stage"] = request.intent_stage.value
+        else:
+            logger.info(
+                "Klaviyo sync senza segnale (IDS=0) su profilo con IDS=%s: "
+                "campi comportamentali preservati",
+                existing_score
+            )
+
+        return props
+
+    async def _fetch_profile_properties(self, client: httpx.AsyncClient, profile_id: str) -> Dict[str, Any]:
+        """Proprieta' correnti del profilo, per poterle confrontare prima del PATCH."""
+        try:
+            response = await client.get(
+                f"{KLAVIYO_API_BASE}/profiles/{profile_id}/",
+                headers=self.headers,
+                timeout=10.0
+            )
+            if response.status_code == 200:
+                return response.json().get("data", {}).get("attributes", {}).get("properties", {}) or {}
+            logger.warning(
+                "Lettura profilo %s fallita (%s): il merge parte da vuoto",
+                profile_id, response.status_code
+            )
+        except httpx.HTTPError as exc:
+            logger.warning("Lettura profilo %s fallita (%s): il merge parte da vuoto", profile_id, exc)
+        return {}
+
     async def _upsert_profile(self, request: KlaviyoSyncRequest) -> Optional[str]:
         """Create or update a Klaviyo profile with AI-enriched data."""
         payload = {
@@ -214,6 +283,8 @@ class KlaviyoService:
             return f"mock_profile_{request.email or request.visitor_id}"
 
         async with httpx.AsyncClient() as client:
+            existing_props: Dict[str, Any] = {}
+
             if not profile_id:
                 # Senza email il profilo si ritrova solo per external_id.
                 if request.email:
@@ -232,6 +303,10 @@ class KlaviyoService:
                     profiles = search_response.json().get("data", [])
                     if profiles:
                         profile_id = profiles[0]["id"]
+                        existing_props = profiles[0].get("attributes", {}).get("properties", {}) or {}
+            elif profile_id:
+                # Veniamo dal 409: abbiamo l'id del duplicato ma non i suoi dati.
+                existing_props = await self._fetch_profile_properties(client, profile_id)
 
             if profile_id:
                 # Update the profile. Rimandiamo anche gli identificatori: se il
@@ -243,13 +318,7 @@ class KlaviyoService:
                         "id": profile_id,
                         "attributes": {
                             **self._identity(request),
-                            "properties": {
-                                "ids_score": request.ids_score,
-                                "cluster_tag": request.cluster_tag,
-                                "intent_stage": request.intent_stage.value,
-                                "preferred_language": request.language,
-                                "last_ai_sync": datetime.utcnow().isoformat()
-                            }
+                            "properties": self._merge_behavioral(request, existing_props)
                         }
                     }
                 }
