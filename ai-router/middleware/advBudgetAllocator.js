@@ -51,35 +51,58 @@ const {
 // BUDGET CONFIGURATION
 // ============================================================
 
+// Envelope allineato il 2026-07-30 a references/allocation-model.md (riscritto il
+// 27/07). Qui c'erano ancora €30.000 su 18 mesi e cinque mercati con US 25% e
+// UK 12%: il modello del pivot micron-è non era mai arrivato nel codice, quindi
+// ogni risposta di /v1/adv citava un budget e una geografia che non esistono più.
+//
+// Total e split mercati sono decisi (piano di lancio capsula: €5K EU, DE 50 /
+// IT 30 / FR 20). Il phasing fra ramp, lancio e sustain NON è deciso: la
+// ripartizione uniforme qui sotto è un segnaposto dichiarato, non una scelta —
+// allocation-model.md vieta di spacciarla per dato. Va sostituita appena Roberto
+// decide, aggiornando anche il documento.
 const BUDGET_CONFIG = {
-  total: 30000,
+  total: 5000,
   phases: {
-    1: { months: [1, 2, 3, 4, 5, 6], monthlyBudget: 2500, label: 'Paid-First' },
-    2: { months: [7, 8, 9, 10, 11, 12], monthlyBudget: 1667, label: 'Hybrid' },
-    3: { months: [13, 14, 15, 16, 17, 18], monthlyBudget: 833, label: 'Organic-Led' },
+    // TODO(phasing): ripartizione uniforme €5.000/3 in attesa della decisione.
+    1: { monthlyBudget: 1667, label: 'Ramp — seed indicizzazione (phasing da decidere)' },
+    2: { monthlyBudget: 1667, label: 'Lancio set 2026 — picco BOFU (phasing da decidere)' },
+    3: { monthlyBudget: 1666, label: 'Sustain — tapering (phasing da decidere)' },
   },
   // Current phase — updated via PUT /v1/adv/config
   currentPhase: 1,
   currentMonth: 1,
 };
 
-// Market allocation (post-SEMrush audit)
+// Market allocation — envelope EU del piano di lancio. US e UK sono fuori
+// dall'envelope: se ricompaiono in un report, quel report sta leggendo il
+// modello vecchio.
 const MARKET_ALLOCATION = {
-  DE: { pct: 0.35, budget: 10500, label: 'Germany (Priority)' },
-  US: { pct: 0.25, budget: 7500, label: 'United States' },
-  IT: { pct: 0.18, budget: 5400, label: 'Italy' },
-  UK: { pct: 0.12, budget: 3600, label: 'United Kingdom' },
-  FR: { pct: 0.10, budget: 3000, label: 'France' },
+  DE: { pct: 0.50, budget: 2500, label: 'Germany (Priority)' },
+  IT: { pct: 0.30, budget: 1500, label: 'Italy' },
+  FR: { pct: 0.20, budget: 1000, label: 'France' },
 };
 
-// Cluster keyword volume weights (from 62 L1 head-terms)
+// Pesi keyword per cluster — UNIFORMI dal 2026-07-30, ed è una scelta, non una
+// mancanza. I pesi precedenti (A 0,28 · B 0,12 · C 0,18 · D 0,08 · E 0,22 ·
+// F 0,12) venivano dalle 62 head-term L1 su cinque mercati: il 69% di quel
+// volume era US+UK, mercati oggi fuori dall'envelope. Non sono ricalcolabili dai
+// dati locali — delle 61 head-term con volume EU nella keyword-matrix, solo 24
+// sono assegnate a MU/WoM, i domini che l'allocatore compensa, e coprono tre
+// cluster su sei: usarle metterebbe A a peso zero, cioè zero budget al cluster
+// con 29 pagine non indicizzate su 299.
+//
+// Con pesi uguali l'allocazione la decide il non_indexed_ratio, che è dato
+// misurato dalla crawl map GSC. Si torna a pesi differenziati con un pull SEMrush
+// su DE/IT/FR: skills-data/adv-budget-allocator/scripts/pull_cluster_weights_semrush.py
+// (69 righe, ~690 unità API; il 30/07 il piano era a zero unità).
 const CLUSTER_KW_WEIGHTS = {
-  A: { weight: 0.28, label: 'Scienza Materiali', topKW: 'merino wool, 17 micron, keratin' },
-  B: { weight: 0.12, label: 'Costruzione & Design', topKW: 'cut & sew, t-shirt construction' },
-  C: { weight: 0.18, label: 'Origini Etiche', topKW: 'sustainable wool, ethical fashion' },
-  D: { weight: 0.08, label: 'Innovazione', topKW: 'merino technology, fabric innovation' },
-  E: { weight: 0.22, label: 'Lab Pratico', topKW: 'merino care, GSM guide, capsule wardrobe' },
-  F: { weight: 0.12, label: 'Heritage & Brand', topKW: 'Italian clothing brand, heritage' },
+  A: { weight: 0.1667, label: 'Scienza Materiali', topKW: 'merino wool, 17,6 micron, cheratina' },
+  B: { weight: 0.1667, label: 'Costruzione & Design', topKW: 'taglio e cucito, vestibilità' },
+  C: { weight: 0.1667, label: 'Origini Etiche', topKW: 'lana sostenibile, filiera tracciabile' },
+  D: { weight: 0.1667, label: 'Innovazione', topKW: 'tecnologia merino, tessuto tecnico' },
+  E: { weight: 0.1667, label: 'Lab Pratico', topKW: 'cura merino, grammatura, guardaroba capsula' },
+  F: { weight: 0.1665, label: 'Heritage & Brand', topKW: 'lana made in Italy, tessuti italiani' },
 };
 
 // Funnel multipliers for page-level priority
