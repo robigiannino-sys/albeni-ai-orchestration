@@ -2138,14 +2138,22 @@ function KlaviyoPage() {
     const [syncing, setSyncing] = useState(false);
 
     useEffect(() => {
-        Promise.all([
+        let timer = null;
+        let alive = true;
+        const load = () => Promise.all([
             api('/v1/dashboard/crm-overview'),
             api('/v1/dashboard/metrics')
         ]).then(([ov, m]) => {
+            if (!alive) return;
             setOverview(ov);
             setSyncHealth(m?.metrics?.klaviyo_sync_health || m?.klaviyo_sync_health || null);
             setLoading(false);
+            // I profile_count arrivano da un giro in background lato worker
+            // (rate limit Klaviyo 1/s): se e' in volo si ritenta a breve.
+            if (ov?.counts_pending) timer = setTimeout(load, 20000);
         });
+        load();
+        return () => { alive = false; if (timer) clearTimeout(timer); };
     }, []);
 
     // Attribuzione WoM/MU dal nome: convenzione dei prefissi usata
@@ -2291,6 +2299,7 @@ function KlaviyoPage() {
                     <h3 style={{fontSize:'15px',marginBottom:'16px',color:'#fafafa'}}>
                         📋 Liste — {overview.lists.length}
                         <span style={{fontSize:'11px',color:'#52525b',fontWeight:400,marginLeft:'8px'}}>lette live da Klaviyo, con profili iscritti</span>
+                        {overview.counts_pending && <span style={{fontSize:'11px',color:'#f59e0b',fontWeight:400,marginLeft:'8px'}}>conteggi in arrivo…</span>}
                     </h3>
                     <table style={{width:'100%'}}>
                         <thead><tr><th>Lista</th><th>Origine</th><th>Profili</th><th>ID</th></tr></thead>

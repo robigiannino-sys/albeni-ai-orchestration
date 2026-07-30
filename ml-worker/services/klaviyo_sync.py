@@ -64,6 +64,13 @@ FLOW_MAPPING = {
 # la finestra intera. TTL breve: sono dati di struttura, non di traffico.
 _OVERVIEW_TTL_S = 300
 _overview_cache: Dict[str, Any] = {"ts": 0.0, "data": None}
+# Conteggi profili per lista, riempiti da un task in background: il giro
+# sequenziale (1 req/s per il rate limit) dura piu' del timeout di 20s con
+# cui il router proxa l'ml-worker, quindi non puo' stare sulla richiesta.
+# Persistono fra i refresh dell'overview: meglio un conteggio di 5 minuti fa
+# che un null mentre il giro nuovo e' in corso.
+_profile_counts: Dict[str, Any] = {}
+_counts_task_running = False
 
 
 class KlaviyoService:
@@ -205,36 +212,18 @@ class KlaviyoService:
                 client, f"{KLAVIYO_API_BASE}/flows/"
             )
 
-            # profile_count non esiste sul bulk (additional-fields ammesso: [],
-            # verificato 30/07 su revision 2024-02-15 e 2025-04-15): si legge
-            # solo dal GET della singola lista, che con quel campo e'
-            # rate-limitato a 1/s. Sequenziale con spacing, un 429 o un errore
-            # lascia il conteggio a null per quella lista sola — e' per questo
-            # giro lento che l'overview sta dietro una cache da 5 minuti.
-            profile_counts: Dict[str, Any] = {}
-            for i, item in enumerate(lists_raw[:20]):
-                list_id = item.get("id")
-                if not list_id:
-                    continue
-                if i > 0:
-                    await asyncio.sleep(1.05)
-                try:
-                    resp = await client.get(
-                        f"{KLAVIYO_API_BASE}/lists/{list_id}/?additional-fields[list]=profile_count",
-                        headers=self.headers,
-                    )
-                    if resp.status_code == 200:
-                        attrs = (resp.json().get("data") or {}).get("attributes") or {}
-                        profile_counts[list_id] = attrs.get("profile_count")
-                except Exception as e:
-                    logger.warning(f"profile_count fetch failed for {list_id}: {e}")
+        # I conteggi si riempiono fuori richiesta (vedi _refresh_profile_counts)
+        # e qui si legge quel che il giro precedente ha gia' depositato.
+        counts_pending = self._start_counts_refresh(
+            [item.get("id") for item in lists_raw if item.get("id")]
+        )
 
         data = {
             "lists": [
                 {
                     "id": item.get("id"),
                     "name": (item.get("attributes") or {}).get("name"),
-                    "profile_count": profile_counts.get(item.get("id")),
+                    "profile_count": _profile_counts.get(item.get("id")),
                     "created": (item.get("attributes") or {}).get("created"),
                 }
                 for item in lists_raw
@@ -251,6 +240,7 @@ class KlaviyoService:
             ],
             "lists_error": lists_error,
             "flows_error": flows_error,
+            "counts_pending": counts_pending,
             "fetched_at": datetime.utcnow().isoformat(),
         }
         # Un fetch completamente fallito non deve avvelenare la cache: la
@@ -259,6 +249,62 @@ class KlaviyoService:
             _overview_cache["ts"] = now
             _overview_cache["data"] = data
         return {**data, "cached": False}
+
+    def _start_counts_refresh(self, list_ids) -> bool:
+        """
+        Avvia (se non gia' in corso) il giro in background dei profile_count.
+        Ritorna True se al termine della richiesta corrente c'e' un giro in
+        volo — il frontend lo usa per ritentare il fetch dopo qualche secondo.
+        """
+        global _counts_task_running
+        missing = [lid for lid in list_ids if lid not in _profile_counts]
+        if _counts_task_running:
+            return True
+        if not missing:
+            # Conteggi completi: si rinfrescano comunque in background se
+            # l'overview e' stata rifetchata (dati vecchi al massimo di un
+            # giro di cache), ma senza segnalare pending al frontend.
+            _counts_task_running = True
+            asyncio.create_task(self._refresh_profile_counts(list_ids))
+            return False
+        _counts_task_running = True
+        asyncio.create_task(self._refresh_profile_counts(list_ids))
+        return True
+
+    async def _refresh_profile_counts(self, list_ids):
+        """
+        profile_count non esiste sul bulk /lists/ (additional-fields ammesso:
+        [], verificato 30/07 su revision 2024-02-15 e 2025-04-15): si legge
+        solo dal GET della singola lista, rate-limitato a 1/s. Il giro intero
+        dura piu' del timeout del proxy, per questo vive qui e non nella
+        richiesta. Un 429 o un errore lascia il conteggio precedente.
+        """
+        global _counts_task_running
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                for i, list_id in enumerate(list_ids[:20]):
+                    if i > 0:
+                        await asyncio.sleep(1.05)
+                    try:
+                        resp = await client.get(
+                            f"{KLAVIYO_API_BASE}/lists/{list_id}/?additional-fields[list]=profile_count",
+                            headers=self.headers,
+                        )
+                        if resp.status_code == 200:
+                            attrs = (resp.json().get("data") or {}).get("attributes") or {}
+                            _profile_counts[list_id] = attrs.get("profile_count")
+                    except Exception as e:
+                        logger.warning(f"profile_count fetch failed for {list_id}: {e}")
+            # Deposita i conteggi anche nella cache gia' pubblicata, cosi' la
+            # prossima richiesta entro TTL li vede senza rifare il bulk.
+            cached = _overview_cache.get("data")
+            if cached:
+                for entry in cached.get("lists", []):
+                    if entry.get("id") in _profile_counts:
+                        entry["profile_count"] = _profile_counts[entry["id"]]
+                cached["counts_pending"] = False
+        finally:
+            _counts_task_running = False
 
     @staticmethod
     def _merge_behavioral(
