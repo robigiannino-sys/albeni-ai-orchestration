@@ -8,6 +8,7 @@ Key features:
 - Predictive send-time optimization
 - Dynamic copy injection per cluster
 """
+import asyncio
 import logging
 import time
 import json
@@ -198,25 +199,42 @@ class KlaviyoService:
 
         async with httpx.AsyncClient(timeout=20.0) as client:
             lists_raw, lists_error = await self._fetch_all_pages(
-                client,
-                f"{KLAVIYO_API_BASE}/lists/?additional-fields[list]=profile_count",
+                client, f"{KLAVIYO_API_BASE}/lists/"
             )
-            if lists_error and not lists_raw:
-                # profile_count puo' mancare per scope o revision: meglio le
-                # liste senza conteggio che nessuna lista.
-                lists_raw, lists_error = await self._fetch_all_pages(
-                    client, f"{KLAVIYO_API_BASE}/lists/"
-                )
             flows_raw, flows_error = await self._fetch_all_pages(
                 client, f"{KLAVIYO_API_BASE}/flows/"
             )
+
+            # profile_count non esiste sul bulk (additional-fields ammesso: [],
+            # verificato 30/07 su revision 2024-02-15 e 2025-04-15): si legge
+            # solo dal GET della singola lista, che con quel campo e'
+            # rate-limitato a 1/s. Sequenziale con spacing, un 429 o un errore
+            # lascia il conteggio a null per quella lista sola — e' per questo
+            # giro lento che l'overview sta dietro una cache da 5 minuti.
+            profile_counts: Dict[str, Any] = {}
+            for i, item in enumerate(lists_raw[:20]):
+                list_id = item.get("id")
+                if not list_id:
+                    continue
+                if i > 0:
+                    await asyncio.sleep(1.05)
+                try:
+                    resp = await client.get(
+                        f"{KLAVIYO_API_BASE}/lists/{list_id}/?additional-fields[list]=profile_count",
+                        headers=self.headers,
+                    )
+                    if resp.status_code == 200:
+                        attrs = (resp.json().get("data") or {}).get("attributes") or {}
+                        profile_counts[list_id] = attrs.get("profile_count")
+                except Exception as e:
+                    logger.warning(f"profile_count fetch failed for {list_id}: {e}")
 
         data = {
             "lists": [
                 {
                     "id": item.get("id"),
                     "name": (item.get("attributes") or {}).get("name"),
-                    "profile_count": (item.get("attributes") or {}).get("profile_count"),
+                    "profile_count": profile_counts.get(item.get("id")),
                     "created": (item.get("attributes") or {}).get("created"),
                 }
                 for item in lists_raw
