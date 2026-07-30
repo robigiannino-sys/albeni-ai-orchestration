@@ -2127,15 +2127,35 @@ function NotionPage({ onStatsUpdate }) {
 // KLAVIYO CRM PAGE
 // ============================================================
 function KlaviyoPage() {
-    const [lists, setLists] = useState([]);
-    const [segments, setSegments] = useState([]);
+    // Liste e flow arrivano vivi da Klaviyo via /v1/dashboard/crm-overview:
+    // fino al 30/07 questa pagina era uno snapshot hardcodato dell'account, e
+    // siccome il CRM è storicamente costruito attorno a WoM la pagina faceva
+    // sembrare che MU non alimentasse niente.
+    const [overview, setOverview] = useState(null);
+    const [syncHealth, setSyncHealth] = useState(null);
     const [loading, setLoading] = useState(true);
     const [syncResult, setSyncResult] = useState(null);
     const [syncing, setSyncing] = useState(false);
 
     useEffect(() => {
-        setLoading(false);
+        Promise.all([
+            api('/v1/dashboard/crm-overview'),
+            api('/v1/dashboard/metrics')
+        ]).then(([ov, m]) => {
+            setOverview(ov);
+            setSyncHealth(m?.metrics?.klaviyo_sync_health || m?.klaviyo_sync_health || null);
+            setLoading(false);
+        });
     }, []);
+
+    // Attribuzione WoM/MU dal nome: convenzione dei prefissi usata
+    // nell'account (WoM-*, MU-*, CPW = white paper MU).
+    const originOf = (name) => {
+        const n = (name || '').toLowerCase();
+        if (n.startsWith('wom') || n.includes('worldofmerino')) return { label: 'WoM', color: '#60a5fa' };
+        if (n.startsWith('mu') || n.includes('manifesto') || n.includes('cpw')) return { label: 'MU', color: '#a78bfa' };
+        return { label: '—', color: '#52525b' };
+    };
 
     const testSync = async () => {
         setSyncing(true);
@@ -2164,19 +2184,48 @@ function KlaviyoPage() {
                 <div className="card">
                     <div className="card-label">Account</div>
                     <div className="card-value" style={{fontSize:'18px'}}>Best Before Srl</div>
-                    <div className="card-sub">Public Key: VbcXCv</div>
+                    <div className="card-sub">Unico account per tutto l'ecosistema (WoM + MU + store)</div>
                 </div>
                 <div className="card">
                     <div className="card-label">Stato</div>
-                    <div className="card-value green" style={{fontSize:'18px'}}>Connesso</div>
-                    <div className="card-sub">API Key configurata</div>
+                    {loading
+                        ? <div className="card-value" style={{fontSize:'18px'}}>…</div>
+                        : (overview && !overview.lists_error && !overview.flows_error)
+                            ? <div className="card-value green" style={{fontSize:'18px'}}>Connesso</div>
+                            : <div className="card-value" style={{fontSize:'18px',color:'#f59e0b'}}>Parziale</div>}
+                    <div className="card-sub">{overview?.cached ? 'Dati in cache (≤5 min)' : 'Lettura live API Klaviyo'}</div>
                 </div>
                 <div className="card">
-                    <div className="card-label">Website</div>
-                    <div className="card-value" style={{fontSize:'14px'}}>worldofmerino.com</div>
-                    <div className="card-sub">Dominio principale</div>
+                    <div className="card-label">Lead 24h (catena arricchimento)</div>
+                    <div className="card-value" style={{fontSize:'18px'}}>{syncHealth ? syncHealth.last_24h_leads : '…'}</div>
+                    <div className="card-sub">{syncHealth ? `${syncHealth.last_24h_total} sync · ${syncHealth.success_rate}% ok` : 'da klaviyo_sync_log'}</div>
                 </div>
             </div>
+
+            {syncHealth?.last_24h_by_domain && (
+                <div className="card" style={{marginBottom:'20px'}}>
+                    <h3 style={{fontSize:'15px',marginBottom:'8px',color:'#fafafa'}}>🌐 Sync 24h per dominio di provenienza</h3>
+                    <p style={{fontSize:'12px',color:'#a1a1aa',marginBottom:'12px'}}>
+                        Da quale sito arrivano i lead che passano dalla catena di arricchimento. Un dominio assente non ha prodotto sync nella finestra.
+                    </p>
+                    {Object.keys(syncHealth.last_24h_by_domain).length === 0
+                        ? <div style={{fontSize:'13px',color:'#71717a'}}>Nessun sync reale nelle ultime 24h.</div>
+                        : <table style={{width:'100%'}}>
+                            <thead><tr><th>Dominio</th><th>Sync</th><th>Lead distinti</th></tr></thead>
+                            <tbody>
+                                {Object.entries(syncHealth.last_24h_by_domain)
+                                    .sort((a,b) => b[1].syncs - a[1].syncs)
+                                    .map(([dom, v]) => (
+                                    <tr key={dom}>
+                                        <td>{dom}</td>
+                                        <td>{v.syncs}</td>
+                                        <td>{v.leads}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>}
+                </div>
+            )}
 
             <div className="card" style={{marginBottom:'20px'}}>
                 <h3 style={{fontSize:'15px',marginBottom:'16px',color:'#fafafa'}}>Test Sync Profilo</h3>
@@ -2196,82 +2245,79 @@ function KlaviyoPage() {
                 )}
             </div>
 
-            <div className="card" style={{marginBottom:'20px'}}>
-                <h3 style={{fontSize:'15px',marginBottom:'16px',color:'#fafafa'}}>📧 Flow Attivi — {15} Live / {2} Draft</h3>
-
-                <div style={{marginBottom:'16px'}}>
-                    <div style={{fontSize:'12px',color:'#60a5fa',fontWeight:600,marginBottom:'8px',textTransform:'uppercase',letterSpacing:'0.05em'}}>🎯 Welcome Series per Cluster</div>
+            {overview?.flows_error && (
+                <div className="card" style={{marginBottom:'20px',borderLeft:'3px solid #f59e0b'}}>
+                    <div style={{fontSize:'13px',color:'#f59e0b'}}>Flow non leggibili dall'API: {overview.flows_error}</div>
+                </div>
+            )}
+            {overview?.flows?.length > 0 && (
+                <div className="card" style={{marginBottom:'20px'}}>
+                    <h3 style={{fontSize:'15px',marginBottom:'16px',color:'#fafafa'}}>
+                        📧 Flow — {overview.flows.filter(f => f.status === 'live' && !f.archived).length} Live / {overview.flows.filter(f => f.status !== 'live' && !f.archived).length} Draft
+                        <span style={{fontSize:'11px',color:'#52525b',fontWeight:400,marginLeft:'8px'}}>letti live da Klaviyo</span>
+                    </h3>
                     <table style={{width:'100%'}}>
-                        <thead><tr><th>Flow</th><th>Stato</th><th>Trigger</th><th>ID</th></tr></thead>
+                        <thead><tr><th>Flow</th><th>Origine</th><th>Stato</th><th>Trigger</th><th>ID</th></tr></thead>
                         <tbody>
-                            <tr><td>WoM - Welcome Business Professional</td><td><span style={{color:'#4ade80'}}>● Live</span></td><td>Added to List</td><td style={{fontSize:'11px',color:'#52525b'}}>WiTZg7</td></tr>
-                            <tr><td>WoM - Welcome Conscious Premium</td><td><span style={{color:'#4ade80'}}>● Live</span></td><td>Added to List</td><td style={{fontSize:'11px',color:'#52525b'}}>VraFxv</td></tr>
-                            <tr><td>WoM - Welcome Heritage Mature</td><td><span style={{color:'#4ade80'}}>● Live</span></td><td>Added to List</td><td style={{fontSize:'11px',color:'#52525b'}}>T8AL2M</td></tr>
-                            <tr><td>WoM - Welcome Italian Authentic</td><td><span style={{color:'#4ade80'}}>● Live</span></td><td>Added to List</td><td style={{fontSize:'11px',color:'#52525b'}}>Wx8LaF</td></tr>
-                            <tr><td>WoM Modern Minimalist Welcome</td><td><span style={{color:'#4ade80'}}>● Live</span></td><td>Added to List</td><td style={{fontSize:'11px',color:'#52525b'}}>XEDD2q</td></tr>
+                            {overview.flows
+                                .filter(f => !f.archived)
+                                .sort((a,b) => (a.status === 'live' ? 0 : 1) - (b.status === 'live' ? 0 : 1) || (a.name||'').localeCompare(b.name||''))
+                                .map(f => {
+                                    const o = originOf(f.name);
+                                    return (
+                                        <tr key={f.id}>
+                                            <td>{f.name}</td>
+                                            <td><span style={{color:o.color,fontWeight:600}}>{o.label}</span></td>
+                                            <td>{f.status === 'live'
+                                                ? <span style={{color:'#4ade80'}}>● Live</span>
+                                                : <span style={{color:'#f59e0b'}}>● {f.status || 'draft'}</span>}</td>
+                                            <td style={{fontSize:'12px',color:'#a1a1aa'}}>{f.trigger_type || '—'}</td>
+                                            <td style={{fontSize:'11px',color:'#52525b'}}>{f.id}</td>
+                                        </tr>
+                                    );
+                                })}
                         </tbody>
                     </table>
                 </div>
+            )}
 
-                <div style={{marginBottom:'16px'}}>
-                    <div style={{fontSize:'12px',color:'#f59e0b',fontWeight:600,marginBottom:'8px',textTransform:'uppercase',letterSpacing:'0.05em'}}>🧲 Lead Magnet Delivery</div>
+            {overview?.lists_error && (
+                <div className="card" style={{marginBottom:'20px',borderLeft:'3px solid #f59e0b'}}>
+                    <div style={{fontSize:'13px',color:'#f59e0b'}}>Liste non leggibili dall'API: {overview.lists_error}</div>
+                </div>
+            )}
+            {overview?.lists?.length > 0 && (
+                <div className="card">
+                    <h3 style={{fontSize:'15px',marginBottom:'16px',color:'#fafafa'}}>
+                        📋 Liste — {overview.lists.length}
+                        <span style={{fontSize:'11px',color:'#52525b',fontWeight:400,marginLeft:'8px'}}>lette live da Klaviyo, con profili iscritti</span>
+                    </h3>
                     <table style={{width:'100%'}}>
-                        <thead><tr><th>Flow</th><th>Stato</th><th>Trigger</th><th>ID</th></tr></thead>
+                        <thead><tr><th>Lista</th><th>Origine</th><th>Profili</th><th>ID</th></tr></thead>
                         <tbody>
-                            <tr><td>WoM - LM Delivery Travel Capsule</td><td><span style={{color:'#4ade80'}}>● Live</span></td><td>Added to List</td><td style={{fontSize:'11px',color:'#52525b'}}>TBXtwG</td></tr>
-                            <tr><td>WoM - LM Delivery Sensory Test Kit</td><td><span style={{color:'#4ade80'}}>● Live</span></td><td>Added to List</td><td style={{fontSize:'11px',color:'#52525b'}}>SkD83c</td></tr>
-                            <tr><td>WoM - LM Delivery Sustainability Score</td><td><span style={{color:'#4ade80'}}>● Live</span></td><td>Added to List</td><td style={{fontSize:'11px',color:'#52525b'}}>WN4cB2</td></tr>
-                            <tr><td>WoM - LM Delivery Merino Care Guide</td><td><span style={{color:'#4ade80'}}>● Live</span></td><td>Added to List</td><td style={{fontSize:'11px',color:'#52525b'}}>T5uEWn</td></tr>
-                            <tr><td>WoM - Lead Magnet Delivery</td><td><span style={{color:'#f59e0b'}}>● Draft</span></td><td>Added to List</td><td style={{fontSize:'11px',color:'#52525b'}}>QUjnzH</td></tr>
+                            {overview.lists
+                                .slice()
+                                .sort((a,b) => (b.profile_count ?? -1) - (a.profile_count ?? -1) || (a.name||'').localeCompare(b.name||''))
+                                .map(l => {
+                                    const o = originOf(l.name);
+                                    return (
+                                        <tr key={l.id}>
+                                            <td>{l.name}</td>
+                                            <td><span style={{color:o.color,fontWeight:600}}>{o.label}</span></td>
+                                            <td>{l.profile_count ?? '—'}</td>
+                                            <td style={{fontSize:'11px',color:'#52525b'}}>{l.id}</td>
+                                        </tr>
+                                    );
+                                })}
                         </tbody>
                     </table>
                 </div>
-
-                <div style={{marginBottom:'16px'}}>
-                    <div style={{fontSize:'12px',color:'#a78bfa',fontWeight:600,marginBottom:'8px',textTransform:'uppercase',letterSpacing:'0.05em'}}>📚 Content Delivery (MU)</div>
-                    <table style={{width:'100%'}}>
-                        <thead><tr><th>Flow</th><th>Stato</th><th>Trigger</th><th>ID</th></tr></thead>
-                        <tbody>
-                            <tr><td>MU Manifesto Delivery v2</td><td><span style={{color:'#4ade80'}}>● Live</span></td><td>Added to List</td><td style={{fontSize:'11px',color:'#52525b'}}>UdM6D5</td></tr>
-                            <tr><td>CPW White Paper Delivery</td><td><span style={{color:'#4ade80'}}>● Live</span></td><td>Added to List</td><td style={{fontSize:'11px',color:'#52525b'}}>QZWzS6</td></tr>
-                            <tr><td>[ARCHIVED] MU Manifesto Delivery - OLD</td><td><span style={{color:'#f59e0b'}}>● Draft</span></td><td>Added to List</td><td style={{fontSize:'11px',color:'#52525b'}}>VMCde5</td></tr>
-                        </tbody>
-                    </table>
+            )}
+            {!loading && !overview && (
+                <div className="card" style={{borderLeft:'3px solid #ef4444'}}>
+                    <div style={{fontSize:'13px',color:'#f87171'}}>Overview CRM non raggiungibile (/v1/dashboard/crm-overview). La pagina non mostra dati finti: riprova o controlla il ml-worker.</div>
                 </div>
-
-                <div>
-                    <div style={{fontSize:'12px',color:'#f472b6',fontWeight:600,marginBottom:'8px',textTransform:'uppercase',letterSpacing:'0.05em'}}>🔄 Lifecycle & Recovery</div>
-                    <table style={{width:'100%'}}>
-                        <thead><tr><th>Flow</th><th>Stato</th><th>Trigger</th><th>ID</th></tr></thead>
-                        <tbody>
-                            <tr><td>Abandoned Cart Recovery (3 email)</td><td><span style={{color:'#4ade80'}}>● Live</span></td><td>Metric</td><td style={{fontSize:'11px',color:'#52525b'}}>YfnrPd</td></tr>
-                            <tr><td>Browse Abandonment Recovery (2 email)</td><td><span style={{color:'#4ade80'}}>● Live</span></td><td>Metric</td><td style={{fontSize:'11px',color:'#52525b'}}>X7TQJg</td></tr>
-                            <tr><td>Post-Purchase Upsell (2 email)</td><td><span style={{color:'#4ade80'}}>● Live</span></td><td>Metric</td><td style={{fontSize:'11px',color:'#52525b'}}>XfJBiT</td></tr>
-                            <tr><td>Win-Back Reactivation (3 email)</td><td><span style={{color:'#4ade80'}}>● Live</span></td><td>Metric</td><td style={{fontSize:'11px',color:'#52525b'}}>TqpPdp</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div className="card">
-                <h3 style={{fontSize:'15px',marginBottom:'16px',color:'#fafafa'}}>📋 Liste Klaviyo — 11 liste</h3>
-                <table style={{width:'100%'}}>
-                    <thead><tr><th>Lista</th><th>Tipo</th><th>ID</th></tr></thead>
-                    <tbody>
-                        <tr><td>WoM-Newsletter</td><td style={{color:'#60a5fa'}}>Newsletter generale</td><td style={{fontSize:'11px',color:'#52525b'}}>QZ8DYr</td></tr>
-                        <tr><td>WoM-Business Professional</td><td style={{color:'#4ade80'}}>Cluster</td><td style={{fontSize:'11px',color:'#52525b'}}>WeVxWa</td></tr>
-                        <tr><td>WoM-Conscious Premium</td><td style={{color:'#4ade80'}}>Cluster</td><td style={{fontSize:'11px',color:'#52525b'}}>UQec4u</td></tr>
-                        <tr><td>WoM-Heritage Mature</td><td style={{color:'#4ade80'}}>Cluster</td><td style={{fontSize:'11px',color:'#52525b'}}>Xwpphz</td></tr>
-                        <tr><td>WoM-Italian Authentic</td><td style={{color:'#4ade80'}}>Cluster</td><td style={{fontSize:'11px',color:'#52525b'}}>VtQuHt</td></tr>
-                        <tr><td>WoM-Modern Minimalist</td><td style={{color:'#4ade80'}}>Cluster</td><td style={{fontSize:'11px',color:'#52525b'}}>RhbEE3</td></tr>
-                        <tr><td>MU-Manifesto</td><td style={{color:'#a78bfa'}}>Lead Magnet</td><td style={{fontSize:'11px',color:'#52525b'}}>VSndyV</td></tr>
-                        <tr><td>MU-CPW White Paper</td><td style={{color:'#a78bfa'}}>Lead Magnet</td><td style={{fontSize:'11px',color:'#52525b'}}>VMKrV4</td></tr>
-                        <tr><td>Elenco di e-mail</td><td style={{color:'#52525b'}}>Default</td><td style={{fontSize:'11px',color:'#52525b'}}>QZmq6U</td></tr>
-                        <tr><td>Anteprima dell'elenco</td><td style={{color:'#52525b'}}>Default</td><td style={{fontSize:'11px',color:'#52525b'}}>Tkb5SC</td></tr>
-                        <tr><td>Elenco della messaggistica di testo</td><td style={{color:'#52525b'}}>Default SMS</td><td style={{fontSize:'11px',color:'#52525b'}}>VQfgm8</td></tr>
-                    </tbody>
-                </table>
-            </div>
+            )}
         </React.Fragment>
     );
 }

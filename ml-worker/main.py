@@ -947,6 +947,20 @@ async def trigger_post_purchase(
     return {"status": "post_purchase_flow_triggered"}
 
 
+@app.get("/v1/dashboard/crm-overview")
+async def crm_overview(refresh: bool = False, db: DBSession = Depends(get_db)):
+    """
+    Liste e flow reali dell'account Klaviyo per la pagina CRM della tower.
+
+    Sta sotto /v1/dashboard/ e non sotto /v1/crm/ di proposito: nel router
+    /v1/crm/ e' un prefisso pubblico (i form dei siti postano li' senza
+    credenziali), mentre questo espone struttura dell'account e conteggi
+    profili — deve ricadere nel default-deny (API key o Basic auth).
+    """
+    klaviyo = KlaviyoService(db)
+    return await klaviyo.get_crm_overview(force_refresh=refresh)
+
+
 # ===================================================================
 # SEO MONITORING (85/15 Balance)
 # ===================================================================
@@ -1116,6 +1130,22 @@ async def get_dashboard_metrics(db: DBSession = Depends(get_db)):
             and_(in_window, is_test_sync)
         ).scalar() or 0
 
+        # Breakdown per dominio di provenienza. Senza questa dimensione il
+        # contatore globale non puo' rispondere alla domanda operativa "sta
+        # arrivando qualcosa da MU o solo da WoM?" — i sync legacy senza
+        # last_visited_domain finiscono sotto "sconosciuto", non spariscono.
+        p_domain = KlaviyoSyncLog.payload_sent["last_visited_domain"].astext
+        domain_expr = func.coalesce(func.nullif(p_domain, ""), "sconosciuto")
+        domain_rows = db.query(
+            domain_expr,
+            func.count(KlaviyoSyncLog.id),
+            func.count(distinct(sync_identity)),
+        ).filter(real_syncs).group_by(domain_expr).all()
+        syncs_by_domain = {
+            dom: {"syncs": syncs, "leads": leads}
+            for dom, syncs, leads in domain_rows
+        }
+
         return DashboardMetrics(
             total_users=total_users,
             active_sessions=active_sessions,
@@ -1130,6 +1160,7 @@ async def get_dashboard_metrics(db: DBSession = Depends(get_db)):
                 "success_rate": round(successful_syncs / max(1, recent_syncs) * 100, 1),
                 "last_24h_leads": distinct_leads,
                 "last_24h_test_syncs": test_syncs,
+                "last_24h_by_domain": syncs_by_domain,
             }
         )
 

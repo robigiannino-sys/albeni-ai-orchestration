@@ -57,6 +57,14 @@ FLOW_MAPPING = {
 }
 
 
+# Cache dell'overview CRM (liste + flow) per la pagina Klaviyo della tower.
+# Le liste con profile_count sono l'endpoint piu' rate-limitato di Klaviyo
+# (burst 1/s, 15/min): senza cache ogni apertura della pagina consumerebbe
+# la finestra intera. TTL breve: sono dati di struttura, non di traffico.
+_OVERVIEW_TTL_S = 300
+_overview_cache: Dict[str, Any] = {"ts": 0.0, "data": None}
+
+
 class KlaviyoService:
     """
     Manages all Klaviyo CRM interactions for the AI Orchestration Layer.
@@ -147,6 +155,92 @@ class KlaviyoService:
         if request.visitor_id:
             ident["external_id"] = request.visitor_id
         return ident
+
+    async def _fetch_all_pages(
+        self, client: httpx.AsyncClient, url: str, max_pages: int = 10
+    ) -> tuple:
+        """
+        Segue la paginazione cursor di Klaviyo (links.next) e accumula `data`.
+        Ritorna (items, error): con un errore HTTP si torna quel che si ha
+        gia' raccolto piu' il messaggio, mai un'eccezione — la pagina della
+        tower deve poter dire "liste ok, flow negati" invece di morire intera.
+        """
+        items = []
+        next_url = url
+        for _ in range(max_pages):
+            if not next_url:
+                break
+            try:
+                resp = await client.get(next_url, headers=self.headers)
+                if resp.status_code != 200:
+                    detail = resp.text[:200]
+                    return items, f"HTTP {resp.status_code}: {detail}"
+                body = resp.json()
+                items.extend(body.get("data", []))
+                next_url = (body.get("links") or {}).get("next")
+            except Exception as e:
+                return items, str(e)
+        return items, None
+
+    async def get_crm_overview(self, force_refresh: bool = False) -> Dict[str, Any]:
+        """
+        Liste (con profile_count) e flow reali dell'account Klaviyo, per la
+        pagina CRM della tower — sostituisce lo snapshot hardcodato che
+        faceva sembrare il CRM "solo WoM".
+        """
+        now = time.time()
+        if (
+            not force_refresh
+            and _overview_cache["data"] is not None
+            and now - _overview_cache["ts"] < _OVERVIEW_TTL_S
+        ):
+            return {**_overview_cache["data"], "cached": True}
+
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            lists_raw, lists_error = await self._fetch_all_pages(
+                client,
+                f"{KLAVIYO_API_BASE}/lists/?additional-fields[list]=profile_count",
+            )
+            if lists_error and not lists_raw:
+                # profile_count puo' mancare per scope o revision: meglio le
+                # liste senza conteggio che nessuna lista.
+                lists_raw, lists_error = await self._fetch_all_pages(
+                    client, f"{KLAVIYO_API_BASE}/lists/"
+                )
+            flows_raw, flows_error = await self._fetch_all_pages(
+                client, f"{KLAVIYO_API_BASE}/flows/"
+            )
+
+        data = {
+            "lists": [
+                {
+                    "id": item.get("id"),
+                    "name": (item.get("attributes") or {}).get("name"),
+                    "profile_count": (item.get("attributes") or {}).get("profile_count"),
+                    "created": (item.get("attributes") or {}).get("created"),
+                }
+                for item in lists_raw
+            ],
+            "flows": [
+                {
+                    "id": item.get("id"),
+                    "name": (item.get("attributes") or {}).get("name"),
+                    "status": (item.get("attributes") or {}).get("status"),
+                    "archived": (item.get("attributes") or {}).get("archived"),
+                    "trigger_type": (item.get("attributes") or {}).get("trigger_type"),
+                }
+                for item in flows_raw
+            ],
+            "lists_error": lists_error,
+            "flows_error": flows_error,
+            "fetched_at": datetime.utcnow().isoformat(),
+        }
+        # Un fetch completamente fallito non deve avvelenare la cache: la
+        # pagina ritenterebbe fra 5 minuti mostrando errori ormai vecchi.
+        if lists_raw or flows_raw:
+            _overview_cache["ts"] = now
+            _overview_cache["data"] = data
+        return {**data, "cached": False}
 
     @staticmethod
     def _merge_behavioral(
