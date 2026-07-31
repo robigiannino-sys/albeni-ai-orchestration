@@ -27,6 +27,7 @@ Output:
 import csv
 import io
 import os
+import subprocess
 import sys
 from datetime import date
 
@@ -176,6 +177,15 @@ def main():
         for e in errors:
             print("  " + e)
     print(f"\nUnità dopo il pull: {units_left():,}")
+
+    # I pesi da soli non dicono se vale la pena cambiarli: quello lo dice il budget
+    # che si sposta. Il delta esce qui, sugli stessi numeri appena scaricati, così
+    # la decisione si prende senza un secondo passaggio a mano.
+    print("\n" + "=" * 78)
+    subprocess.run([sys.executable,
+                    os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                 "preview_weight_delta.py"),
+                    "--from-csv", out, "--label", f"pull SEMrush {date.today().isoformat()}"])
 
 
 if __name__ == "__main__":

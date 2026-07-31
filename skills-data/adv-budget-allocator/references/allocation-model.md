@@ -85,7 +85,30 @@ python3 scripts/pull_cluster_weights_semrush.py --confirm
 
 69 righe su tre database, **~690 unità API**, e stampa la tabella pronta da incollare qui e in
 `ai-router/middleware/advBudgetAllocator.js`. Al 30/07/2026 il piano SEMrush è a **zero unità**
-(`ERROR 132`), quindi lo script si ferma da sé prima di consumare.
+(`ERROR 132`), quindi lo script si ferma da sé prima di consumare. Verificato di nuovo il
+31/07/2026: nessuna chiave disponibile in ambiente, stato invariato.
+
+Il pull chiude da sé chiamando `preview_weight_delta.py` sui volumi appena scaricati: i pesi da
+soli non dicono se convenga cambiarli, lo dice il budget che si sposta.
+
+### Delta di allocazione — `scripts/preview_weight_delta.py`
+
+Confronta i pesi in produzione con un set candidato sulla copertura corrente, e dice quanti euro
+cambiano cluster. Legge i pesi da `advBudgetAllocator.js` (la copia che gira) e la copertura da
+`cluster-page-map.md`: nessun numero inserito a mano, nessuna stima.
+
+```
+python3 scripts/preview_weight_delta.py --from-csv references/kw-volumes-eu-<data>.csv
+python3 scripts/preview_weight_delta.py --weights A=0.28,B=0.12,C=0.18,D=0.08,E=0.22,F=0.12 --budget 1000
+```
+
+Avvisa quando la crawl map ha più di 7 giorni, quando il totale scende sotto la soglia di apertura
+campagna (€200), e quando un peso candidato è **zero su un cluster che ha pagine non
+indicizzate** — l'errore esatto che ha fatto ritirare l'ipotesi dei pesi da dati locali.
+
+Sui pesi ritirati a budget €1.000 riproduce la ripartizione documentata sopra
+(A 27,8% · B 6,1% · C 21,5% · D 4,8% · E 26,5% · F 13,2%, gap_score 0,0977): è il controllo che
+la formula implementata è quella di questo documento.
 
 Il perimetro semantico autorevole su *quali* termini contano resta la memoria di progetto
 `microne-termini-da-difendere` (27/07): brand defense, semantic moat, cluster C4>C2>C1, difesa
